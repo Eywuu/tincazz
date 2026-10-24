@@ -134,6 +134,25 @@ describe('spinErrorText', () => {
     expect(spinErrorText(new InvalidBetError('range', '5'))).toBe('Bets go from 10 to 10,000.');
   });
 
+  it.each([
+    ['a newline', 'abc\n# huge', 'abc # huge'],
+    ['a zero-width space', 'a​ll', 'all'],
+    ['a right-to-left override', '‮001', '001'],
+    ['backticks', '`<@1>`', '<@1>'],
+    ['a lone surrogate', 'x\ud800y', 'xy'],
+    ['an emoji on the 20 character boundary', `${'a'.repeat(19)}😀😀`, `${'a'.repeat(19)}😀`],
+  ])('echoes a bad bet with %s safely', (_case, input, shown) => {
+    expect(spinErrorText(new InvalidBetError('format', input))).toBe(
+      `\`${shown}\` isn't a bet. Use a number from 10 to 10,000, \`all\`, \`half\` or \`2.5k\`.`,
+    );
+  });
+
+  it('does not echo an empty code span', () => {
+    expect(spinErrorText(new InvalidBetError('format', '​​'))).toBe(
+      "That isn't a bet. Use a number from 10 to 10,000, `all`, `half` or `2.5k`.",
+    );
+  });
+
   it('explains insufficient funds', () => {
     expect(spinErrorText(new InsufficientFundsError(40, 100))).toBe(
       'You have 40 coins. Try a smaller bet.',

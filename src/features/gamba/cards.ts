@@ -114,13 +114,26 @@ export function announcementCard(
   return card(accents.gold, ...texts);
 }
 
+/**
+ * Up to 20 characters of what the user typed, safe to echo inside a code span: one line, no
+ * backticks, no control or invisible (zero-width, bidi) characters, and no split surrogate pairs.
+ */
+export function echoBetInput(input: string): string {
+  const text = input
+    .replace(/\s+/gu, ' ')
+    .replace(/[\p{C}`]/gu, '')
+    .trim();
+  return [...text].slice(0, 20).join('').trim();
+}
+
 export function spinErrorText(error: unknown): string | undefined {
   if (error instanceof InvalidBetError) {
     if (error.kind === 'range') {
       return `Bets go from ${coins(wager.minBet)} to ${coins(wager.maxBet)}.`;
     }
-    const shown = error.input.trim().slice(0, 20).replaceAll('`', '');
-    return `\`${shown}\` isn't a bet. Use a number from ${coins(wager.minBet)} to ${coins(wager.maxBet)}, \`all\`, \`half\` or \`2.5k\`.`;
+    const shown = echoBetInput(error.input);
+    const subject = shown === '' ? 'That' : `\`${shown}\``;
+    return `${subject} isn't a bet. Use a number from ${coins(wager.minBet)} to ${coins(wager.maxBet)}, \`all\`, \`half\` or \`2.5k\`.`;
   }
   if (error instanceof InsufficientFundsError) {
     const hint = error.balance < wager.minBet ? '`/bailout` is available.' : 'Try a smaller bet.';
