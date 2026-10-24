@@ -16,6 +16,7 @@ function mockRandomInt(...values: number[]) {
 
 const head = '<:gamba4Head:1202741378161840239>';
 const cpp = '<:cpp:1226477956541448194>';
+const gif = 'https://klipy.com/gifs/smol-smolcat-5';
 
 function buildClient() {
   return createClient({ DISCORD_TOKEN: 'x', COMMAND_PREFIX: '?', LOG_LEVEL: 'error' });
@@ -88,10 +89,23 @@ describe('?gamba', () => {
     await vi.waitFor(() => expect(message.channel.send).toHaveBeenCalledTimes(1), {
       timeout: 2000,
     });
-    expect(message.channel.send).toHaveBeenCalledWith('`Odds: 1 in 343`');
+    expect(message.channel.send).toHaveBeenCalledWith('You won!\n`Odds: 1 in 343`');
     expect(message.reply.mock.invocationCallOrder[0]).toBeLessThan(
       vi.mocked(message.channel.send).mock.invocationCallOrder[0] as number,
     );
+  });
+
+  it('python win sends the gif and does not assign the role', async () => {
+    mockRandomInt(18);
+    const message = makeMessage(client, '?gamba');
+
+    client.emit(Events.MessageCreate, message as never);
+
+    await vi.waitFor(() => expect(message.channel.send).toHaveBeenCalledTimes(1), {
+      timeout: 2000,
+    });
+    expect(message.channel.send).toHaveBeenCalledWith(`You won!\n\`Odds: 1 in 1,158\`\n${gif}`);
+    expect(message.member?.roles.add).not.toHaveBeenCalled();
   });
 
   it('sends no odds message when the reels differ', async () => {
@@ -146,7 +160,7 @@ describe('?gamba', () => {
       timeout: 2000,
     });
     expect(message.channel.send).toHaveBeenCalledWith(
-      '<@1> just won <@&1561827731400822845>\n`Odds: 1 in 9,261`',
+      `You won!\nYou are a pro! <@1> just won <@&1561827731400822845>\n\`Odds: 1 in 9,261\`\n${gif}`,
     );
   });
 
@@ -165,7 +179,7 @@ describe('?gamba', () => {
     });
     expect(message.reply).toHaveBeenCalledTimes(1);
     expect(message.channel.send).toHaveBeenCalledWith(
-      "<@1> just won <@&1561827731400822845> (couldn't assign the role, tell a mod)\n`Odds: 1 in 9,261`",
+      `You won!\nYou are a pro! <@1> just won <@&1561827731400822845> (couldn't assign the role, tell a mod)\n\`Odds: 1 in 9,261\`\n${gif}`,
     );
   });
 
@@ -180,7 +194,7 @@ describe('?gamba', () => {
     });
     expect(message.reply).toHaveBeenCalledTimes(1);
     expect(message.channel.send).toHaveBeenCalledWith(
-      "<@1> just won <@&1561827731400822845> (couldn't assign the role, tell a mod)\n`Odds: 1 in 9,261`",
+      `You won!\nYou are a pro! <@1> just won <@&1561827731400822845> (couldn't assign the role, tell a mod)\n\`Odds: 1 in 9,261\`\n${gif}`,
     );
   });
 });

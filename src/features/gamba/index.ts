@@ -1,4 +1,10 @@
-import { cppEmoji, gambaJackpotRoleId, gambaOutcomes } from './outcomes.js';
+import {
+  cppEmoji,
+  gambaJackpotRoleId,
+  gambaOutcomes,
+  gambaWinGif,
+  pythonEmoji,
+} from './outcomes.js';
 import { type RandomInt, rollOutcome } from './roll.js';
 
 export { gambaJackpotRoleId };
@@ -37,22 +43,28 @@ export function formatGambaReply(reels: Reels): string {
 }
 
 /**
- * The message sent right after the reels: the winner announcement on a jackpot, then the odds of
- * any three of a kind as inline code. Undefined when there is nothing to add.
+ * The message sent right after the reels, or undefined when there is no win (three of a kind).
+ * Every win says so and shows the odds; python and cpp wins add a gif, and a cpp (jackpot) win
+ * tells the winner they are a pro and which role they got.
  */
 export function formatGambaFollowUp(
   userMention: string,
   reels: Reels,
   jackpot?: JackpotResult,
 ): string | undefined {
-  const lines: string[] = [];
+  const odds = threeOfAKindOdds(reels);
+  if (odds === undefined) {
+    return undefined;
+  }
+
+  const lines = ['You won!'];
   if (jackpot) {
     const note = jackpot.roleAssigned ? '' : " (couldn't assign the role, tell a mod)";
-    lines.push(`${userMention} just won <@&${gambaJackpotRoleId}>${note}`);
+    lines.push(`You are a pro! ${userMention} just won <@&${gambaJackpotRoleId}>${note}`);
   }
-  const odds = threeOfAKindOdds(reels);
-  if (odds !== undefined) {
-    lines.push(`\`Odds: 1 in ${odds.toLocaleString('en-US')}\``);
+  lines.push(`\`Odds: 1 in ${odds.toLocaleString('en-US')}\``);
+  if (reels[0] === pythonEmoji || reels[0] === cppEmoji) {
+    lines.push(gambaWinGif);
   }
-  return lines.length > 0 ? lines.join('\n') : undefined;
+  return lines.join('\n');
 }
