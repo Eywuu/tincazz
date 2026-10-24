@@ -40,12 +40,15 @@ src/
   db/             SQLite schema (Drizzle) and `openDatabase`, exposed as `container.db`
   commands/       one file per command, grouped in folders by category
     economy/      slash commands for coins (/balance, /daily, /bailout, /eco)
+    stats/        slash commands for profiles and boards (/stats, /leaderboard)
   features/       plain feature logic, one folder per feature (not auto-loaded)
     economy/      wallets and ledger; the only code that changes balances
     gamba/        spin logic, odds and payouts, the pot, bet parsing, result cards and the
                   shared `spin()` flow used by commands and buttons
+    stats/        read-only profile and leaderboard queries, `lb:*` custom IDs and cards
     ui/           shared Components V2 card helpers
-  interaction-handlers/  one file per component handler (gamba buttons)
+  interaction-handlers/  one file per component handler (gamba buttons, leaderboard
+                  paging and category select)
   listeners/      one file per Discord/Sapphire event listener
 drizzle/          generated SQL migrations, committed and shipped in the image
 test/             Vitest tests
