@@ -67,7 +67,7 @@ describe('?gamba', () => {
 
     await vi.waitFor(() => expect(message.reply).toHaveBeenCalledTimes(1), { timeout: 2000 });
     expect(message.reply).toHaveBeenCalledWith({
-      content: `GAMBA!\n${head} ${head} ${head}`,
+      content: `${head} ${head} ${head}`,
       allowedMentions: { repliedUser: true },
     });
     expect(message.member?.roles.add).not.toHaveBeenCalled();
@@ -81,7 +81,7 @@ describe('?gamba', () => {
 
     await vi.waitFor(() => expect(message.reply).toHaveBeenCalledTimes(1), { timeout: 2000 });
     expect(message.reply).toHaveBeenCalledWith({
-      content: `GAMBA!\n${head} ${head} ${head}`,
+      content: `${head} ${head} ${head}`,
       allowedMentions: { repliedUser: true },
     });
   });

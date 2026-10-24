@@ -19,7 +19,7 @@ export function isJackpot(reels: Reels): boolean {
 }
 
 export function formatGambaReply(reels: Reels, jackpot?: JackpotResult): string {
-  const lines = ['GAMBA!', reels.join(' ')];
+  const lines = [reels.join(' ')];
   if (jackpot) {
     const note = jackpot.roleAssigned ? '' : " (couldn't assign the role, tell a mod)";
     lines.push(`JACKPOT! You won <@&${gambaJackpotRoleId}>${note}`);
