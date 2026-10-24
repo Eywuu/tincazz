@@ -1,11 +1,17 @@
-import { Command, CommandOptionsRunTypeEnum } from '@sapphire/framework';
-import type { Message } from 'discord.js';
+import { type Args, Command, CommandOptionsRunTypeEnum } from '@sapphire/framework';
 import {
-  formatGambaFollowUp,
-  formatGambaReply,
-  gambaJackpotRoleId,
-  playFree,
+  type ChatInputCommandInteraction,
+  type ContainerBuilder,
+  InteractionContextType,
+  type Message,
+} from 'discord.js';
+import {
+  assignJackpotRole,
+  type JackpotMember,
+  spin,
+  spinErrorText,
 } from '../../features/gamba/index.js';
+import { accents, card, cardReply, errorReply } from '../../features/ui/index.js';
 
 export class GambaCommand extends Command {
   public constructor(context: Command.LoaderContext) {
@@ -16,50 +22,97 @@ export class GambaCommand extends Command {
     });
   }
 
-  public override async messageRun(message: Message) {
-    // Settled first: the prize, spin row and stats stand even if anything below fails.
-    const { reels, evaluation, prize, balance } = playFree(
-      this.container.db,
-      message.guildId as string,
-      message.author.id,
-      Date.now(),
+  public override registerApplicationCommands(registry: Command.Registry) {
+    registry.registerChatInputCommand((builder) =>
+      builder
+        .setName(this.name)
+        .setDescription(this.description)
+        .setContexts(InteractionContextType.Guild)
+        .addStringOption((option) =>
+          option
+            .setName('bet')
+            .setDescription('Coins to bet: 10 to 10,000, all, half or 2.5k (default: free spin)'),
+        ),
     );
-    const jackpot =
-      evaluation.result === 'jackpot'
-        ? { roleAssigned: await this.awardJackpotRole(message) }
-        : undefined;
-    // Ping the user being replied to. The announcement replies to this message so the winning roll
-    // stays visible, and pings only the winner (the role renders as a mention without pinging).
-    const spin = await message.reply({
-      content: formatGambaReply(reels),
-      allowedMentions: { repliedUser: true },
-    });
+  }
 
-    const followUp = formatGambaFollowUp(
-      message.author.toString(),
-      reels,
-      { amount: prize, balance },
-      jackpot,
-    );
-    if (followUp) {
-      await spin.reply({ content: followUp, allowedMentions: { users: [message.author.id] } });
+  public override async messageRun(message: Message, args: Args) {
+    const bet = (await args.restResult('string')).unwrapOr(undefined);
+    const userId = message.author.id;
+    try {
+      const { card: result, announcement } = await spin(
+        this.container.db,
+        { guildId: message.guildId as string, userId, bet },
+        Date.now(),
+        { assignJackpotRole: () => assignJackpotRole(message.member, userId) },
+      );
+      // No allowedMentions override: the result card never pings.
+      const sent = await message.reply(cardReply(result));
+      await this.announce(userId, announcement, () =>
+        sent.reply({
+          ...cardReply(announcement as ContainerBuilder),
+          allowedMentions: { users: [userId] },
+        }),
+      );
+    } catch (error) {
+      const text = spinErrorText(error);
+      if (text === undefined) {
+        throw error;
+      }
+      await message.reply(cardReply(card(accents.error, text)));
     }
   }
 
-  private async awardJackpotRole(message: Message): Promise<boolean> {
+  public override async chatInputRun(interaction: ChatInputCommandInteraction) {
+    const bet = interaction.options.getString('bet') ?? undefined;
+    const userId = interaction.user.id;
+    const member: JackpotMember | null = interaction.inCachedGuild() ? interaction.member : null;
+    let messages: Awaited<ReturnType<typeof spin>>;
     try {
-      if (!message.member) {
-        throw new Error('member not cached');
-      }
-      await message.member.roles.add(gambaJackpotRoleId, 'gamba jackpot');
-      return true;
+      messages = await spin(
+        this.container.db,
+        { guildId: interaction.guildId as string, userId, bet },
+        Date.now(),
+        { assignJackpotRole: () => assignJackpotRole(member, userId) },
+      );
     } catch (error) {
-      this.container.logger.warn(
-        `gamba: could not assign jackpot role to ${message.author.id}: ${
+      const text = spinErrorText(error);
+      if (text === undefined) {
+        throw error;
+      }
+      return interaction.reply(errorReply(text));
+    }
+
+    const { resource } = await interaction.reply({
+      ...cardReply(messages.card),
+      withResponse: true,
+    });
+    const { announcement } = messages;
+    await this.announce(userId, announcement, async () => {
+      await resource?.message?.reply({
+        ...cardReply(announcement as ContainerBuilder),
+        allowedMentions: { users: [userId] },
+      });
+    });
+  }
+
+  /** Sends the announcement on its own: a failure is logged and never undoes the sent card. */
+  private async announce(
+    userId: string,
+    announcement: ContainerBuilder | undefined,
+    send: () => Promise<unknown>,
+  ) {
+    if (!announcement) {
+      return;
+    }
+    try {
+      await send();
+    } catch (error) {
+      this.container.logger.error(
+        `gamba: could not send the announcement for ${userId}: ${
           error instanceof Error ? error.message : String(error)
         }`,
       );
-      return false;
     }
   }
 }

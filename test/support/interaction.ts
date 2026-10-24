@@ -18,7 +18,9 @@ export function makeChatInput(
   client: ReturnType<typeof createClient>,
   { commandName, userId, guildId = '2', options = {}, subcommand }: ChatInputOptions,
 ) {
+  const announce = vi.fn(async () => ({}));
   return {
+    announce,
     isChatInputCommand: () => true,
     isContextMenuCommand: () => false,
     isAutocomplete: () => false,
@@ -42,7 +44,9 @@ export function makeChatInput(
       getString: (name: string) => (options[name] as string | undefined) ?? null,
       getSubcommand: () => subcommand ?? null,
     },
-    reply: vi.fn(async () => ({})),
+    inCachedGuild: () => true,
+    member: { roles: { add: vi.fn(async () => undefined) } },
+    reply: vi.fn(async () => ({ resource: { message: { reply: announce } } })),
     editReply: vi.fn(),
   };
 }

@@ -1,13 +1,14 @@
 import crypto from 'node:crypto';
 import { syncBuiltinESMExports } from 'node:module';
 import { container } from '@sapphire/framework';
-import { Events } from 'discord.js';
+import { Events, MessageFlags } from 'discord.js';
 import { afterEach, beforeAll, beforeEach, describe, expect, it, vi } from 'vitest';
 import { createClient } from '../src/client.js';
 import { openDatabase } from '../src/db/index.js';
 import { spins } from '../src/db/schema.js';
 import { findWallet } from '../src/features/economy/index.js';
 import { testEnv } from './support/env.js';
+import { makeChatInput } from './support/interaction.js';
 
 // Sapphire loads the command with Node's native loader, so vi.mock cannot reach it. Patch the real
 // crypto.randomInt instead and re-sync the builtin ESM exports so native imports see it.
@@ -19,9 +20,7 @@ function mockRandomInt(...values: number[]) {
   syncBuiltinESMExports();
 }
 
-const head = '<:gamba4Head:1202741378161840239>';
-const cpp = '<:cpp:1226477956541448194>';
-const gif = 'https://klipy.com/gifs/smol-smolcat-5';
+const json = (value: unknown) => JSON.stringify(value);
 
 function buildClient() {
   return createClient(testEnv);
@@ -32,7 +31,7 @@ function makeMessage(
   content: string,
   overrides: Record<string, unknown> = {},
 ) {
-  const reply = vi.fn(async (_options: { content: string; allowedMentions: unknown }) => ({}));
+  const reply = vi.fn(async (_options: Record<string, unknown>) => ({}));
   return {
     content,
     createdTimestamp: 1000,
@@ -51,13 +50,13 @@ function makeMessage(
       permissionsFor: () => ({ has: () => true }),
     },
     client,
-    reply: vi.fn(async (_options: { content: string; allowedMentions: unknown }) => ({ reply })),
+    reply: vi.fn(async (_options: Record<string, unknown>) => ({ reply })),
     spinReply: reply,
     ...overrides,
   };
 }
 
-describe('?gamba', () => {
+describe('gamba', () => {
   // Sapphire keeps global state, so a second client in the same process loses its built-in
   // preconditions. Share one client across the tests in this file.
   let client: ReturnType<typeof buildClient>;
@@ -76,171 +75,198 @@ describe('?gamba', () => {
     syncBuiltinESMExports();
   });
 
-  it('replies with three reels', async () => {
-    mockRandomInt(0);
-    const message = makeMessage(client, '?gamba');
-
+  async function run(content: string, overrides: Record<string, unknown> = {}) {
+    const message = makeMessage(client, content, overrides);
     client.emit(Events.MessageCreate, message as never);
-
     await vi.waitFor(() => expect(message.reply).toHaveBeenCalledTimes(1), { timeout: 2000 });
-    expect(message.reply).toHaveBeenCalledWith({
-      content: `${head} ${head} ${head}`,
-      allowedMentions: { repliedUser: true },
+    return message;
+  }
+
+  describe('?gamba', () => {
+    it('replies with a result card and no announcement on a loss', async () => {
+      mockRandomInt(0, 3, 6);
+      const message = await run('?gamba');
+      await new Promise((resolve) => setTimeout(resolve, 100));
+
+      const [options] = message.reply.mock.calls[0] as unknown as [{ flags: number }];
+      expect(options.flags & MessageFlags.IsComponentsV2).toBeTruthy();
+      expect(json(options)).toContain('No prize this time');
+      expect(options).not.toHaveProperty('allowedMentions');
+      expect(message.spinReply).not.toHaveBeenCalled();
     });
-    expect(message.member?.roles.add).not.toHaveBeenCalled();
+
+    it('announces a triple after the card and pings only the winner', async () => {
+      mockRandomInt(0);
+      const message = await run('?gamba');
+      await vi.waitFor(() => expect(message.spinReply).toHaveBeenCalledTimes(1), {
+        timeout: 2000,
+      });
+
+      expect(message.spinReply.mock.calls[0]?.[0]).toMatchObject({
+        allowedMentions: { users: ['1'] },
+      });
+      expect(message.reply.mock.invocationCallOrder[0]).toBeLessThan(
+        vi.mocked(message.spinReply).mock.invocationCallOrder[0] as number,
+      );
+    });
+
+    it('settles a lost wager', async () => {
+      mockRandomInt(0, 3, 6);
+      const message = await run('?gamba 100');
+
+      expect(json(message.reply.mock.calls[0])).toContain('Bet 100 → 0 (-100)');
+      expect(findWallet(container.db, '2', '1')?.balance).toBe(900);
+    });
+
+    it('bets at most 10,000 on all', async () => {
+      mockRandomInt(0, 3, 6, 0, 3, 6);
+      await run('?gamba');
+      container.db.$client.prepare('update wallets set balance = 50000').run();
+      const message = await run('?gamba all');
+
+      expect(json(message.reply.mock.calls[0])).toContain('Bet 10,000 → 0 (-10,000)');
+    });
+
+    it('replies with a red card for a bad bet', async () => {
+      const message = await run('?gamba lol');
+
+      expect(json(message.reply.mock.calls[0])).toContain("isn't a bet");
+      expect(container.db.select().from(spins).all()).toEqual([]);
+    });
+
+    it('explains an unaffordable bet', async () => {
+      const message = await run('?gamba 5000');
+
+      expect(json(message.reply.mock.calls[0])).toContain(
+        'You have 1,000 coins. Try a smaller bet.',
+      );
+    });
+
+    it('points to /bailout when the balance is under the minimum bet', async () => {
+      mockRandomInt(0, 3, 6);
+      await run('?gamba');
+      container.db.$client.prepare('update wallets set balance = 5').run();
+      const message = await run('?gamba 10');
+
+      expect(json(message.reply.mock.calls[0])).toContain(
+        'You have 5 coins. `/bailout` is available.',
+      );
+    });
+
+    it('does nothing in DMs', async () => {
+      mockRandomInt(0);
+      const message = makeMessage(client, '?gamba', {
+        guild: null,
+        guildId: null,
+        channel: { id: '3', type: 1, isDMBased: () => true, isThread: () => false },
+      });
+
+      client.emit(Events.MessageCreate, message as never);
+      await new Promise((resolve) => setTimeout(resolve, 200));
+
+      expect(message.reply).not.toHaveBeenCalled();
+      expect(message.member?.roles.add).not.toHaveBeenCalled();
+    });
+
+    it('jackpot assigns the role', async () => {
+      mockRandomInt(20);
+      const message = await run('?gamba');
+      await vi.waitFor(() => expect(message.spinReply).toHaveBeenCalledTimes(1), {
+        timeout: 2000,
+      });
+
+      expect(message.member?.roles.add).toHaveBeenCalledWith(
+        '1561827731400822845',
+        'gamba jackpot',
+      );
+      expect(json(message.spinReply.mock.calls[0])).toContain('You are a pro!');
+    });
+
+    it('jackpot announces a failed role assignment', async () => {
+      mockRandomInt(20);
+      const message = await run('?gamba', {
+        member: {
+          roles: { add: vi.fn(async () => Promise.reject(new Error('Missing Permissions'))) },
+        },
+      });
+      await vi.waitFor(() => expect(message.spinReply).toHaveBeenCalledTimes(1), {
+        timeout: 2000,
+      });
+
+      expect(json(message.spinReply.mock.calls[0])).toContain("couldn't assign the role");
+      expect(findWallet(container.db, '2', '1')?.balance).toBe(3_500);
+    });
+
+    it('jackpot with no cached member', async () => {
+      mockRandomInt(20);
+      const message = await run('?gamba', { member: null });
+      await vi.waitFor(() => expect(message.spinReply).toHaveBeenCalledTimes(1), {
+        timeout: 2000,
+      });
+
+      expect(json(message.spinReply.mock.calls[0])).toContain("couldn't assign the role");
+    });
+
+    it('keeps the card and prize when the announcement fails', async () => {
+      mockRandomInt(0);
+      const error = vi.spyOn(container.logger, 'error').mockImplementation(() => undefined);
+      const spinReply = vi.fn(async () => Promise.reject(new Error('Unknown Message')));
+      const message = makeMessage(client, '?gamba');
+      message.reply = vi.fn(async () => ({ reply: spinReply })) as never;
+
+      client.emit(Events.MessageCreate, message as never);
+      await vi.waitFor(() => expect(spinReply).toHaveBeenCalledTimes(1), { timeout: 2000 });
+      await vi.waitFor(() => expect(error).toHaveBeenCalled(), { timeout: 2000 });
+
+      expect(message.reply).toHaveBeenCalledTimes(1);
+      expect(findWallet(container.db, '2', '1')?.balance).toBe(1_050);
+    });
   });
 
-  it('sends the odds of a win in a message right after the reply', async () => {
-    mockRandomInt(0);
-    const message = makeMessage(client, '?gamba');
+  describe('/gamba', () => {
+    async function runSlash(options: Record<string, unknown> = {}) {
+      // The runIn precondition fetches the channel over REST, which needs a token.
+      vi.spyOn(client.channels, 'fetch').mockResolvedValue({
+        type: 0,
+        isDMBased: () => false,
+        isThread: () => false,
+      } as never);
+      const interaction = makeChatInput(client, { commandName: 'gamba', userId: '1', options });
+      client.emit(Events.InteractionCreate, interaction as never);
+      await vi.waitFor(() => expect(interaction.reply).toHaveBeenCalledTimes(1), {
+        timeout: 2000,
+      });
+      return interaction;
+    }
 
-    client.emit(Events.MessageCreate, message as never);
+    it('bets all of the balance and asks for the response', async () => {
+      mockRandomInt(0, 3, 6);
+      const interaction = await runSlash({ bet: 'all' });
 
-    await vi.waitFor(() => expect(message.spinReply).toHaveBeenCalledTimes(1), {
-      timeout: 2000,
-    });
-    expect(message.spinReply).toHaveBeenCalledWith({
-      content: '<@1> won!\n+50 coins (balance: 1,050)\n`Odds: 1 in 343`',
-      allowedMentions: { users: ['1'] },
-    });
-    expect(message.reply.mock.invocationCallOrder[0]).toBeLessThan(
-      vi.mocked(message.spinReply).mock.invocationCallOrder[0] as number,
-    );
-  });
-
-  it('python win sends the gif and does not assign the role', async () => {
-    mockRandomInt(18);
-    const message = makeMessage(client, '?gamba');
-
-    client.emit(Events.MessageCreate, message as never);
-
-    await vi.waitFor(() => expect(message.spinReply).toHaveBeenCalledTimes(1), {
-      timeout: 2000,
-    });
-    expect(message.spinReply.mock.calls[0]?.[0]).toEqual({
-      content: `<@1> won!\n+500 coins (balance: 1,500)\n\`Odds: 1 in 1,158\`\n${gif}`,
-      allowedMentions: { users: ['1'] },
-    });
-    expect(message.member?.roles.add).not.toHaveBeenCalled();
-  });
-
-  it('sends no odds message when the reels differ', async () => {
-    mockRandomInt(0, 3, 6);
-    const message = makeMessage(client, '?gamba');
-
-    client.emit(Events.MessageCreate, message as never);
-
-    await vi.waitFor(() => expect(message.reply).toHaveBeenCalledTimes(1), { timeout: 2000 });
-    await new Promise((resolve) => setTimeout(resolve, 100));
-    expect(message.spinReply).not.toHaveBeenCalled();
-  });
-
-  it('ignores trailing text', async () => {
-    mockRandomInt(0);
-    const message = makeMessage(client, '?gamba lol');
-
-    client.emit(Events.MessageCreate, message as never);
-
-    await vi.waitFor(() => expect(message.reply).toHaveBeenCalledTimes(1), { timeout: 2000 });
-    expect(message.reply).toHaveBeenCalledWith({
-      content: `${head} ${head} ${head}`,
-      allowedMentions: { repliedUser: true },
-    });
-  });
-
-  it('does nothing in DMs', async () => {
-    mockRandomInt(0);
-    const message = makeMessage(client, '?gamba', {
-      guild: null,
-      guildId: null,
-      channel: { id: '3', type: 1, isDMBased: () => true, isThread: () => false },
+      const [options] = interaction.reply.mock.calls[0] as unknown as [{ withResponse: boolean }];
+      expect(options.withResponse).toBe(true);
+      expect(json(options)).toContain('Bet 1,000 → 0 (-1,000)');
+      expect(findWallet(container.db, '2', '1')?.balance).toBe(0);
     });
 
-    client.emit(Events.MessageCreate, message as never);
-    await new Promise((resolve) => setTimeout(resolve, 200));
+    it('replies ephemerally to a bad bet', async () => {
+      const interaction = await runSlash({ bet: 'lol' });
 
-    expect(message.reply).not.toHaveBeenCalled();
-    expect(message.member?.roles.add).not.toHaveBeenCalled();
-  });
-
-  it('jackpot assigns the role', async () => {
-    mockRandomInt(20);
-    const message = makeMessage(client, '?gamba');
-
-    client.emit(Events.MessageCreate, message as never);
-
-    await vi.waitFor(() => expect(message.reply).toHaveBeenCalledTimes(1), { timeout: 2000 });
-    expect(message.member?.roles.add).toHaveBeenCalledWith('1561827731400822845', 'gamba jackpot');
-    expect(message.reply.mock.calls[0]?.[0]?.content).toBe(`${cpp} ${cpp} ${cpp}`);
-    await vi.waitFor(() => expect(message.spinReply).toHaveBeenCalledTimes(1), {
-      timeout: 2000,
-    });
-    expect(message.spinReply.mock.calls[0]?.[0]).toEqual({
-      content: `<@1> won!\nYou are a pro! You just won <@&1561827731400822845>\n+2,500 coins (balance: 3,500)\n\`Odds: 1 in 9,261\`\n${gif}`,
-      allowedMentions: { users: ['1'] },
-    });
-  });
-
-  it('jackpot still replies when the role cannot be assigned', async () => {
-    mockRandomInt(20);
-    const message = makeMessage(client, '?gamba', {
-      member: {
-        roles: { add: vi.fn(async () => Promise.reject(new Error('Missing Permissions'))) },
-      },
+      const [options] = interaction.reply.mock.calls[0] as unknown as [{ flags: number }];
+      expect(json(options)).toContain("isn't a bet");
+      expect(options.flags & MessageFlags.Ephemeral).toBeTruthy();
     });
 
-    client.emit(Events.MessageCreate, message as never);
+    it('announces a free triple with a winner-only ping', async () => {
+      mockRandomInt(0);
+      const interaction = await runSlash();
+      await vi.waitFor(() => expect(interaction.announce).toHaveBeenCalledTimes(1), {
+        timeout: 2000,
+      });
 
-    await vi.waitFor(() => expect(message.spinReply).toHaveBeenCalledTimes(1), {
-      timeout: 2000,
+      expect(interaction.announce.mock.calls[0]).toMatchObject([
+        { allowedMentions: { users: ['1'] } },
+      ]);
     });
-    expect(message.reply).toHaveBeenCalledTimes(1);
-    expect(message.spinReply.mock.calls[0]?.[0]).toEqual({
-      content: `<@1> won!\nYou are a pro! You just won <@&1561827731400822845> (couldn't assign the role, tell a mod)\n+2,500 coins (balance: 3,500)\n\`Odds: 1 in 9,261\`\n${gif}`,
-      allowedMentions: { users: ['1'] },
-    });
-  });
-
-  it('jackpot with no cached member', async () => {
-    mockRandomInt(20);
-    const message = makeMessage(client, '?gamba', { member: null });
-
-    client.emit(Events.MessageCreate, message as never);
-
-    await vi.waitFor(() => expect(message.spinReply).toHaveBeenCalledTimes(1), {
-      timeout: 2000,
-    });
-    expect(message.reply).toHaveBeenCalledTimes(1);
-    expect(message.spinReply.mock.calls[0]?.[0]).toEqual({
-      content: `<@1> won!\nYou are a pro! You just won <@&1561827731400822845> (couldn't assign the role, tell a mod)\n+2,500 coins (balance: 3,500)\n\`Odds: 1 in 9,261\`\n${gif}`,
-      allowedMentions: { users: ['1'] },
-    });
-  });
-
-  it('keeps the prize and spin when the reels reply fails', async () => {
-    mockRandomInt(0);
-    const message = makeMessage(client, '?gamba', {
-      reply: vi.fn(async () => Promise.reject(new Error('Unknown Message'))),
-    });
-
-    client.emit(Events.MessageCreate, message as never);
-
-    await vi.waitFor(() => expect(message.reply).toHaveBeenCalledTimes(1), { timeout: 2000 });
-    expect(findWallet(container.db, '2', '1')?.balance).toBe(1_050);
-    expect(container.db.select().from(spins).all()).toHaveLength(1);
-  });
-
-  it('keeps the jackpot prize when the role cannot be assigned', async () => {
-    mockRandomInt(20);
-    const message = makeMessage(client, '?gamba', {
-      member: {
-        roles: { add: vi.fn(async () => Promise.reject(new Error('Missing Permissions'))) },
-      },
-    });
-
-    client.emit(Events.MessageCreate, message as never);
-
-    await vi.waitFor(() => expect(message.spinReply).toHaveBeenCalledTimes(1), { timeout: 2000 });
-    expect(findWallet(container.db, '2', '1')?.balance).toBe(3_500);
   });
 });
