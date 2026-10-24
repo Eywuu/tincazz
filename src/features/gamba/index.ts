@@ -12,6 +12,7 @@ export {
   tierLabels,
   wagerCard,
 } from './cards.js';
+export { wager } from './config.js';
 export {
   decodeSpinId,
   encodeSpinId,
