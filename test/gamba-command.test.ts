@@ -39,7 +39,7 @@ function makeMessage(
       permissionsFor: () => ({ has: () => true }),
     },
     client,
-    reply: vi.fn(async () => ({})),
+    reply: vi.fn(async (_content: string) => ({})),
     ...overrides,
   };
 }
@@ -93,5 +93,40 @@ describe('?gamba', () => {
 
     expect(message.reply).not.toHaveBeenCalled();
     expect(message.member?.roles.add).not.toHaveBeenCalled();
+  });
+
+  it('jackpot assigns the role', async () => {
+    mockRandomInt(20);
+    const message = makeMessage(client, '?gamba');
+
+    client.emit(Events.MessageCreate, message as never);
+
+    await vi.waitFor(() => expect(message.reply).toHaveBeenCalledTimes(1), { timeout: 2000 });
+    expect(message.member?.roles.add).toHaveBeenCalledWith('1561827731400822845', 'gamba jackpot');
+    expect(message.reply.mock.calls[0]?.[0]).toMatch(/\nJACKPOT! You won <@&1561827731400822845>$/);
+  });
+
+  it('jackpot still replies when the role cannot be assigned', async () => {
+    mockRandomInt(20);
+    const message = makeMessage(client, '?gamba', {
+      member: {
+        roles: { add: vi.fn(async () => Promise.reject(new Error('Missing Permissions'))) },
+      },
+    });
+
+    client.emit(Events.MessageCreate, message as never);
+
+    await vi.waitFor(() => expect(message.reply).toHaveBeenCalledTimes(1), { timeout: 2000 });
+    expect(message.reply.mock.calls[0]?.[0]).toMatch(/ \(couldn't assign the role, tell a mod\)$/);
+  });
+
+  it('jackpot with no cached member', async () => {
+    mockRandomInt(20);
+    const message = makeMessage(client, '?gamba', { member: null });
+
+    client.emit(Events.MessageCreate, message as never);
+
+    await vi.waitFor(() => expect(message.reply).toHaveBeenCalledTimes(1), { timeout: 2000 });
+    expect(message.reply.mock.calls[0]?.[0]).toMatch(/ \(couldn't assign the role, tell a mod\)$/);
   });
 });

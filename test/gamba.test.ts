@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
-import { formatGambaReply, spinGamba } from '../src/features/gamba/index.js';
-import { gambaOutcomes } from '../src/features/gamba/outcomes.js';
+import { formatGambaReply, isJackpot, spinGamba } from '../src/features/gamba/index.js';
+import { cppEmoji, gambaOutcomes } from '../src/features/gamba/outcomes.js';
 import { rollOutcome } from '../src/features/gamba/roll.js';
 
 describe('gamba outcomes', () => {
@@ -47,5 +47,20 @@ describe('formatGambaReply', () => {
     expect(formatGambaReply('<@1>', reels, { roleAssigned: false })).toBe(
       "<@1> GAMBA!\na b c\nJACKPOT! You won <@&1561827731400822845> (couldn't assign the role, tell a mod)",
     );
+  });
+});
+
+describe('isJackpot', () => {
+  it('is true for three cpp', () => {
+    expect(isJackpot([cppEmoji, cppEmoji, cppEmoji])).toBe(true);
+  });
+
+  it('is false for two cpp and another emoji', () => {
+    expect(isJackpot([cppEmoji, cppEmoji, '<:python:1226479453039759410>'])).toBe(false);
+  });
+
+  it('is false for three yt emojis', () => {
+    const yt = '<:gamba4Head:1202741378161840239>';
+    expect(isJackpot([yt, yt, yt])).toBe(false);
   });
 });
