@@ -4,7 +4,7 @@ import { join } from 'node:path';
 import { container } from '@sapphire/framework';
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 import { closeDatabase, openDatabase } from '../src/db/index.js';
-import { ledger, playerStats, pots, spins, wallets } from '../src/db/schema.js';
+import { flips, ledger, playerStats, pots, spins, wallets } from '../src/db/schema.js';
 
 describe('database', () => {
   let dir: string;
@@ -33,6 +33,7 @@ describe('database', () => {
       .all();
 
     expect((tables as string[]).sort()).toEqual([
+      'flips',
       'ledger',
       'player_stats',
       'pots',
@@ -87,6 +88,10 @@ describe('database', () => {
       won: 0,
       biggestWin: 0,
       bestOdds: 0,
+      flips: 0,
+      flipWins: 0,
+      flipWagered: 0,
+      flipWon: 0,
     };
     const pot = { guildId: 'g', amount: 5, lastWinnerId: null, lastWonAt: null };
 
@@ -155,8 +160,41 @@ describe('database', () => {
       { guildId: 'g', amount: 7, lastWinnerId: null, lastWonAt: null },
     ]);
     expect(second.$client.prepare('select count(*) from __drizzle_migrations').pluck().get()).toBe(
-      2,
+      3,
     );
     closeDatabase(second);
+  });
+
+  it('stores a flip and rejects a second flip for the same message', () => {
+    const db = openDatabase(':memory:');
+    const row = {
+      guildId: '2',
+      mode: 'open' as const,
+      challengerId: '1',
+      opponentId: '3',
+      bet: 100,
+      challengerSide: 'heads' as const,
+      resultSide: 'tails' as const,
+      winnerId: '3',
+      rake: 6,
+      messageId: 'm1',
+      createdAt: 1,
+    };
+    db.insert(flips).values(row).run();
+    expect(() => db.insert(flips).values(row).run()).toThrow(/UNIQUE/);
+    const bot = { ...row, mode: 'bot' as const, opponentId: null, messageId: null };
+    db.insert(flips).values(bot).run();
+    db.insert(flips).values(bot).run();
+  });
+
+  it('defaults the coinflip stats columns to zero', () => {
+    const db = openDatabase(':memory:');
+    db.insert(playerStats).values({ guildId: '2', userId: '1' }).run();
+    expect(db.select().from(playerStats).get()).toMatchObject({
+      flips: 0,
+      flipWins: 0,
+      flipWagered: 0,
+      flipWon: 0,
+    });
   });
 });
