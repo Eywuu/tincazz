@@ -5,10 +5,32 @@ Sapphire framework.
 
 Currently implemented:
 - `?ping` / `/ping`: the bot's latency
-- `?gamba`: free spins with coin prizes for three of a kind
+- `?gamba [bet]` / `/gamba [bet]`: free spins, or wagered spins with a progressive pot (see below)
 - `/balance`, `/daily`, `/bailout`: your coins, the daily streak and a bailout when broke
 - chat rewards: a few coins for chatting, at most once a minute
 - `/eco give|take`: moderators adjust coins (Manage Server)
+
+## Gamba
+
+Without a bet, `?gamba` is a free spin with fixed coin prizes for three of a kind. With a bet
+(`100`, `2.5k`, `all` or `half`; 10 to 10,000 coins) the spin costs that stake and pays a multiple
+of it. Payouts include the stake:
+
+| Result        | Payout |
+| ------------- | ------ |
+| yt pair       | 1.2x   |
+| python pair   | 4x     |
+| cpp pair      | 10x    |
+| yt triple     | 15x    |
+| python triple | 100x   |
+| cpp triple    | 300x   |
+
+Every wagered spin adds 3% of the bet (at least 1 coin) to a shared pot. A cpp triple also wins
+the pot: all of it at bets of 500 or more, a proportional share below that. The pot starts at
+10,000 coins and never resets below that.
+
+Each result card has **Spin again** (same bet) and **Double (N)** buttons, which only the
+player can use. Double is hidden when twice the bet exceeds 10,000 or your balance.
 
 ## Create the bot (once)
 

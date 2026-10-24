@@ -42,7 +42,10 @@ src/
     economy/      slash commands for coins (/balance, /daily, /bailout, /eco)
   features/       plain feature logic, one folder per feature (not auto-loaded)
     economy/      wallets and ledger; the only code that changes balances
+    gamba/        spin logic, odds and payouts, the pot, bet parsing, result cards and the
+                  shared `spin()` flow used by commands and buttons
     ui/           shared Components V2 card helpers
+  interaction-handlers/  one file per component handler (gamba buttons)
   listeners/      one file per Discord/Sapphire event listener
 drizzle/          generated SQL migrations, committed and shipped in the image
 test/             Vitest tests
@@ -51,8 +54,8 @@ test/             Vitest tests
 
 Sapphire loads every file under `commands/` and `listeners/` automatically (and would do the same
 for `preconditions/`, `interaction-handlers/`, `arguments/` if added). Do not register pieces by
-hand. Pieces export a class extending `Command`, `Listener`, etc. `interaction-handlers/` arrives
-in phase 3 of the gamba economy.
+hand. Pieces export a class extending `Command`, `Listener`, etc. Button state lives in the custom
+ID (see `features/gamba/custom-ids.ts`), so handlers must ignore IDs they cannot decode.
 
 ## Database
 
