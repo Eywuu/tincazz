@@ -1,0 +1,32 @@
+import { dirname } from 'node:path';
+import { fileURLToPath } from 'node:url';
+import { LogLevel, SapphireClient } from '@sapphire/framework';
+import { GatewayIntentBits } from 'discord.js';
+import type { Env } from './config/env.js';
+
+const logLevels: Record<Env['LOG_LEVEL'], LogLevel> = {
+  trace: LogLevel.Trace,
+  debug: LogLevel.Debug,
+  info: LogLevel.Info,
+  warn: LogLevel.Warn,
+  error: LogLevel.Error,
+  fatal: LogLevel.Fatal,
+};
+
+export function createClient(env: Env) {
+  const client = new SapphireClient({
+    defaultPrefix: env.COMMAND_PREFIX,
+    logger: { level: logLevels[env.LOG_LEVEL] },
+    intents: [
+      GatewayIntentBits.Guilds,
+      GatewayIntentBits.GuildMessages,
+      // Privileged: must also be enabled in the Developer Portal (Bot -> Message Content Intent).
+      GatewayIntentBits.MessageContent,
+    ],
+  });
+
+  // Load commands/ and listeners/ relative to this file, so it works from both src/ (tsx) and dist/.
+  client.stores.registerPath(dirname(fileURLToPath(import.meta.url)));
+
+  return client;
+}
