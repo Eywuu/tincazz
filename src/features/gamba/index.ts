@@ -57,10 +57,10 @@ export function formatGambaFollowUp(
     return undefined;
   }
 
-  const lines = ['You won!'];
+  const lines = [`${userMention} won!`];
   if (jackpot) {
     const note = jackpot.roleAssigned ? '' : " (couldn't assign the role, tell a mod)";
-    lines.push(`You are a pro! ${userMention} just won <@&${gambaJackpotRoleId}>${note}`);
+    lines.push(`You are a pro! You just won <@&${gambaJackpotRoleId}>${note}`);
   }
   lines.push(`\`Odds: 1 in ${odds.toLocaleString('en-US')}\``);
   if (reels[0] === pythonEmoji || reels[0] === cppEmoji) {

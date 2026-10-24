@@ -84,7 +84,7 @@ describe('formatGambaFollowUp', () => {
   const gif = 'https://klipy.com/gifs/smol-smolcat-5';
 
   it('congratulates any three of a kind and shows the odds', () => {
-    expect(formatGambaFollowUp('<@1>', [yt, yt, yt])).toBe('You won!\n`Odds: 1 in 343`');
+    expect(formatGambaFollowUp('<@1>', [yt, yt, yt])).toBe('<@1> won!\n`Odds: 1 in 343`');
   });
 
   it('is undefined when the reels differ', () => {
@@ -93,19 +93,19 @@ describe('formatGambaFollowUp', () => {
 
   it('adds the gif for three pythons', () => {
     expect(formatGambaFollowUp('<@1>', [python, python, python])).toBe(
-      `You won!\n\`Odds: 1 in 1,158\`\n${gif}`,
+      `<@1> won!\n\`Odds: 1 in 1,158\`\n${gif}`,
     );
   });
 
   it('tells a cpp winner they are a pro and adds the gif', () => {
     expect(formatGambaFollowUp('<@1>', cpp, { roleAssigned: true })).toBe(
-      `You won!\nYou are a pro! <@1> just won <@&1561827731400822845>\n\`Odds: 1 in 9,261\`\n${gif}`,
+      `<@1> won!\nYou are a pro! You just won <@&1561827731400822845>\n\`Odds: 1 in 9,261\`\n${gif}`,
     );
   });
 
   it('notes when the pro role could not be assigned', () => {
     expect(formatGambaFollowUp('<@1>', cpp, { roleAssigned: false })).toBe(
-      `You won!\nYou are a pro! <@1> just won <@&1561827731400822845> (couldn't assign the role, tell a mod)\n\`Odds: 1 in 9,261\`\n${gif}`,
+      `<@1> won!\nYou are a pro! You just won <@&1561827731400822845> (couldn't assign the role, tell a mod)\n\`Odds: 1 in 9,261\`\n${gif}`,
     );
   });
 });

@@ -22,16 +22,16 @@ export class GambaCommand extends Command {
     const jackpot = isJackpot(reels)
       ? { roleAssigned: await this.awardJackpotRole(message) }
       : undefined;
-    // Ping the user being replied to. The follow-up sends with the client default (no mentions), so
-    // the user and role in the jackpot announcement render as mentions without pinging anyone.
-    await message.reply({
+    // Ping the user being replied to. The announcement replies to this message so the winning roll
+    // stays visible, and pings only the winner (the role renders as a mention without pinging).
+    const spin = await message.reply({
       content: formatGambaReply(reels),
       allowedMentions: { repliedUser: true },
     });
 
     const followUp = formatGambaFollowUp(message.author.toString(), reels, jackpot);
-    if (followUp && message.channel.isSendable()) {
-      await message.channel.send(followUp);
+    if (followUp) {
+      await spin.reply({ content: followUp, allowedMentions: { users: [message.author.id] } });
     }
   }
 

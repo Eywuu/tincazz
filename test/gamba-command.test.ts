@@ -27,6 +27,7 @@ function makeMessage(
   content: string,
   overrides: Record<string, unknown> = {},
 ) {
+  const reply = vi.fn(async (_options: { content: string; allowedMentions: unknown }) => ({}));
   return {
     content,
     createdTimestamp: 1000,
@@ -42,11 +43,11 @@ function makeMessage(
       isDMBased: () => false,
       isThread: () => false,
       isSendable: () => true,
-      send: vi.fn(async (_content: string) => ({})),
       permissionsFor: () => ({ has: () => true }),
     },
     client,
-    reply: vi.fn(async (_options: { content: string; allowedMentions: unknown }) => ({})),
+    reply: vi.fn(async (_options: { content: string; allowedMentions: unknown }) => ({ reply })),
+    spinReply: reply,
     ...overrides,
   };
 }
@@ -86,12 +87,15 @@ describe('?gamba', () => {
 
     client.emit(Events.MessageCreate, message as never);
 
-    await vi.waitFor(() => expect(message.channel.send).toHaveBeenCalledTimes(1), {
+    await vi.waitFor(() => expect(message.spinReply).toHaveBeenCalledTimes(1), {
       timeout: 2000,
     });
-    expect(message.channel.send).toHaveBeenCalledWith('You won!\n`Odds: 1 in 343`');
+    expect(message.spinReply).toHaveBeenCalledWith({
+      content: '<@1> won!\n`Odds: 1 in 343`',
+      allowedMentions: { users: ['1'] },
+    });
     expect(message.reply.mock.invocationCallOrder[0]).toBeLessThan(
-      vi.mocked(message.channel.send).mock.invocationCallOrder[0] as number,
+      vi.mocked(message.spinReply).mock.invocationCallOrder[0] as number,
     );
   });
 
@@ -101,10 +105,13 @@ describe('?gamba', () => {
 
     client.emit(Events.MessageCreate, message as never);
 
-    await vi.waitFor(() => expect(message.channel.send).toHaveBeenCalledTimes(1), {
+    await vi.waitFor(() => expect(message.spinReply).toHaveBeenCalledTimes(1), {
       timeout: 2000,
     });
-    expect(message.channel.send).toHaveBeenCalledWith(`You won!\n\`Odds: 1 in 1,158\`\n${gif}`);
+    expect(message.spinReply.mock.calls[0]?.[0]).toEqual({
+      content: `<@1> won!\n\`Odds: 1 in 1,158\`\n${gif}`,
+      allowedMentions: { users: ['1'] },
+    });
     expect(message.member?.roles.add).not.toHaveBeenCalled();
   });
 
@@ -116,7 +123,7 @@ describe('?gamba', () => {
 
     await vi.waitFor(() => expect(message.reply).toHaveBeenCalledTimes(1), { timeout: 2000 });
     await new Promise((resolve) => setTimeout(resolve, 100));
-    expect(message.channel.send).not.toHaveBeenCalled();
+    expect(message.spinReply).not.toHaveBeenCalled();
   });
 
   it('ignores trailing text', async () => {
@@ -156,12 +163,13 @@ describe('?gamba', () => {
     await vi.waitFor(() => expect(message.reply).toHaveBeenCalledTimes(1), { timeout: 2000 });
     expect(message.member?.roles.add).toHaveBeenCalledWith('1561827731400822845', 'gamba jackpot');
     expect(message.reply.mock.calls[0]?.[0]?.content).toBe(`${cpp} ${cpp} ${cpp}`);
-    await vi.waitFor(() => expect(message.channel.send).toHaveBeenCalledTimes(1), {
+    await vi.waitFor(() => expect(message.spinReply).toHaveBeenCalledTimes(1), {
       timeout: 2000,
     });
-    expect(message.channel.send).toHaveBeenCalledWith(
-      `You won!\nYou are a pro! <@1> just won <@&1561827731400822845>\n\`Odds: 1 in 9,261\`\n${gif}`,
-    );
+    expect(message.spinReply.mock.calls[0]?.[0]).toEqual({
+      content: `<@1> won!\nYou are a pro! You just won <@&1561827731400822845>\n\`Odds: 1 in 9,261\`\n${gif}`,
+      allowedMentions: { users: ['1'] },
+    });
   });
 
   it('jackpot still replies when the role cannot be assigned', async () => {
@@ -174,13 +182,14 @@ describe('?gamba', () => {
 
     client.emit(Events.MessageCreate, message as never);
 
-    await vi.waitFor(() => expect(message.channel.send).toHaveBeenCalledTimes(1), {
+    await vi.waitFor(() => expect(message.spinReply).toHaveBeenCalledTimes(1), {
       timeout: 2000,
     });
     expect(message.reply).toHaveBeenCalledTimes(1);
-    expect(message.channel.send).toHaveBeenCalledWith(
-      `You won!\nYou are a pro! <@1> just won <@&1561827731400822845> (couldn't assign the role, tell a mod)\n\`Odds: 1 in 9,261\`\n${gif}`,
-    );
+    expect(message.spinReply.mock.calls[0]?.[0]).toEqual({
+      content: `<@1> won!\nYou are a pro! You just won <@&1561827731400822845> (couldn't assign the role, tell a mod)\n\`Odds: 1 in 9,261\`\n${gif}`,
+      allowedMentions: { users: ['1'] },
+    });
   });
 
   it('jackpot with no cached member', async () => {
@@ -189,12 +198,13 @@ describe('?gamba', () => {
 
     client.emit(Events.MessageCreate, message as never);
 
-    await vi.waitFor(() => expect(message.channel.send).toHaveBeenCalledTimes(1), {
+    await vi.waitFor(() => expect(message.spinReply).toHaveBeenCalledTimes(1), {
       timeout: 2000,
     });
     expect(message.reply).toHaveBeenCalledTimes(1);
-    expect(message.channel.send).toHaveBeenCalledWith(
-      `You won!\nYou are a pro! <@1> just won <@&1561827731400822845> (couldn't assign the role, tell a mod)\n\`Odds: 1 in 9,261\`\n${gif}`,
-    );
+    expect(message.spinReply.mock.calls[0]?.[0]).toEqual({
+      content: `<@1> won!\nYou are a pro! You just won <@&1561827731400822845> (couldn't assign the role, tell a mod)\n\`Odds: 1 in 9,261\`\n${gif}`,
+      allowedMentions: { users: ['1'] },
+    });
   });
 });
