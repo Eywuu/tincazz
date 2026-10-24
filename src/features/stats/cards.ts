@@ -8,10 +8,11 @@ import {
   TextDisplayBuilder,
   ThumbnailBuilder,
 } from 'discord.js';
+import type { DbOrTx } from '../../db/index.js';
 import { accents, card, coins } from '../ui/index.js';
 import { categoryLabels, type LeaderboardCategory, leaderboardCategories } from './config.js';
 import { encodeCategoryId, encodePageId } from './custom-ids.js';
-import type { LeaderboardPage } from './leaderboard.js';
+import { type LeaderboardPage, leaderboardPage, leaderboardRank } from './leaderboard.js';
 import type { PlayerProfile } from './profile.js';
 
 export const notYourLeaderboard =
@@ -115,4 +116,20 @@ export function leaderboardCard({
     );
   }
   return container;
+}
+
+/** Queries one page of a board and the owner's rank, then builds the card. */
+export function renderLeaderboard(
+  db: DbOrTx,
+  guildId: string,
+  ownerId: string,
+  category: LeaderboardCategory,
+  page: number,
+): ContainerBuilder {
+  return leaderboardCard({
+    ownerId,
+    category,
+    board: leaderboardPage(db, guildId, category, page),
+    caller: leaderboardRank(db, guildId, category, ownerId),
+  });
 }
