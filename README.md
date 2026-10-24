@@ -3,7 +3,12 @@
 Discord bot for the cazzwastaken community server, built with TypeScript, discord.js and the
 Sapphire framework.
 
-Currently implemented: `?ping` replies with the bot's latency.
+Currently implemented:
+- `?ping` / `/ping`: the bot's latency
+- `?gamba`: free spins with coin prizes for three of a kind
+- `/balance`, `/daily`, `/bailout`: your coins, the daily streak and a bailout when broke
+- chat rewards: a few coins for chatting, at most once a minute
+- `/eco give|take`: moderators adjust coins (Manage Server)
 
 ## Create the bot (once)
 

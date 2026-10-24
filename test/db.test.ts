@@ -62,6 +62,7 @@ describe('database', () => {
       reason: 'start' as const,
       ref: null,
       actorId: null,
+      note: null,
       createdAt: 1,
     };
     const spin = {
@@ -154,7 +155,7 @@ describe('database', () => {
       { guildId: 'g', amount: 7, lastWinnerId: null, lastWonAt: null },
     ]);
     expect(second.$client.prepare('select count(*) from __drizzle_migrations').pluck().get()).toBe(
-      1,
+      2,
     );
     closeDatabase(second);
   });
