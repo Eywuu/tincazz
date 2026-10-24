@@ -13,6 +13,15 @@ describe('createClient', () => {
     expect([...client.stores.get('listeners').keys()]).toContain('ready');
   });
 
+  it('loads both error listeners', async () => {
+    const client = createClient(testEnv);
+    await client.stores.load();
+
+    const listeners = [...client.stores.get('listeners').keys()];
+    expect(listeners).toContain('ChatInputCommandErrorReply');
+    expect(listeners).toContain('InteractionHandlerErrorReply');
+  });
+
   it('wires up prefix message commands', async () => {
     const client = createClient(testEnv);
     await client.stores.load();
