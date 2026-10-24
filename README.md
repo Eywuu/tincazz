@@ -24,14 +24,19 @@ cp .env.example .env   # then set DISCORD_TOKEN
 pnpm dev
 ```
 
-`.env` is gitignored. Never commit it. See [AGENTS.md](AGENTS.md) for the full list of scripts and
-conventions.
+`.env` is gitignored. Never commit it. Before opening a PR, run the same checks CI does:
+
+```sh
+pnpm lint && pnpm typecheck && pnpm test && pnpm build
+```
+
+See [AGENTS.md](AGENTS.md) for the full list of scripts, conventions and git rules.
 
 ## Deploying to a VPS
 
-Every push to `main` builds a Docker image and publishes it to
-`ghcr.io/cazzwastaken/tincazz` (see `.github/workflows/docker.yml`). The server only needs Docker,
-`docker-compose.yml` and a `.env` file.
+Every push to `main` that passes CI (lint, typecheck, tests, build) builds a Docker image and
+publishes it to `ghcr.io/cazzwastaken/tincazz` (see `.github/workflows/docker.yml`). The server only
+needs Docker, `docker-compose.yml` and a `.env` file.
 
 One-time setup on the VPS (after [installing Docker](https://docs.docker.com/engine/install/)):
 
@@ -54,7 +59,13 @@ To update to the latest version:
 docker compose pull && docker compose up -d
 ```
 
-The container restarts automatically after crashes and reboots (`restart: unless-stopped`).
+The container restarts automatically after crashes and reboots (`restart: unless-stopped`). It runs
+as a non-root user with a read-only filesystem and no extra capabilities, and its logs are rotated
+(3 files of 10 MB), so it will not fill the disk.
+
+To roll back, set the `image:` tag in `docker-compose.yml` to an earlier build (every image is also
+tagged `sha-<commit>`, and `v*` git tags publish versioned images), then run
+`docker compose up -d`. Switch back to `latest` to follow `main` again.
 
 ## License
 
