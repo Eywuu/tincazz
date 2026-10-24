@@ -39,7 +39,10 @@ src/
   config/env.ts   zod schema for environment variables
   db/             SQLite schema (Drizzle) and `openDatabase`, exposed as `container.db`
   commands/       one file per command, grouped in folders by category
+    economy/      slash commands for coins (/balance, /daily, /bailout, /eco)
   features/       plain feature logic, one folder per feature (not auto-loaded)
+    economy/      wallets and ledger; the only code that changes balances
+    ui/           shared Components V2 card helpers
   listeners/      one file per Discord/Sapphire event listener
 drizzle/          generated SQL migrations, committed and shipped in the image
 test/             Vitest tests
