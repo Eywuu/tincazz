@@ -7,6 +7,7 @@ import { createClient } from '../src/client.js';
 import { openDatabase } from '../src/db/index.js';
 import { spins } from '../src/db/schema.js';
 import { findWallet } from '../src/features/economy/index.js';
+import { clearActiveCards, isActiveCard } from '../src/features/gamba/index.js';
 import { testEnv } from './support/env.js';
 import { makeChatInput } from './support/interaction.js';
 
@@ -105,7 +106,7 @@ describe('gamba', () => {
       });
 
       expect(message.spinReply.mock.calls[0]?.[0]).toMatchObject({
-        content: expect.stringContaining('<@1> won! +50 coins (balance: 1,050)'),
+        content: expect.stringContaining('<@1> hit three of a kind!'),
         allowedMentions: { users: ['1'] },
       });
       expect(message.reply.mock.invocationCallOrder[0]).toBeLessThan(
@@ -197,7 +198,7 @@ describe('gamba', () => {
       });
 
       expect(json(message.spinReply.mock.calls[0])).toContain("couldn't assign the role");
-      expect(findWallet(container.db, '2', '1')?.balance).toBe(3_500);
+      expect(findWallet(container.db, '2', '1')?.balance).toBe(1_000);
     });
 
     it('jackpot with no cached member', async () => {
@@ -210,7 +211,7 @@ describe('gamba', () => {
       expect(json(message.spinReply.mock.calls[0])).toContain("couldn't assign the role");
     });
 
-    it('keeps the roll and prize when the follow-up fails', async () => {
+    it('keeps the roll when the follow-up fails', async () => {
       mockRandomInt(0);
       const error = vi.spyOn(container.logger, 'error').mockImplementation(() => undefined);
       const spinReply = vi.fn(async () => Promise.reject(new Error('Unknown Message')));
@@ -222,7 +223,7 @@ describe('gamba', () => {
       await vi.waitFor(() => expect(error).toHaveBeenCalled(), { timeout: 2000 });
 
       expect(message.reply).toHaveBeenCalledTimes(1);
-      expect(findWallet(container.db, '2', '1')?.balance).toBe(1_050);
+      expect(findWallet(container.db, '2', '1')?.balance).toBe(1_000);
     });
   });
 
@@ -250,6 +251,15 @@ describe('gamba', () => {
       expect(options.withResponse).toBe(true);
       expect(json(options)).toContain('Bet 1,000 → 0 (-1,000)');
       expect(findWallet(container.db, '2', '1')?.balance).toBe(0);
+    });
+
+    it('makes the newest card the only live one', async () => {
+      clearActiveCards();
+      mockRandomInt(0, 3, 6);
+      await runSlash({ bet: '10' });
+
+      expect(isActiveCard('1', 'card-1')).toBe(true);
+      expect(isActiveCard('1', 'older-card')).toBe(false);
     });
 
     it('replies ephemerally to a bad bet', async () => {

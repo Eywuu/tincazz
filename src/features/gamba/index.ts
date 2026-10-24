@@ -2,9 +2,11 @@ import { gambaJackpotRoleId, gambaOutcomes, type OutcomeKey } from './outcomes.j
 import type { FreeSpin, WagerSpin } from './play.js';
 import { type RandomInt, rollOutcome } from './roll.js';
 
+export { clearActiveCards, isActiveCard, setActiveCard } from './active-card.js';
 export { InvalidBetError, parseBet } from './bet.js';
 export {
   announcementCard,
+  expiredSpin,
   freeSpinCard,
   notYourSpin,
   spinErrorText,

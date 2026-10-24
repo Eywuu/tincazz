@@ -10,6 +10,7 @@ import {
   formatGambaFollowUp,
   formatGambaReply,
   type JackpotMember,
+  setActiveCard,
   settleSpin,
   spin,
   spinErrorText,
@@ -90,6 +91,9 @@ export class GambaCommand extends Command {
       ...cardReply(messages.card),
       withResponse: true,
     });
+    if (resource?.message) {
+      setActiveCard(userId, resource.message.id);
+    }
     const { announcement } = messages;
     await this.announce(userId, announcement !== undefined, async () => {
       await resource?.message?.reply({

@@ -16,12 +16,10 @@ import { gambaJackpotRoleId } from '../src/features/gamba/outcomes.js';
 import { accents } from '../src/features/ui/index.js';
 
 const free = (reels: Reels, balance = 1_050): FreeSpin => {
-  const evaluation = evaluate(reels);
   return {
     mode: 'free',
     reels,
-    evaluation,
-    prize: evaluation.freePrize,
+    evaluation: evaluate(reels),
     balance,
     spinId: 1,
   };
@@ -47,18 +45,19 @@ const json = (c: { toJSON(): unknown }) => JSON.stringify(c.toJSON());
 const accent = (c: { toJSON(): { accent_color?: number | null } }) => c.toJSON().accent_color;
 
 describe('freeSpinCard', () => {
-  it('shows a win', () => {
+  it('shows a triple without any coins', () => {
     const c = freeSpinCard('1', free(['head', 'head', 'head']));
-    expect(accent(c)).toBe(accents.win);
-    expect(json(c)).toContain('**Triple!** +50 coins');
-    expect(json(c)).toContain('free spin · balance 1,050');
+    expect(accent(c)).toBe(accents.loss);
+    expect(json(c)).toContain('free spin');
+    expect(json(c)).not.toContain('+50');
+    expect(json(c)).toContain('balance 1,050');
     expect(json(c)).toContain('gamba:again:1:0');
   });
 
   it('shows a loss', () => {
     const c = freeSpinCard('1', free(['head', 'cry', 'grr']));
     expect(accent(c)).toBe(accents.loss);
-    expect(json(c)).toContain('No prize this time');
+    expect(json(c)).not.toContain('Nothing this time');
   });
 
   it('is gold for a jackpot', () => {
@@ -108,7 +107,7 @@ describe('announcementCard', () => {
     const c = announcementCard('1', free(['python', 'python', 'python']));
     const text = json(c);
     expect(accent(c)).toBe(accents.gold);
-    expect(text).toContain('+500 coins');
+    expect(text).not.toContain('coins');
     expect(text).toContain('Odds: 1 in 1,158');
     expect(text).not.toContain('You are a pro');
   });

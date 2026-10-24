@@ -62,7 +62,7 @@ export function makeChatInput(
     },
     inCachedGuild: () => true,
     member: { roles: { add: vi.fn(async () => undefined) } },
-    reply: vi.fn(async () => ({ resource: { message: { reply: announce } } })),
+    reply: vi.fn(async () => ({ resource: { message: { id: 'card-1', reply: announce } } })),
     editReply: vi.fn(),
   };
 }
@@ -71,12 +71,14 @@ export interface ButtonOptions {
   customId: string;
   userId: string;
   guildId?: string;
+  /** The ID of the message the button is on (default: `m1`). */
+  messageId?: string;
 }
 
 /** An interaction stub for a message component button click. */
 export function makeButton(
   client: ReturnType<typeof createClient>,
-  { customId, userId, guildId = '2' }: ButtonOptions,
+  { customId, userId, guildId = '2', messageId = 'm1' }: ButtonOptions,
 ) {
   const announce = vi.fn(async (_options: unknown) => ({}));
   return {
@@ -99,7 +101,7 @@ export function makeButton(
     deferred: false,
     inCachedGuild: () => true,
     member: { roles: { add: vi.fn(async () => undefined) } },
-    message: { reply: announce },
+    message: { id: messageId, reply: announce },
     reply: vi.fn(async (_options: unknown) => undefined),
     update: vi.fn(async (_options: unknown) => undefined),
     followUp: vi.fn(async (_options: unknown) => undefined),

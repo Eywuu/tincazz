@@ -23,8 +23,10 @@ export function formatGambaFollowUp(
   if (result !== 'triple' && result !== 'jackpot') {
     return undefined;
   }
-  const win = spin.mode === 'free' ? `+${coins(spin.prize)} coins` : `+${coins(spin.payout)} coins`;
-  const lines = [`${userMention} won! ${win} (balance: ${coins(spin.balance)})`];
+  const lines =
+    spin.mode === 'free'
+      ? [`${userMention} hit three of a kind!`]
+      : [`${userMention} won! +${coins(spin.payout)} coins (balance: ${coins(spin.balance)})`];
   if (spin.mode === 'wager' && spin.potWon > 0) {
     lines.push(`+${coins(spin.potWon)} from the pot`);
   }

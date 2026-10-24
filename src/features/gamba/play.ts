@@ -12,12 +12,14 @@ export interface FreeSpin {
   mode: 'free';
   reels: Reels;
   evaluation: Evaluation;
-  prize: number;
   balance: number;
   spinId: number;
 }
 
-/** Rolls a free spin and settles it (wallet, spin row, prize, stats) in one transaction. */
+/**
+ * Rolls a free spin and settles it (wallet, spin row, stats) in one transaction. A free spin never
+ * moves coins; its only reward is the jackpot role, which the caller assigns.
+ */
 export function playFree(
   db: Db,
   guildId: string,
@@ -27,8 +29,6 @@ export function playFree(
 ): FreeSpin {
   const reels = spinGamba(randomInt);
   const evaluation = evaluate(reels);
-  const prize = evaluation.freePrize;
-
   return db.transaction((tx) => {
     const wallet = getOrCreateWallet(tx, guildId, userId, now);
     const { id: spinId } = tx
@@ -40,18 +40,14 @@ export function playFree(
         reels: reels.join(','),
         result: evaluation.result,
         bet: 0,
-        payout: prize,
+        payout: 0,
         potWon: 0,
         createdAt: now,
       })
       .returning({ id: spins.id })
       .get();
-    const balance =
-      prize > 0
-        ? credit(tx, { guildId, userId, amount: prize, reason: 'free_prize', now, ref: spinId })
-        : wallet.balance;
     recordFreeSpinStats(tx, guildId, userId, evaluation);
-    return { mode: 'free', reels, evaluation, prize, balance, spinId };
+    return { mode: 'free', reels, evaluation, balance: wallet.balance, spinId };
   });
 }
 

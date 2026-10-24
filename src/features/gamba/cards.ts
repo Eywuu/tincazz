@@ -19,6 +19,8 @@ export const tierLabels: Record<PayoutTier, string> = {
 
 export const notYourSpin = "This isn't your spin. Use `/gamba` to get your own.";
 
+export const expiredSpin = 'This spin is old. Use the buttons on your latest `/gamba` card.';
+
 const reelsHeading = (spin: Spin) => `# ${spin.reels.map(outcomeEmoji).join(' ')}`;
 
 function button(label: string, customId: string, style: ButtonStyle): ButtonBuilder {
@@ -26,21 +28,11 @@ function button(label: string, customId: string, style: ButtonStyle): ButtonBuil
 }
 
 export function freeSpinCard(userId: string, spin: FreeSpin): ContainerBuilder {
-  const accent =
-    spin.evaluation.result === 'jackpot'
-      ? accents.gold
-      : spin.prize > 0
-        ? accents.win
-        : accents.loss;
-  const outcome =
-    spin.prize > 0
-      ? `**${tierLabels[spin.evaluation.tier]}** +${coins(spin.prize)} coins`
-      : 'No prize this time';
+  const accent = spin.evaluation.result === 'jackpot' ? accents.gold : accents.loss;
   return card(
     accent,
     reelsHeading(spin),
-    outcome,
-    `-# <@${userId}> · free spin · balance ${coins(spin.balance)}`,
+    `-# <@${userId}> · free spin (jackpot role only, bet to win coins) · balance ${coins(spin.balance)}`,
   ).addActionRowComponents(
     new ActionRowBuilder<ButtonBuilder>().addComponents(
       button('Spin again', encodeSpinId({ action: 'again', userId, bet: 0 }), ButtonStyle.Primary),
@@ -95,11 +87,10 @@ export function announcementCard(
   roleAssigned?: boolean,
 ): ContainerBuilder {
   const emoji = outcomeEmoji(spin.reels[0]);
-  const win =
-    spin.mode === 'free'
-      ? `+${coins(spin.prize)} coins`
-      : `Won ${coins(spin.payout)} on a ${coins(spin.bet)} bet`;
-  const texts = [`## <@${userId}> hit ${emoji} x3!`, win];
+  const texts = [`## <@${userId}> hit ${emoji} x3!`];
+  if (spin.mode === 'wager') {
+    texts.push(`Won ${coins(spin.payout)} on a ${coins(spin.bet)} bet`);
+  }
   if (spin.mode === 'wager' && spin.potWon > 0) {
     texts.push(`+${coins(spin.potWon)} from the pot`);
   }
