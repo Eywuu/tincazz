@@ -3,7 +3,7 @@ import { type Db, openDatabase } from '../src/db/index.js';
 import { pots, spins } from '../src/db/schema.js';
 import { InsufficientFundsError } from '../src/features/economy/index.js';
 import { InvalidBetError } from '../src/features/gamba/index.js';
-import { spin } from '../src/features/gamba/spin.js';
+import { settleSpin, spin } from '../src/features/gamba/spin.js';
 
 function draws(...values: number[]) {
   const queue = [...values];
@@ -84,5 +84,17 @@ describe('spin', () => {
       spin(db, { ...request, bet: '5000' }, 1000, { assignJackpotRole: async () => true }),
     ).rejects.toBeInstanceOf(InsufficientFundsError);
     expect(db.select().from(spins).all()).toEqual([]);
+  });
+});
+
+describe('settleSpin', () => {
+  it('returns the settled spin and the role result on a jackpot', async () => {
+    const db = openDatabase(':memory:');
+    const settled = await settleSpin(db, { guildId: 'g', userId: 'u' }, 1000, {
+      assignJackpotRole: async () => false,
+      randomInt: () => 20,
+    });
+    expect(settled.played.evaluation.result).toBe('jackpot');
+    expect(settled.roleAssigned).toBe(false);
   });
 });
