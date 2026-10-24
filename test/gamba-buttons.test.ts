@@ -1,0 +1,136 @@
+import crypto from 'node:crypto';
+import { syncBuiltinESMExports } from 'node:module';
+import { container } from '@sapphire/framework';
+import { Events, MessageFlags } from 'discord.js';
+import { afterEach, beforeAll, beforeEach, describe, expect, it, vi } from 'vitest';
+import { createClient } from '../src/client.js';
+import { openDatabase } from '../src/db/index.js';
+import { spins } from '../src/db/schema.js';
+import { debit, findWallet, getOrCreateWallet } from '../src/features/economy/index.js';
+import { notYourSpin } from '../src/features/gamba/index.js';
+import { testEnv } from './support/env.js';
+import { makeButton } from './support/interaction.js';
+
+// See gamba-command.test.ts: patch the real crypto.randomInt for natively loaded pieces.
+function mockRandomInt(...values: number[]) {
+  const spy = vi.spyOn(crypto, 'randomInt').mockReturnValue(values.at(-1) as never);
+  for (const value of values.slice(0, -1).reverse()) {
+    spy.mockReturnValueOnce(value as never);
+  }
+  syncBuiltinESMExports();
+}
+
+const json = (value: unknown) => JSON.stringify(value);
+const wait = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms));
+
+describe('gamba buttons', () => {
+  let client: ReturnType<typeof createClient>;
+
+  beforeAll(async () => {
+    client = createClient(testEnv);
+    await client.stores.load();
+  });
+
+  beforeEach(() => {
+    container.db = openDatabase(':memory:');
+  });
+
+  afterEach(() => {
+    vi.restoreAllMocks();
+    syncBuiltinESMExports();
+  });
+
+  const spinCount = () => container.db.select().from(spins).all().length;
+
+  async function click(customId: string, userId = '1') {
+    const interaction = makeButton(client, { customId, userId });
+    client.emit(Events.InteractionCreate, interaction as never);
+    await vi.waitFor(
+      () =>
+        expect(interaction.reply.mock.calls.length + interaction.update.mock.calls.length).toBe(1),
+      { timeout: 2000 },
+    );
+    return interaction;
+  }
+
+  it('plays a free spin again', async () => {
+    mockRandomInt(0, 3, 6);
+    const interaction = await click('gamba:again:1:0');
+
+    expect(interaction.update).toHaveBeenCalledTimes(1);
+    expect(json(interaction.update.mock.calls[0])).toContain('No prize this time');
+    expect(interaction.reply).not.toHaveBeenCalled();
+    expect(spinCount()).toBe(1);
+  });
+
+  it('plays the same bet again and announces a triple with a ping', async () => {
+    mockRandomInt(0);
+    const interaction = await click('gamba:again:1:100');
+
+    expect(json(interaction.update.mock.calls[0])).toContain('Bet 100 → 1,500');
+    await vi.waitFor(() => expect(interaction.announce).toHaveBeenCalledTimes(1), {
+      timeout: 2000,
+    });
+    expect(interaction.announce.mock.calls[0]?.[0]).toMatchObject({
+      allowedMentions: { users: ['1'] },
+    });
+  });
+
+  it('plays a doubled bet', async () => {
+    mockRandomInt(0, 3, 6);
+    const interaction = await click('gamba:double:1:200');
+
+    expect(json(interaction.update.mock.calls[0])).toContain('Bet 200 → 0 (-200)');
+  });
+
+  it('tells another user it is not their spin', async () => {
+    mockRandomInt(0, 3, 6);
+    const interaction = await click('gamba:again:1:100', '5');
+
+    expect(json(interaction.reply.mock.calls[0])).toContain(notYourSpin);
+    expect((interaction.reply.mock.calls[0] as unknown as [{ flags: number }])[0].flags).toBe(
+      MessageFlags.IsComponentsV2 | MessageFlags.Ephemeral,
+    );
+    expect(interaction.update).not.toHaveBeenCalled();
+    expect(findWallet(container.db, '2', '5')).toBeUndefined();
+    expect(spinCount()).toBe(0);
+  });
+
+  it('rejects a stale button when the balance dropped below the bet', async () => {
+    getOrCreateWallet(container.db, '2', '1', 1000);
+    debit(container.db, { guildId: '2', userId: '1', amount: 950, reason: 'bet', now: 1000 });
+    const interaction = await click('gamba:again:1:100');
+
+    expect(json(interaction.reply.mock.calls[0])).toContain(
+      'You have 50 coins. Try a smaller bet.',
+    );
+    expect(interaction.update).not.toHaveBeenCalled();
+    expect(spinCount()).toBe(0);
+  });
+
+  it('ignores tampered and foreign custom ids', async () => {
+    const tampered = makeButton(client, { customId: 'gamba:again:1:999999', userId: '1' });
+    const foreign = makeButton(client, { customId: 'other:thing', userId: '1' });
+    client.emit(Events.InteractionCreate, tampered as never);
+    client.emit(Events.InteractionCreate, foreign as never);
+    await wait(100);
+
+    for (const interaction of [tampered, foreign]) {
+      expect(interaction.reply).not.toHaveBeenCalled();
+      expect(interaction.update).not.toHaveBeenCalled();
+    }
+    expect(spinCount()).toBe(0);
+  });
+
+  it('logs an announcement failure and does not rethrow', async () => {
+    mockRandomInt(0);
+    const error = vi.spyOn(container.logger, 'error').mockImplementation(() => undefined);
+    const interaction = makeButton(client, { customId: 'gamba:again:1:100', userId: '1' });
+    interaction.announce.mockRejectedValue(new Error('boom') as never);
+    client.emit(Events.InteractionCreate, interaction as never);
+    await vi.waitFor(() => expect(error).toHaveBeenCalled(), { timeout: 2000 });
+
+    expect(interaction.update).toHaveBeenCalledTimes(1);
+    expect(interaction.reply).not.toHaveBeenCalled();
+  });
+});

@@ -50,3 +50,42 @@ export function makeChatInput(
     editReply: vi.fn(),
   };
 }
+
+export interface ButtonOptions {
+  customId: string;
+  userId: string;
+  guildId?: string;
+}
+
+/** An interaction stub for a message component button click. */
+export function makeButton(
+  client: ReturnType<typeof createClient>,
+  { customId, userId, guildId = '2' }: ButtonOptions,
+) {
+  const announce = vi.fn(async (_options: unknown) => ({}));
+  return {
+    announce,
+    isChatInputCommand: () => false,
+    isContextMenuCommand: () => false,
+    isAutocomplete: () => false,
+    isModalSubmit: () => false,
+    isStringSelectMenu: () => false,
+    isMessageComponent: () => true,
+    isButton: () => true,
+    isRepliable: () => true,
+    id: '42',
+    customId,
+    client,
+    guildId,
+    channelId: '3',
+    user: makeUser(userId),
+    replied: false,
+    deferred: false,
+    inCachedGuild: () => true,
+    member: { roles: { add: vi.fn(async () => undefined) } },
+    message: { reply: announce },
+    reply: vi.fn(async (_options: unknown) => undefined),
+    update: vi.fn(async (_options: unknown) => undefined),
+    followUp: vi.fn(async (_options: unknown) => undefined),
+  };
+}
