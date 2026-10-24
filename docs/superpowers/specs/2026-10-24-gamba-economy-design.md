@@ -15,17 +15,17 @@ It also adds the bot's first persistent storage, which later features will reuse
 
 ## Decisions
 
-| Topic         | Decision |
-| ------------- | -------- |
-| Game model    | Full economy with wagers |
-| Free play     | `?gamba` with no bet is always free and unlimited; any triple pays fixed coins |
-| Payouts       | Pairs and triples pay on wagers; progressive pot won by a wagered cpp x3 |
-| Coin income   | Starting balance, `/daily` with streak, broke bailout, chat activity, admin grants |
-| Anti-farm     | None on free spins (as today); chat rewards are rate capped |
-| Transfers     | None. Coins never move between players |
-| Storage       | SQLite file on a Docker volume, `better-sqlite3`, Drizzle ORM + drizzle-kit migrations |
-| UI            | Components V2 cards, buttons inside the card, ephemeral errors |
-| Scope         | Single guild in practice; every table keyed by `guild_id` anyway |
+| Topic       | Decision                                                                               |
+| ----------- | -------------------------------------------------------------------------------------- |
+| Game model  | Full economy with wagers                                                               |
+| Free play   | `?gamba` with no bet is always free and unlimited; any triple pays fixed coins         |
+| Payouts     | Pairs and triples pay on wagers; progressive pot won by a wagered cpp x3               |
+| Coin income | Starting balance, `/daily` with streak, broke bailout, chat activity, admin grants     |
+| Anti-farm   | None on free spins (as today); chat rewards are rate capped                            |
+| Transfers   | None. Coins never move between players                                                 |
+| Storage     | SQLite file on a Docker volume, `better-sqlite3`, Drizzle ORM + drizzle-kit migrations |
+| UI          | Components V2 cards, buttons inside the card, ephemeral errors                         |
+| Scope       | Single guild in practice; every table keyed by `guild_id` anyway                       |
 
 ## Game rules
 
@@ -39,15 +39,15 @@ the emoji string is display only. Storage always uses keys.
 
 Result probabilities (out of 9,261 equally likely weighted combinations):
 
-| Result      | Combos | Chance  |
-| ----------- | ------ | ------- |
-| Any yt pair | 2,916  | 31.49%  |
-| python pair | 228    | 2.46%   |
-| cpp pair    | 60     | 0.65%   |
-| Any yt x3   | 162    | 1.75%   |
-| python x3   | 8      | 0.086%  |
-| cpp x3      | 1      | 0.011%  |
-| Nothing     | 5,886  | 63.56%  |
+| Result      | Combos | Chance |
+| ----------- | ------ | ------ |
+| Any yt pair | 2,916  | 31.49% |
+| python pair | 228    | 2.46%  |
+| cpp pair    | 60     | 0.65%  |
+| Any yt x3   | 162    | 1.75%  |
+| python x3   | 8      | 0.086% |
+| cpp x3      | 1      | 0.011% |
+| Nothing     | 5,886  | 63.56% |
 
 A "pair" is exactly two equal reels; the odd reel is ignored.
 
@@ -55,10 +55,10 @@ A "pair" is exactly two equal reels; the odd reel is ignored.
 
 `?gamba` / `/gamba` with no bet. Pairs pay nothing.
 
-| Result    | Prize |
-| --------- | ----- |
-| Any yt x3 | 50    |
-| python x3 | 500   |
+| Result    | Prize                      |
+| --------- | -------------------------- |
+| Any yt x3 | 50                         |
+| python x3 | 500                        |
 | cpp x3    | 2,500 and the jackpot role |
 
 Expected value is about 1.6 coins per spin. Free spins never touch the pot.
@@ -66,20 +66,19 @@ Expected value is about 1.6 coins per spin. Free spins never touch the pot.
 ### Wagered spin
 
 `?gamba <bet>` / `/gamba bet:<bet>`.
-
 - Bet range 10 to 10,000. Accepted forms: a positive integer, `all` (`min(balance, 10,000)`),
   `half` (`floor(balance / 2)`, then range checked), and a `k` suffix (`2.5k` = 2,500; the result
   must be an integer).
 - The bet is debited first. Payout is `floor(bet * multiplierBps / 10,000)` and includes the stake.
 - Multipliers are stored as integer basis points so the RTP test is exact.
 
-| Result      | Multiplier | Bps     |
-| ----------- | ---------- | ------- |
-| Any yt pair | 1.2x       | 12,000  |
-| python pair | 4x         | 40,000  |
-| cpp pair    | 10x        | 100,000 |
-| Any yt x3   | 15x        | 150,000 |
-| python x3   | 100x       | 1,000,000 |
+| Result      | Multiplier                      | Bps       |
+| ----------- | ------------------------------- | --------- |
+| Any yt pair | 1.2x                            | 12,000    |
+| python pair | 4x                              | 40,000    |
+| cpp pair    | 10x                             | 100,000   |
+| Any yt x3   | 15x                             | 150,000   |
+| python x3   | 100x                            | 1,000,000 |
 | cpp x3      | 300x + pot share + jackpot role | 3,000,000 |
 
 Table RTP before flooring is exactly 8,541.2 / 9,261 = 92.23%. The pot adds about 3% over time.
@@ -87,7 +86,6 @@ Table RTP before flooring is exactly 8,541.2 / 9,261 = 92.23%. The pot adds abou
 ### Progressive pot
 
 One pot per guild.
-
 - Every wagered spin adds `max(1, floor(bet * 3 / 100))` to the pot. This is not taken from the
   player's payout; it is part of the coins already removed by the bet.
 - The pot starts at 10,000.
@@ -99,13 +97,13 @@ One pot per guild.
 
 ### Coin income
 
-| Source  | Rule |
-| ------- | ---- |
-| Start   | New wallets start with 1,000 (ledger `start`) |
-| `/daily`| `200 + 50 * min(streak, 7)` (250 on day 1, 550 from day 7). One claim per UTC calendar day. Claiming the day after the previous claim continues the streak; any gap resets it to 1 |
-| `/bailout` | Only when balance < 10 (the minimum bet): +200, at most once per hour |
-| Chat    | +5 per guild message, at most once per 60 s per user. Ignored: bots, webhooks, system messages, DMs, messages starting with the command prefix |
-| Admin   | `/eco give` and `/eco take` with a required reason. `take` fails, rather than clamping, if it exceeds the balance |
+| Source     | Rule                                                                                                                                                                               |
+| ---------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Start      | New wallets start with 1,000 (ledger `start`)                                                                                                                                      |
+| `/daily`   | `200 + 50 * min(streak, 7)` (250 on day 1, 550 from day 7). One claim per UTC calendar day. Claiming the day after the previous claim continues the streak; any gap resets it to 1 |
+| `/bailout` | Only when balance < 10 (the minimum bet): +200, at most once per hour                                                                                                              |
+| Chat       | +5 per guild message, at most once per 60 s per user. Ignored: bots, webhooks, system messages, DMs, messages starting with the command prefix                                     |
+| Admin      | `/eco give` and `/eco take` with a required reason. `take` fails, rather than clamping, if it exceeds the balance                                                                  |
 
 No transfers between players.
 
@@ -114,14 +112,13 @@ No transfers between players.
 SQLite via `better-sqlite3`, schema in Drizzle. WAL mode and foreign keys on. All coin amounts are
 integers. Timestamps are integer milliseconds since the epoch (UTC).
 
-| Table          | Primary key | Columns |
-| -------------- | ----------- | ------- |
-| `wallets`      | `guild_id, user_id` | `balance` (CHECK >= 0), `daily_streak`, `last_daily_at`, `last_bailout_at`, `last_chat_reward_at`, `created_at` |
-| `ledger`       | `id` (autoincrement) | `guild_id`, `user_id`, `delta`, `balance_after`, `reason`, `ref`, `actor_id`, `created_at` |
+| Table          | Primary key          | Columns                                                                                                                                                                      |
+| -------------- | -------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `wallets`      | `guild_id, user_id`  | `balance` (CHECK >= 0), `daily_streak`, `last_daily_at`, `last_bailout_at`, `last_chat_reward_at`, `created_at`                                                              |
+| `ledger`       | `id` (autoincrement) | `guild_id`, `user_id`, `delta`, `balance_after`, `reason`, `ref`, `actor_id`, `created_at`                                                                                   |
 | `spins`        | `id` (autoincrement) | `guild_id`, `user_id`, `mode` (`free`/`wager`), `reels` (three keys, comma separated), `result` (`none`/`pair`/`triple`/`jackpot`), `bet`, `payout`, `pot_won`, `created_at` |
-| `player_stats` | `guild_id, user_id` | `spins`, `wins`, `jackpots`, `wagered`, `won`, `biggest_win`, `best_odds` |
-| `pots`         | `guild_id`  | `amount`, `last_winner_id`, `last_won_at` |
-
+| `player_stats` | `guild_id, user_id`  | `spins`, `wins`, `jackpots`, `wagered`, `won`, `biggest_win`, `best_odds`                                                                                                    |
+| `pots`         | `guild_id`           | `amount`, `last_winner_id`, `last_won_at`                                                                                                                                    |
 - Ledger `reason`: `start`, `daily`, `bailout`, `chat`, `free_prize`, `bet`, `payout`, `pot_win`,
   `admin_grant`, `admin_take`. `ref` is the spin ID for spin rows; `actor_id` is the moderator for
   admin rows. The ledger is append-only.
@@ -141,7 +138,6 @@ integers. Timestamps are integer milliseconds since the epoch (UTC).
 
 `src/features/economy/` is the only code that changes balances. Every operation is synchronous and
 runs inside one `db.transaction(...)`. A throw anywhere rolls the whole operation back.
-
 - `getOrCreateWallet(db, guildId, userId, now)`: creates the wallet with the starting balance.
 - `credit(tx, ...)` / `debit(tx, ...)`: update the balance and append a ledger row. `debit` throws
   `InsufficientFundsError` (carrying the balance) instead of going negative.
@@ -151,7 +147,6 @@ runs inside one `db.transaction(...)`. A throw anywhere rolls the whole operatio
 - Time comes from an injected `now: number` so tests control the clock.
 
 `src/features/gamba/` builds on it:
-
 - `parseBet(input, balance)`: returns a bet or a typed error.
 - `evaluate(reels)`: returns `{ result, payoutBps, freePrize, odds }`; pure.
 - `playFree(db, guildId, userId, rng, now)` and `playWager(db, guildId, userId, bet, rng, now)`:
@@ -176,16 +171,16 @@ in `cards.ts` files, so they can be tested through `toJSON()`.
 
 ### Cards and commands
 
-| Command | Card |
-| ------- | ---- |
-| `?gamba`, `/gamba` | Free spin: reels, prize on a win, balance. Button: Spin again |
-| `?gamba <bet>`, `/gamba bet:<bet>` | Wager: reels, bet -> payout and profit, result name and multiplier, balance, pot. Buttons: Spin again, Double |
-| `/balance [user]` | Balance and coins rank |
-| `/daily` | Amount, streak, next reset countdown |
-| `/bailout` | Amount, or when it is next available |
-| `/stats [user]` | Profile section with avatar thumbnail: balance, rank, spins, win rate, biggest win, jackpots, best odds, daily streak, net profit |
-| `/leaderboard [category]` | Top 10 for the category with medals for 1 to 3, the caller's own rank on the last line. Category select and previous/next buttons |
-| `/eco give\|take user amount reason` | Ephemeral confirmation. `default_member_permissions` = Manage Server |
+| Command                              | Card                                                                                                                              |
+| ------------------------------------ | --------------------------------------------------------------------------------------------------------------------------------- |
+| `?gamba`, `/gamba`                   | Free spin: reels, prize on a win, balance. Button: Spin again                                                                     |
+| `?gamba <bet>`, `/gamba bet:<bet>`   | Wager: reels, bet -> payout and profit, result name and multiplier, balance, pot. Buttons: Spin again, Double                     |
+| `/balance [user]`                    | Balance and coins rank                                                                                                            |
+| `/daily`                             | Amount, streak, next reset countdown                                                                                              |
+| `/bailout`                           | Amount, or when it is next available                                                                                              |
+| `/stats [user]`                      | Profile section with avatar thumbnail: balance, rank, spins, win rate, biggest win, jackpots, best odds, daily streak, net profit |
+| `/leaderboard [category]`            | Top 10 for the category with medals for 1 to 3, the caller's own rank on the last line. Category select and previous/next buttons |
+| `/eco give\|take user amount reason` | Ephemeral confirmation. `default_member_permissions` = Manage Server                                                              |
 
 Leaderboard categories: `coins` (wallet balance), `biggest-win`, `jackpots`, `profit`, `spins`.
 Rows with a value of 0 are left out. Ties are ordered by user ID.
@@ -193,7 +188,6 @@ Rows with a value of 0 are left out. Ties are ordered by user ID.
 ### Buttons and selects
 
 State lives in the custom ID, so components survive bot restarts:
-
 - `gamba:again:<userId>:<bet>` (bet 0 = free) and `gamba:double:<userId>:<bet>`. They edit the
   card in place (`interaction.update`), so repeated spins do not flood the channel.
 - `lb:page:<ownerId>:<category>:<page>` and `lb:cat:<ownerId>`. They edit the leaderboard in place.
@@ -276,7 +270,6 @@ drizzle/            generated SQL migrations, committed, copied into the image
 ## Testing
 
 Vitest, no network, `:memory:` databases.
-
 - Payout table: enumerate all 21^3 weighted draws and assert the exact table RTP
   (85,412,000 bps-units over 9,261 x 10,000) and each result's combo count.
 - Outcomes: the existing distribution and roller tests stay. Outcome keys are unique.
@@ -311,7 +304,6 @@ Vitest, no network, `:memory:` databases.
 One branch and pull request per phase. Each phase gets its own implementation plan. Every commit
 follows Conventional Commits and leaves `pnpm lint && pnpm typecheck && pnpm test && pnpm build`
 passing.
-
 1. **Foundation**: dependencies, `src/db`, schema and first migration, `container.db`, env vars,
    Docker volume and native build, slash command registration (`GUILD_ID`), error listener, docs.
 2. **Economy core**: wallets and ledger, `/balance`, `/daily`, `/bailout`, chat rewards, `/eco`,

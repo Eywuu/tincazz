@@ -50,21 +50,21 @@ drizzle-orm 0.45, drizzle-kit 0.31, zod 4, Vitest, Biome, Docker (node:24-alpine
 
 ## File Structure
 
-| File | Responsibility |
-| ---- | -------------- |
-| `src/config/env.ts` (modify) | Add `DATABASE_PATH`, `GUILD_ID` |
-| `.env.example` (modify) | Document both |
-| `test/support/env.ts` (create) | `testEnv`: one valid `Env` for all tests |
-| `src/db/schema.ts` (create) | Drizzle tables: `wallets`, `ledger`, `spins`, `playerStats`, `pots` |
-| `src/db/index.ts` (create) | `openDatabase`, `closeDatabase`, `Db` type, `container.db` augmentation |
-| `drizzle.config.ts` (create) | drizzle-kit config |
-| `drizzle/` (generated) | `0000_init.sql` and `meta/` |
-| `src/index.ts` (modify) | Open the database before login, close it on shutdown |
-| `src/client.ts` (modify) | Default guild IDs and bulk-overwrite registration behaviour |
-| `src/commands/general/ping.ts` (modify) | Add `chatInputRun` and registration |
-| `src/listeners/interaction-errors.ts` (create) | Ephemeral generic error for failed slash commands and components |
-| `Dockerfile`, `docker-compose.yml`, `pnpm-workspace.yaml`, `biome.json`, `package.json`, `.github/workflows/ci.yml` (modify) | Native build, volume, migrations in image, drift check |
-| `README.md`, `AGENTS.md` (modify) | Document all of the above |
+| File                                                                                                                         | Responsibility                                                          |
+| ---------------------------------------------------------------------------------------------------------------------------- | ----------------------------------------------------------------------- |
+| `src/config/env.ts` (modify)                                                                                                 | Add `DATABASE_PATH`, `GUILD_ID`                                         |
+| `.env.example` (modify)                                                                                                      | Document both                                                           |
+| `test/support/env.ts` (create)                                                                                               | `testEnv`: one valid `Env` for all tests                                |
+| `src/db/schema.ts` (create)                                                                                                  | Drizzle tables: `wallets`, `ledger`, `spins`, `playerStats`, `pots`     |
+| `src/db/index.ts` (create)                                                                                                   | `openDatabase`, `closeDatabase`, `Db` type, `container.db` augmentation |
+| `drizzle.config.ts` (create)                                                                                                 | drizzle-kit config                                                      |
+| `drizzle/` (generated)                                                                                                       | `0000_init.sql` and `meta/`                                             |
+| `src/index.ts` (modify)                                                                                                      | Open the database before login, close it on shutdown                    |
+| `src/client.ts` (modify)                                                                                                     | Default guild IDs and bulk-overwrite registration behaviour             |
+| `src/commands/general/ping.ts` (modify)                                                                                      | Add `chatInputRun` and registration                                     |
+| `src/listeners/interaction-errors.ts` (create)                                                                               | Ephemeral generic error for failed slash commands and components        |
+| `Dockerfile`, `docker-compose.yml`, `pnpm-workspace.yaml`, `biome.json`, `package.json`, `.github/workflows/ci.yml` (modify) | Native build, volume, migrations in image, drift check                  |
+| `README.md`, `AGENTS.md` (modify)                                                                                            | Document all of the above                                               |
 
 ---
 
@@ -110,7 +110,6 @@ it('rejects a guild ID that is not a snowflake', () => {
 ```
 
 (Replace the existing "applies defaults" test with the first one.)
-
 - [ ] **Step 2: Run** `pnpm vitest run test/env.test.ts`. Expected: the four tests above FAIL.
 
 - [ ] **Step 3: Implement** in `src/config/env.ts`. Wrap both new fields in
@@ -174,29 +173,37 @@ pnpm add better-sqlite3 drizzle-orm
 pnpm add -D drizzle-kit @types/better-sqlite3
 ```
 
-  Expected: `node -e "require('better-sqlite3')(':memory:')"` exits 0.
-
+Expected: `node -e "require('better-sqlite3')(':memory:')"` exits 0.
 - [ ] **Step 2: Write the schema** in `src/db/schema.ts`. Column names are snake_case strings and
   TS keys are camelCase. These are the spec's values; use exactly these names:
 
 ```ts
-export const ledgerReasons = ['start', 'daily', 'bailout', 'chat', 'free_prize', 'bet', 'payout',
-  'pot_win', 'admin_grant', 'admin_take'] as const;
+export const ledgerReasons = [
+  'start',
+  'daily',
+  'bailout',
+  'chat',
+  'free_prize',
+  'bet',
+  'payout',
+  'pot_win',
+  'admin_grant',
+  'admin_take',
+] as const;
 export const spinModes = ['free', 'wager'] as const;
 export const spinResults = ['none', 'pair', 'triple', 'jackpot'] as const;
 ```
 
-| Table (TS name) | Columns (all `notNull` unless marked `?`) | Constraints / indexes |
-| --------------- | ----------------------------------------- | --------------------- |
-| `wallets` | `guild_id` text, `user_id` text, `balance` int, `daily_streak` int default 0, `last_daily_at?` int, `last_bailout_at?` int, `last_chat_reward_at?` int, `created_at` int | PK (`guild_id`, `user_id`); `check('wallets_balance_non_negative', sql\`balance >= 0\`)`; index `wallets_guild_balance_idx` (`guild_id`, `balance`) |
-| `ledger` | `id` int PK autoincrement, `guild_id`, `user_id`, `delta` int, `balance_after` int, `reason` text enum `ledgerReasons`, `ref?` int, `actor_id?` text, `created_at` int | index `ledger_user_idx` (`guild_id`, `user_id`, `id`) |
-| `spins` | `id` int PK autoincrement, `guild_id`, `user_id`, `mode` text enum `spinModes`, `reels` text, `result` text enum `spinResults`, `bet` int default 0, `payout` int default 0, `pot_won` int default 0, `created_at` int | index `spins_user_idx` (`guild_id`, `user_id`) |
-| `playerStats` → `player_stats` | `guild_id`, `user_id`, `spins`, `wins`, `jackpots`, `wagered`, `won`, `biggest_win`, `best_odds`; each int default 0 | PK (`guild_id`, `user_id`); indexes on (`guild_id`, x) for x in `biggest_win`, `jackpots`, `spins` |
-| `pots` | `guild_id` text PK, `amount` int, `last_winner_id?` text, `last_won_at?` int | none |
+| Table (TS name)                | Columns (all `notNull` unless marked `?`)                                                                                                                                                                              | Constraints / indexes                                                                                                                               |
+| ------------------------------ | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `wallets`                      | `guild_id` text, `user_id` text, `balance` int, `daily_streak` int default 0, `last_daily_at?` int, `last_bailout_at?` int, `last_chat_reward_at?` int, `created_at` int                                               | PK (`guild_id`, `user_id`); `check('wallets_balance_non_negative', sql\`balance >= 0\`)`; index `wallets_guild_balance_idx` (`guild_id`, `balance`) |
+| `ledger`                       | `id` int PK autoincrement, `guild_id`, `user_id`, `delta` int, `balance_after` int, `reason` text enum `ledgerReasons`, `ref?` int, `actor_id?` text, `created_at` int                                                 | index `ledger_user_idx` (`guild_id`, `user_id`, `id`)                                                                                               |
+| `spins`                        | `id` int PK autoincrement, `guild_id`, `user_id`, `mode` text enum `spinModes`, `reels` text, `result` text enum `spinResults`, `bet` int default 0, `payout` int default 0, `pot_won` int default 0, `created_at` int | index `spins_user_idx` (`guild_id`, `user_id`)                                                                                                      |
+| `playerStats` → `player_stats` | `guild_id`, `user_id`, `spins`, `wins`, `jackpots`, `wagered`, `won`, `biggest_win`, `best_odds`; each int default 0                                                                                                   | PK (`guild_id`, `user_id`); indexes on (`guild_id`, x) for x in `biggest_win`, `jackpots`, `spins`                                                  |
+| `pots`                         | `guild_id` text PK, `amount` int, `last_winner_id?` text, `last_won_at?` int                                                                                                                                           | none                                                                                                                                                |
 
 The profit leaderboard sorts on `won - wagered` without an index. A guild has at most a few
 thousand players, so a scan is fine and drizzle-kit needs no expression index.
-
 - [ ] **Step 3: Add `drizzle.config.ts`** (`defineConfig({ dialect: 'sqlite', schema:
   './src/db/schema.ts', out: './drizzle' })`), the script `"db:generate": "drizzle-kit generate"`
   in `package.json`, and exclude generated migrations from Biome:
@@ -211,14 +218,19 @@ thousand players, so a scan is fine and drizzle-kit needs no expression index.
 it('applies migrations to a fresh in-memory database', () => {
   const db = openDatabase(':memory:');
   const tables = db.$client
-    .prepare("select name from sqlite_master where type = 'table' and name not like '\\_\\_%' escape '\\' and name != 'sqlite_sequence'")
-    .pluck().all();
+    .prepare(
+      "select name from sqlite_master where type = 'table' and name not like '\\_\\_%' escape '\\' and name != 'sqlite_sequence'",
+    )
+    .pluck()
+    .all();
   expect(tables.sort()).toEqual(['ledger', 'player_stats', 'pots', 'spins', 'wallets']);
 });
 
-it('round-trips a row through every table', () => { /* insert one row into each table with
+it('round-trips a row through every table', () => {
+  /* insert one row into each table with
   Drizzle (db.insert(...).values(...)), select it back with db.select().from(...), and expect
-  toEqual the inserted values including defaults (daily_streak 0, bet 0, etc.) */ });
+  toEqual the inserted values including defaults (daily_streak 0, bet 0, etc.) */
+});
 
 it('rejects a negative balance', () => {
   // insert a wallet with balance 0, then update balance to -1: expect toThrow(/CHECK constraint/)
@@ -285,8 +297,7 @@ it('is reachable from the Sapphire container', () => {
 });
 ```
 
-  (`container` imported from `@sapphire/framework`.)
-
+(`container` imported from `@sapphire/framework`.)
 - [ ] **Step 3: Run** `pnpm typecheck`. Expected: FAIL (`Property 'db' does not exist on type
   'Container'`).
 
@@ -358,20 +369,19 @@ it('registers slash commands globally without GUILD_ID', () => {
 });
 ```
 
-  In `test/ping.test.ts`, add `/ping replies with latency`. Emit `Events.InteractionCreate` with
-  a stubbed chat input interaction:
-  - `isChatInputCommand: () => true` and the other `is*` methods return false;
-  - `commandName: 'ping'`, `commandId: '1'`, `createdTimestamp: 1000`, `client`, `guildId`,
-    `channelId`, `user: { id: '1' }`;
-  - `reply: vi.fn(async () => ({ resource: { message: { createdTimestamp: 1042 } } }))` and
-    `editReply: vi.fn()`.
+In `test/ping.test.ts`, add `/ping replies with latency`. Emit `Events.InteractionCreate` with
+a stubbed chat input interaction:
+- `isChatInputCommand: () => true` and the other `is*` methods return false;
+- `commandName: 'ping'`, `commandId: '1'`, `createdTimestamp: 1000`, `client`, `guildId`,
+  `channelId`, `user: { id: '1' }`;
+- `reply: vi.fn(async () => ({ resource: { message: { createdTimestamp: 1042 } } }))` and
+  `editReply: vi.fn()`.
 
-  Assertions:
-  - `reply` was called with `{ content: 'Pinging...', withResponse: true }`;
-  - the `editReply` argument matches `/^Pong! Round trip: 42ms/`.
+Assertions:
+- `reply` was called with `{ content: 'Pinging...', withResponse: true }`;
+- the `editReply` argument matches `/^Pong! Round trip: 42ms/`.
 
-  Rename the existing prefix test to `?ping replies with latency` if it isn't already.
-
+Rename the existing prefix test to `?ping replies with latency` if it isn't already.
 - [ ] **Step 2: Run** `pnpm vitest run test/client.test.ts test/ping.test.ts`. Expected: the new
   tests FAIL.
 
@@ -410,8 +420,10 @@ git commit -m "feat(commands): register slash commands per guild and add /ping"
   `replyWithGenericError` with stub interactions:
 
 ```ts
-const ephemeral = { content: 'Something went wrong running that. It has been logged.',
-  flags: MessageFlags.Ephemeral };
+const ephemeral = {
+  content: 'Something went wrong running that. It has been logged.',
+  flags: MessageFlags.Ephemeral,
+};
 
 it('replies ephemerally when nothing was sent yet', async () => {
   const i = stub({ replied: false, deferred: false });
@@ -420,9 +432,9 @@ it('replies ephemerally when nothing was sent yet', async () => {
   expect(i.followUp).not.toHaveBeenCalled();
 });
 
-it('follows up when the interaction already replied', /* replied: true -> followUp(ephemeral) */);
-it('follows up when the interaction was deferred', /* deferred: true -> followUp(ephemeral) */);
-it('does nothing for non-repliable interactions', /* isRepliable: () => false -> neither called */);
+it('follows up when the interaction already replied' /* replied: true -> followUp(ephemeral) */);
+it('follows up when the interaction was deferred' /* deferred: true -> followUp(ephemeral) */);
+it('does nothing for non-repliable interactions' /* isRepliable: () => false -> neither called */);
 it('swallows and logs a failing error reply', async () => {
   const i = stub({ replied: false, deferred: false });
   i.reply.mockRejectedValue(new Error('Unknown interaction'));
@@ -432,11 +444,10 @@ it('swallows and logs a failing error reply', async () => {
 });
 ```
 
-  Also add `it('loads both error listeners')` to `test/client.test.ts`. It asserts the listener
-  store keys contain `ChatInputCommandErrorReply` and `InteractionHandlerErrorReply`. Both classes
-  live in one file, so give them those names explicitly via the `name` option. Otherwise Sapphire
-  names pieces after the file.
-
+Also add `it('loads both error listeners')` to `test/client.test.ts`. It asserts the listener
+store keys contain `ChatInputCommandErrorReply` and `InteractionHandlerErrorReply`. Both classes
+live in one file, so give them those names explicitly via the `name` option. Otherwise Sapphire
+names pieces after the file.
 - [ ] **Step 2: Run** `pnpm vitest run test/interaction-errors.test.ts`. Expected: FAIL (module not
   found).
 
@@ -485,16 +496,15 @@ git commit -m "feat(listeners): reply to failed interactions with an ephemeral e
   add:
 
 ```yaml
-      - name: Check migrations match the schema
-        run: |
-          pnpm db:generate
-          git status --porcelain -- drizzle
-          test -z "$(git status --porcelain -- drizzle)"
+- name: Check migrations match the schema
+  run: |
+    pnpm db:generate
+    git status --porcelain -- drizzle
+    test -z "$(git status --porcelain -- drizzle)"
 ```
 
-  Verify locally: add a throwaway column to `src/db/schema.ts`, run the three commands, and
-  expect a non-zero exit. Revert the column and confirm a zero exit.
-
+Verify locally: add a throwaway column to `src/db/schema.ts`, run the three commands, and
+expect a non-zero exit. Revert the column and confirm a zero exit.
 - [ ] **Step 5: Commit** as two commits:
 
 ```bash
