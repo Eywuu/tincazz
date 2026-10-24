@@ -10,7 +10,11 @@ import { type RandomInt, rollOutcome } from './roll.js';
 export { InvalidBetError, parseBet } from './bet.js';
 export type { Evaluation } from './evaluate.js';
 export { evaluate } from './evaluate.js';
-export { type FreeSpin, playFree } from './play.js';
+
+import type { FreeSpin, WagerSpin } from './play.js';
+
+export { type FreeSpin, playFree, playWager, type WagerSpin } from './play.js';
+export type Spin = FreeSpin | WagerSpin;
 export { gambaJackpotRoleId };
 
 export type Reels = readonly [OutcomeKey, OutcomeKey, OutcomeKey];
