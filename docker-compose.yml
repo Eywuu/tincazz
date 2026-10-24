@@ -1,0 +1,8 @@
+services:
+  bot:
+    # `docker compose pull` fetches the image built by CI; `docker compose up -d --build` builds locally.
+    image: ghcr.io/cazzwastaken/tincazz:latest
+    build: .
+    restart: unless-stopped
+    env_file: .env
+    # The bot only makes outbound connections to Discord, so no ports are published.
