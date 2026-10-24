@@ -19,6 +19,8 @@ export const tierLabels: Record<PayoutTier, string> = {
 
 export const notYourSpin = "This isn't your spin. Use `/gamba` to get your own.";
 
+export const expiredSpin = 'This spin is old. Use the buttons on your latest `/gamba` card.';
+
 const reelsHeading = (spin: Spin) => `# ${spin.reels.map(outcomeEmoji).join(' ')}`;
 
 function button(label: string, customId: string, style: ButtonStyle): ButtonBuilder {

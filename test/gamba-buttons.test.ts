@@ -7,7 +7,12 @@ import { createClient } from '../src/client.js';
 import { openDatabase } from '../src/db/index.js';
 import { spins } from '../src/db/schema.js';
 import { debit, findWallet, getOrCreateWallet } from '../src/features/economy/index.js';
-import { notYourSpin } from '../src/features/gamba/index.js';
+import {
+  clearActiveCards,
+  expiredSpin,
+  notYourSpin,
+  setActiveCard,
+} from '../src/features/gamba/index.js';
 import { testEnv } from './support/env.js';
 import { makeButton } from './support/interaction.js';
 
@@ -33,6 +38,7 @@ describe('gamba buttons', () => {
 
   beforeEach(() => {
     container.db = openDatabase(':memory:');
+    clearActiveCards();
   });
 
   afterEach(() => {
@@ -42,8 +48,8 @@ describe('gamba buttons', () => {
 
   const spinCount = () => container.db.select().from(spins).all().length;
 
-  async function click(customId: string, userId = '1') {
-    const interaction = makeButton(client, { customId, userId });
+  async function click(customId: string, userId = '1', messageId = 'm1') {
+    const interaction = makeButton(client, { customId, userId, messageId });
     client.emit(Events.InteractionCreate, interaction as never);
     await vi.waitFor(
       () =>
@@ -106,6 +112,31 @@ describe('gamba buttons', () => {
     );
     expect(interaction.update).not.toHaveBeenCalled();
     expect(spinCount()).toBe(0);
+  });
+
+  it('expires the buttons on a card that is not the latest', async () => {
+    setActiveCard('1', 'm2');
+    const interaction = await click('gamba:again:1:0', '1', 'm1');
+
+    expect(json(interaction.reply.mock.calls[0])).toContain(expiredSpin);
+    expect(interaction.update).not.toHaveBeenCalled();
+    expect(spinCount()).toBe(0);
+  });
+
+  it('keeps the latest card live across clicks', async () => {
+    setActiveCard('1', 'm2');
+    await click('gamba:again:1:0', '1', 'm2');
+    await click('gamba:again:1:0', '1', 'm2');
+
+    expect(spinCount()).toBe(2);
+  });
+
+  it('adopts the first clicked card when none is tracked, then expires others', async () => {
+    await click('gamba:again:1:0', '1', 'm1');
+    const other = await click('gamba:again:1:0', '1', 'm9');
+
+    expect(json(other.reply.mock.calls[0])).toContain(expiredSpin);
+    expect(spinCount()).toBe(1);
   });
 
   it('ignores tampered and foreign custom ids', async () => {

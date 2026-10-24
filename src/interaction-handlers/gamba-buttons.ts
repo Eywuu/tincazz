@@ -3,6 +3,8 @@ import type { ButtonInteraction, ContainerBuilder } from 'discord.js';
 import {
   assignJackpotRole,
   decodeSpinId,
+  expiredSpin,
+  isActiveCard,
   notYourSpin,
   type SpinButtonId,
   spin,
@@ -27,6 +29,9 @@ export class GambaButtonsHandler extends InteractionHandler {
     const userId = interaction.user.id;
     if (userId !== id.userId) {
       return interaction.reply(errorReply(notYourSpin));
+    }
+    if (!isActiveCard(userId, interaction.message.id)) {
+      return interaction.reply(errorReply(expiredSpin));
     }
 
     let messages: Awaited<ReturnType<typeof spin>>;

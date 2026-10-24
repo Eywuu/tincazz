@@ -7,6 +7,7 @@ import { createClient } from '../src/client.js';
 import { openDatabase } from '../src/db/index.js';
 import { spins } from '../src/db/schema.js';
 import { findWallet } from '../src/features/economy/index.js';
+import { clearActiveCards, isActiveCard } from '../src/features/gamba/index.js';
 import { testEnv } from './support/env.js';
 import { makeChatInput } from './support/interaction.js';
 
@@ -250,6 +251,15 @@ describe('gamba', () => {
       expect(options.withResponse).toBe(true);
       expect(json(options)).toContain('Bet 1,000 → 0 (-1,000)');
       expect(findWallet(container.db, '2', '1')?.balance).toBe(0);
+    });
+
+    it('makes the newest card the only live one', async () => {
+      clearActiveCards();
+      mockRandomInt(0, 3, 6);
+      await runSlash({ bet: '10' });
+
+      expect(isActiveCard('1', 'card-1')).toBe(true);
+      expect(isActiveCard('1', 'older-card')).toBe(false);
     });
 
     it('replies ephemerally to a bad bet', async () => {
