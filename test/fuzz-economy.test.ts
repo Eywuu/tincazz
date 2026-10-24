@@ -1,7 +1,8 @@
 import fc from 'fast-check';
 import { describe, expect, it } from 'vitest';
 import { type Db, openDatabase } from '../src/db/index.js';
-import { ledger, pots, spins, wallets } from '../src/db/schema.js';
+import { flipSides, flips, ledger, pots, spins, wallets } from '../src/db/schema.js';
+import { settleBotFlip, settleChallenge } from '../src/features/coinflip/index.js';
 import {
   adminAdjust,
   bailout,
@@ -65,6 +66,24 @@ const adminAmount = fc.oneof(
 
 const op = fc.oneof(
   fc.record({ kind: fc.constant('wager' as const), who, reels, bet: betText }),
+  fc.record({
+    kind: fc.constant('flipBot' as const),
+    who,
+    bet: betText,
+    side: fc.constantFrom(...flipSides),
+    draw: fc.constantFrom(0, 1),
+  }),
+  fc.record({
+    kind: fc.constant('flipChallenge' as const),
+    who,
+    acceptorOffset: fc.integer({ min: 1, max: users.length - 1 }),
+    mode: fc.constantFrom('challenge' as const, 'open' as const),
+    bet: fc.integer({ min: 10, max: 10_000 }),
+    side: fc.constantFrom(...flipSides),
+    draw: fc.constantFrom(0, 1),
+    // A small range, so repeats exercise ChallengeTakenError.
+    message: fc.nat({ max: 5 }),
+  }),
   fc.record({ kind: fc.constant('daily' as const), who }),
   fc.record({ kind: fc.constant('bailout' as const), who }),
   fc.record({ kind: fc.constant('chat' as const), who }),
@@ -102,6 +121,32 @@ async function apply(db: Db, step: Op, now: number): Promise<void> {
         randomInt: draws(step.reels),
       });
       return;
+    case 'flipBot':
+      settleBotFlip(
+        db,
+        { guildId, userId, bet: step.bet, side: step.side },
+        now,
+        draws([step.draw]),
+      );
+      return;
+    case 'flipChallenge':
+      settleChallenge(
+        db,
+        {
+          guildId,
+          messageId: `m${step.message}`,
+          mode: step.mode,
+          challengerId: userId,
+          acceptorId: users[
+            (users.indexOf(userId as never) + step.acceptorOffset) % users.length
+          ] as string,
+          bet: step.bet,
+          challengerSide: step.side,
+        },
+        now,
+        draws([step.draw]),
+      );
+      return;
     case 'daily':
       claimDaily(db, guildId, userId, now);
       return;
@@ -127,6 +172,7 @@ function snapshot(db: Db) {
       .all()
       .filter((row) => row.reason !== 'start'),
     spins: db.select().from(spins).all(),
+    flips: db.select().from(flips).all(),
     pots: db.select().from(pots).all(),
   };
 }
@@ -146,6 +192,15 @@ function expectInvariants(db: Db): void {
   for (const row of db.select().from(ledger).all()) {
     expect(Number.isSafeInteger(row.delta)).toBe(true);
     expect(row.delta).not.toBe(0);
+  }
+  const ledgerRows = db.select().from(ledger).all();
+  for (const row of db.select().from(flips).all()) {
+    expect(row.rake).toBeGreaterThanOrEqual(1);
+    expect(row.rake).toBeLessThanOrEqual(row.bet);
+    expect(
+      ledgerRows.some((entry) => entry.reason === 'flip_bet' && entry.ref === row.id),
+      'every flip has a stake row',
+    ).toBe(true);
   }
   for (const row of db.select().from(pots).all()) {
     expect(row.amount).toBeGreaterThanOrEqual(pot.seed);
@@ -194,8 +249,9 @@ describe('economy fuzz', () => {
             } catch (error) {
               if (!isExpectedFailure(step, error)) throw error;
               const after = snapshot(db);
-              if (step.kind === 'wager' && !existed) {
-                // settleSpin opens the wallet before reading the bet; that is all it may leave.
+              if ((step.kind === 'wager' || step.kind === 'flipBot') && !existed) {
+                // settleSpin and settleBotFlip open the wallet before reading the bet; that is all
+                // they may leave. settleChallenge is fully atomic.
                 const created = findWallet(db, step.who.guildId, step.who.userId);
                 expect(created?.balance).toBe(startingBalance);
                 after.wallets = after.wallets.filter(
