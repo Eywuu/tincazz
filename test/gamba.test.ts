@@ -34,18 +34,18 @@ describe('formatGambaReply', () => {
   const reels = ['a', 'b', 'c'] as const;
 
   it('formats a normal spin', () => {
-    expect(formatGambaReply('<@1>', reels)).toBe('<@1> GAMBA!\na b c');
+    expect(formatGambaReply(reels)).toBe('GAMBA!\na b c');
   });
 
   it('formats a jackpot', () => {
-    expect(formatGambaReply('<@1>', reels, { roleAssigned: true })).toBe(
-      '<@1> GAMBA!\na b c\nJACKPOT! You won <@&1561827731400822845>',
+    expect(formatGambaReply(reels, { roleAssigned: true })).toBe(
+      'GAMBA!\na b c\nJACKPOT! You won <@&1561827731400822845>',
     );
   });
 
   it('formats a jackpot without the role', () => {
-    expect(formatGambaReply('<@1>', reels, { roleAssigned: false })).toBe(
-      "<@1> GAMBA!\na b c\nJACKPOT! You won <@&1561827731400822845> (couldn't assign the role, tell a mod)",
+    expect(formatGambaReply(reels, { roleAssigned: false })).toBe(
+      "GAMBA!\na b c\nJACKPOT! You won <@&1561827731400822845> (couldn't assign the role, tell a mod)",
     );
   });
 });

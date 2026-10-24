@@ -25,7 +25,7 @@ function makeMessage(
   return {
     content,
     createdTimestamp: 1000,
-    author: { bot: false, id: '1', toString: () => '<@1>' },
+    author: { bot: false, id: '1' },
     webhookId: null,
     system: false,
     guild: { id: '2', members: { me: { id: '9' }, fetchMe: async () => ({ id: '9' }) } },
@@ -39,7 +39,7 @@ function makeMessage(
       permissionsFor: () => ({ has: () => true }),
     },
     client,
-    reply: vi.fn(async (_content: string) => ({})),
+    reply: vi.fn(async (_options: { content: string; allowedMentions: unknown }) => ({})),
     ...overrides,
   };
 }
@@ -66,7 +66,10 @@ describe('?gamba', () => {
     client.emit(Events.MessageCreate, message as never);
 
     await vi.waitFor(() => expect(message.reply).toHaveBeenCalledTimes(1), { timeout: 2000 });
-    expect(message.reply).toHaveBeenCalledWith(`<@1> GAMBA!\n${head} ${head} ${head}`);
+    expect(message.reply).toHaveBeenCalledWith({
+      content: `GAMBA!\n${head} ${head} ${head}`,
+      allowedMentions: { repliedUser: true },
+    });
     expect(message.member?.roles.add).not.toHaveBeenCalled();
   });
 
@@ -77,7 +80,10 @@ describe('?gamba', () => {
     client.emit(Events.MessageCreate, message as never);
 
     await vi.waitFor(() => expect(message.reply).toHaveBeenCalledTimes(1), { timeout: 2000 });
-    expect(message.reply).toHaveBeenCalledWith(`<@1> GAMBA!\n${head} ${head} ${head}`);
+    expect(message.reply).toHaveBeenCalledWith({
+      content: `GAMBA!\n${head} ${head} ${head}`,
+      allowedMentions: { repliedUser: true },
+    });
   });
 
   it('does nothing in DMs', async () => {
@@ -103,7 +109,9 @@ describe('?gamba', () => {
 
     await vi.waitFor(() => expect(message.reply).toHaveBeenCalledTimes(1), { timeout: 2000 });
     expect(message.member?.roles.add).toHaveBeenCalledWith('1561827731400822845', 'gamba jackpot');
-    expect(message.reply.mock.calls[0]?.[0]).toMatch(/\nJACKPOT! You won <@&1561827731400822845>$/);
+    expect(message.reply.mock.calls[0]?.[0]?.content).toMatch(
+      /\nJACKPOT! You won <@&1561827731400822845>$/,
+    );
   });
 
   it('jackpot still replies when the role cannot be assigned', async () => {
@@ -117,7 +125,9 @@ describe('?gamba', () => {
     client.emit(Events.MessageCreate, message as never);
 
     await vi.waitFor(() => expect(message.reply).toHaveBeenCalledTimes(1), { timeout: 2000 });
-    expect(message.reply.mock.calls[0]?.[0]).toMatch(/ \(couldn't assign the role, tell a mod\)$/);
+    expect(message.reply.mock.calls[0]?.[0]?.content).toMatch(
+      / \(couldn't assign the role, tell a mod\)$/,
+    );
   });
 
   it('jackpot with no cached member', async () => {
@@ -127,6 +137,8 @@ describe('?gamba', () => {
     client.emit(Events.MessageCreate, message as never);
 
     await vi.waitFor(() => expect(message.reply).toHaveBeenCalledTimes(1), { timeout: 2000 });
-    expect(message.reply.mock.calls[0]?.[0]).toMatch(/ \(couldn't assign the role, tell a mod\)$/);
+    expect(message.reply.mock.calls[0]?.[0]?.content).toMatch(
+      / \(couldn't assign the role, tell a mod\)$/,
+    );
   });
 });

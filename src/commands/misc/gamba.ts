@@ -21,7 +21,11 @@ export class GambaCommand extends Command {
     const jackpot = isJackpot(reels)
       ? { roleAssigned: await this.awardJackpotRole(message) }
       : undefined;
-    await message.reply(formatGambaReply(message.author.toString(), reels, jackpot));
+    // Ping the user being replied to; the role mention in the jackpot line stays suppressed.
+    await message.reply({
+      content: formatGambaReply(reels, jackpot),
+      allowedMentions: { repliedUser: true },
+    });
   }
 
   private async awardJackpotRole(message: Message): Promise<boolean> {
