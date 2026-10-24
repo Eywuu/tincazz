@@ -1,4 +1,5 @@
 import { accents, card, coins, discordTime } from '../ui/index.js';
+import type { AdminAction } from './admin.js';
 import type { BailoutResult } from './bailout.js';
 import { bailout } from './config.js';
 import type { DailyResult } from './daily.js';
@@ -49,4 +50,17 @@ export function claimErrorText(error: unknown): string | undefined {
     return `You already took a bailout. Next one ${discordTime(error.availableAt)}.`;
   }
   return undefined;
+}
+
+export function adminCard(
+  action: AdminAction,
+  userId: string,
+  result: { amount: number; balance: number },
+  reason: string,
+) {
+  const line =
+    action === 'give'
+      ? `Gave **${coins(result.amount)}** coins to <@${userId}>. New balance: ${coins(result.balance)}.`
+      : `Took **${coins(result.amount)}** coins from <@${userId}>. New balance: ${coins(result.balance)}.`;
+  return card(accents.brand, line, `-# Reason: ${reason}`);
 }
