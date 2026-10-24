@@ -2,9 +2,11 @@ import crypto from 'node:crypto';
 import { syncBuiltinESMExports } from 'node:module';
 import { container } from '@sapphire/framework';
 import { Events } from 'discord.js';
-import { afterEach, beforeAll, describe, expect, it, vi } from 'vitest';
+import { afterEach, beforeAll, beforeEach, describe, expect, it, vi } from 'vitest';
 import { createClient } from '../src/client.js';
 import { openDatabase } from '../src/db/index.js';
+import { spins } from '../src/db/schema.js';
+import { findWallet } from '../src/features/economy/index.js';
 import { testEnv } from './support/env.js';
 
 // Sapphire loads the command with Node's native loader, so vi.mock cannot reach it. Patch the real
@@ -61,9 +63,12 @@ describe('?gamba', () => {
   let client: ReturnType<typeof buildClient>;
 
   beforeAll(async () => {
-    container.db = openDatabase(':memory:');
     client = buildClient();
     await client.stores.load();
+  });
+
+  beforeEach(() => {
+    container.db = openDatabase(':memory:');
   });
 
   afterEach(() => {
@@ -95,7 +100,7 @@ describe('?gamba', () => {
       timeout: 2000,
     });
     expect(message.spinReply).toHaveBeenCalledWith({
-      content: '<@1> won!\n`Odds: 1 in 343`',
+      content: '<@1> won!\n+50 coins (balance: 1,050)\n`Odds: 1 in 343`',
       allowedMentions: { users: ['1'] },
     });
     expect(message.reply.mock.invocationCallOrder[0]).toBeLessThan(
@@ -113,7 +118,7 @@ describe('?gamba', () => {
       timeout: 2000,
     });
     expect(message.spinReply.mock.calls[0]?.[0]).toEqual({
-      content: `<@1> won!\n\`Odds: 1 in 1,158\`\n${gif}`,
+      content: `<@1> won!\n+500 coins (balance: 1,500)\n\`Odds: 1 in 1,158\`\n${gif}`,
       allowedMentions: { users: ['1'] },
     });
     expect(message.member?.roles.add).not.toHaveBeenCalled();
@@ -171,7 +176,7 @@ describe('?gamba', () => {
       timeout: 2000,
     });
     expect(message.spinReply.mock.calls[0]?.[0]).toEqual({
-      content: `<@1> won!\nYou are a pro! You just won <@&1561827731400822845>\n\`Odds: 1 in 9,261\`\n${gif}`,
+      content: `<@1> won!\nYou are a pro! You just won <@&1561827731400822845>\n+2,500 coins (balance: 3,500)\n\`Odds: 1 in 9,261\`\n${gif}`,
       allowedMentions: { users: ['1'] },
     });
   });
@@ -191,7 +196,7 @@ describe('?gamba', () => {
     });
     expect(message.reply).toHaveBeenCalledTimes(1);
     expect(message.spinReply.mock.calls[0]?.[0]).toEqual({
-      content: `<@1> won!\nYou are a pro! You just won <@&1561827731400822845> (couldn't assign the role, tell a mod)\n\`Odds: 1 in 9,261\`\n${gif}`,
+      content: `<@1> won!\nYou are a pro! You just won <@&1561827731400822845> (couldn't assign the role, tell a mod)\n+2,500 coins (balance: 3,500)\n\`Odds: 1 in 9,261\`\n${gif}`,
       allowedMentions: { users: ['1'] },
     });
   });
@@ -207,8 +212,35 @@ describe('?gamba', () => {
     });
     expect(message.reply).toHaveBeenCalledTimes(1);
     expect(message.spinReply.mock.calls[0]?.[0]).toEqual({
-      content: `<@1> won!\nYou are a pro! You just won <@&1561827731400822845> (couldn't assign the role, tell a mod)\n\`Odds: 1 in 9,261\`\n${gif}`,
+      content: `<@1> won!\nYou are a pro! You just won <@&1561827731400822845> (couldn't assign the role, tell a mod)\n+2,500 coins (balance: 3,500)\n\`Odds: 1 in 9,261\`\n${gif}`,
       allowedMentions: { users: ['1'] },
     });
+  });
+
+  it('keeps the prize and spin when the reels reply fails', async () => {
+    mockRandomInt(0);
+    const message = makeMessage(client, '?gamba', {
+      reply: vi.fn(async () => Promise.reject(new Error('Unknown Message'))),
+    });
+
+    client.emit(Events.MessageCreate, message as never);
+
+    await vi.waitFor(() => expect(message.reply).toHaveBeenCalledTimes(1), { timeout: 2000 });
+    expect(findWallet(container.db, '2', '1')?.balance).toBe(1_050);
+    expect(container.db.select().from(spins).all()).toHaveLength(1);
+  });
+
+  it('keeps the jackpot prize when the role cannot be assigned', async () => {
+    mockRandomInt(20);
+    const message = makeMessage(client, '?gamba', {
+      member: {
+        roles: { add: vi.fn(async () => Promise.reject(new Error('Missing Permissions'))) },
+      },
+    });
+
+    client.emit(Events.MessageCreate, message as never);
+
+    await vi.waitFor(() => expect(message.spinReply).toHaveBeenCalledTimes(1), { timeout: 2000 });
+    expect(findWallet(container.db, '2', '1')?.balance).toBe(3_500);
   });
 });

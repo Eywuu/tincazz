@@ -4,8 +4,7 @@ import {
   formatGambaFollowUp,
   formatGambaReply,
   gambaJackpotRoleId,
-  isJackpot,
-  spinGamba,
+  playFree,
 } from '../../features/gamba/index.js';
 
 export class GambaCommand extends Command {
@@ -18,10 +17,17 @@ export class GambaCommand extends Command {
   }
 
   public override async messageRun(message: Message) {
-    const reels = spinGamba();
-    const jackpot = isJackpot(reels)
-      ? { roleAssigned: await this.awardJackpotRole(message) }
-      : undefined;
+    // Settled first: the prize, spin row and stats stand even if anything below fails.
+    const { reels, evaluation, prize, balance } = playFree(
+      this.container.db,
+      message.guildId as string,
+      message.author.id,
+      Date.now(),
+    );
+    const jackpot =
+      evaluation.result === 'jackpot'
+        ? { roleAssigned: await this.awardJackpotRole(message) }
+        : undefined;
     // Ping the user being replied to. The announcement replies to this message so the winning roll
     // stays visible, and pings only the winner (the role renders as a mention without pinging).
     const spin = await message.reply({
@@ -29,7 +35,12 @@ export class GambaCommand extends Command {
       allowedMentions: { repliedUser: true },
     });
 
-    const followUp = formatGambaFollowUp(message.author.toString(), reels, jackpot);
+    const followUp = formatGambaFollowUp(
+      message.author.toString(),
+      reels,
+      { amount: prize, balance },
+      jackpot,
+    );
     if (followUp) {
       await spin.reply({ content: followUp, allowedMentions: { users: [message.author.id] } });
     }

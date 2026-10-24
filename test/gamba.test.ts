@@ -92,30 +92,33 @@ describe('formatGambaFollowUp', () => {
   const python = 'python';
   const cpp = ['cpp', 'cpp', 'cpp'] as const;
   const gif = 'https://klipy.com/gifs/smol-smolcat-5';
+  const prize = (amount: number, balance: number) => ({ amount, balance });
 
   it('congratulates any three of a kind and shows the odds', () => {
-    expect(formatGambaFollowUp('<@1>', [yt, yt, yt])).toBe('<@1> won!\n`Odds: 1 in 343`');
+    expect(formatGambaFollowUp('<@1>', [yt, yt, yt], prize(50, 1_050))).toBe(
+      '<@1> won!\n+50 coins (balance: 1,050)\n`Odds: 1 in 343`',
+    );
   });
 
   it('is undefined when the reels differ', () => {
-    expect(formatGambaFollowUp('<@1>', [yt, yt, 'cpp'])).toBeUndefined();
+    expect(formatGambaFollowUp('<@1>', [yt, yt, 'cpp'], prize(0, 1_000))).toBeUndefined();
   });
 
   it('adds the gif for three pythons', () => {
-    expect(formatGambaFollowUp('<@1>', [python, python, python])).toBe(
-      `<@1> won!\n\`Odds: 1 in 1,158\`\n${gif}`,
+    expect(formatGambaFollowUp('<@1>', [python, python, python], prize(500, 1_500))).toBe(
+      `<@1> won!\n+500 coins (balance: 1,500)\n\`Odds: 1 in 1,158\`\n${gif}`,
     );
   });
 
   it('tells a cpp winner they are a pro and adds the gif', () => {
-    expect(formatGambaFollowUp('<@1>', cpp, { roleAssigned: true })).toBe(
-      `<@1> won!\nYou are a pro! You just won <@&1561827731400822845>\n\`Odds: 1 in 9,261\`\n${gif}`,
+    expect(formatGambaFollowUp('<@1>', cpp, prize(2_500, 3_500), { roleAssigned: true })).toBe(
+      `<@1> won!\nYou are a pro! You just won <@&1561827731400822845>\n+2,500 coins (balance: 3,500)\n\`Odds: 1 in 9,261\`\n${gif}`,
     );
   });
 
   it('notes when the pro role could not be assigned', () => {
-    expect(formatGambaFollowUp('<@1>', cpp, { roleAssigned: false })).toBe(
-      `<@1> won!\nYou are a pro! You just won <@&1561827731400822845> (couldn't assign the role, tell a mod)\n\`Odds: 1 in 9,261\`\n${gif}`,
+    expect(formatGambaFollowUp('<@1>', cpp, prize(2_500, 3_500), { roleAssigned: false })).toBe(
+      `<@1> won!\nYou are a pro! You just won <@&1561827731400822845> (couldn't assign the role, tell a mod)\n+2,500 coins (balance: 3,500)\n\`Odds: 1 in 9,261\`\n${gif}`,
     );
   });
 });
