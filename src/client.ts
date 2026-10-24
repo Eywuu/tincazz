@@ -16,6 +16,8 @@ const logLevels: Record<Env['LOG_LEVEL'], LogLevel> = {
 export function createClient(env: Env) {
   const client = new SapphireClient({
     defaultPrefix: env.COMMAND_PREFIX,
+    // Required for prefix commands: this loads the listeners that turn messages into command runs.
+    loadMessageCommandListeners: true,
     logger: { level: logLevels[env.LOG_LEVEL] },
     intents: [
       GatewayIntentBits.Guilds,
