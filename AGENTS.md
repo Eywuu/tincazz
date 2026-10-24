@@ -17,14 +17,15 @@ into a large, feature-rich bot, so structure and conventions matter more than sp
 
 ## Commands
 
-| Command          | Purpose                                         |
-| ---------------- | ----------------------------------------------- |
-| `pnpm dev`       | Run with reload (`tsx watch`), loads `.env`     |
-| `pnpm build`     | Compile `src/` to `dist/`                       |
-| `pnpm start`     | Run the compiled bot                            |
-| `pnpm lint`      | Biome lint + format check (`lint:fix` to apply) |
-| `pnpm typecheck` | `tsc --noEmit` over `src/` and `test/`          |
-| `pnpm test`      | Run Vitest                                      |
+| Command            | Purpose                                              |
+| ------------------ | ---------------------------------------------------- |
+| `pnpm dev`         | Run with reload (`tsx watch`), loads `.env`          |
+| `pnpm build`       | Compile `src/` to `dist/`                            |
+| `pnpm start`       | Run the compiled bot                                 |
+| `pnpm lint`        | Biome lint + format check (`lint:fix` to apply)      |
+| `pnpm typecheck`   | `tsc --noEmit` over `src/` and `test/`               |
+| `pnpm test`        | Run Vitest                                           |
+| `pnpm db:generate` | Generate a Drizzle migration from `src/db/schema.ts` |
 
 Before considering any change done, `pnpm lint && pnpm typecheck && pnpm test && pnpm build`
 must pass. CI runs exactly these.
@@ -36,16 +37,29 @@ src/
   index.ts        entry point: parse env, create client, log in, handle shutdown
   client.ts       builds the SapphireClient (intents, logger, mention policy, piece path)
   config/env.ts   zod schema for environment variables
+  db/             SQLite schema (Drizzle) and `openDatabase`, exposed as `container.db`
   commands/       one file per command, grouped in folders by category
   features/       plain feature logic, one folder per feature (not auto-loaded)
   listeners/      one file per Discord/Sapphire event listener
+drizzle/          generated SQL migrations, committed and shipped in the image
 test/             Vitest tests
 .github/          CI, image publishing and Dependabot configuration
 ```
 
 Sapphire loads every file under `commands/` and `listeners/` automatically (and would do the same
 for `preconditions/`, `interaction-handlers/`, `arguments/` if added). Do not register pieces by
-hand. Pieces export a class extending `Command`, `Listener`, etc.
+hand. Pieces export a class extending `Command`, `Listener`, etc. `interaction-handlers/` arrives
+in phase 3 of the gamba economy.
+
+## Database
+
+- SQLite through better-sqlite3 and Drizzle. Migrations from `drizzle/` are applied on startup.
+- Change `src/db/schema.ts`, then run `pnpm db:generate --name <change>` and commit both. CI fails
+  when the schema and the migrations drift apart.
+- Coin amounts and timestamps (epoch milliseconds, UTC) are integers.
+- Tests use `openDatabase(':memory:')` and assign `container.db`.
+- `better-sqlite3` must stay `true` in `allowBuilds` in `pnpm-workspace.yaml`, or its native binary
+  is never built.
 
 ## Discord and Sapphire notes
 
@@ -54,6 +68,8 @@ hand. Pieces export a class extending `Command`, `Listener`, etc.
   guards this.
 - **Mentions are suppressed by default** (`allowedMentions: { parse: [], repliedUser: false }`).
   A command that must ping someone has to opt in explicitly for that message.
+- **Slash commands register to `GUILD_ID` when it is set**, otherwise globally (global updates can
+  take up to an hour). Each command implements `registerApplicationCommands` and `chatInputRun`.
 - **`?gamba` jackpot assigns a role**, so the bot needs the **Manage Roles** permission and its
   highest role must sit above the jackpot role.
 - Prefix commands rely on the privileged **Message Content** intent. Prefer slash commands
@@ -77,7 +93,8 @@ hand. Pieces export a class extending `Command`, `Listener`, etc.
 
 ## CI/CD
 
-- `.github/workflows/ci.yml` runs lint, typecheck, tests and build. It runs on pull requests (which
+- `.github/workflows/ci.yml` runs lint, typecheck, tests, build and a migration drift check
+  (`pnpm db:generate` must leave `drizzle/` unchanged). It runs on pull requests (which
   also build the Docker image without pushing) and is reused by the publish workflow.
 - `.github/workflows/docker.yml` runs on pushes to `main` and `v*` tags. It calls CI first and
   publishes the image to `ghcr.io/cazzwastaken/tincazz` only if CI passes.

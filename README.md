@@ -20,9 +20,13 @@ Requires Node.js 24+ and [pnpm](https://pnpm.io).
 
 ```sh
 pnpm install
-cp .env.example .env   # then set DISCORD_TOKEN
+cp .env.example .env   # then set DISCORD_TOKEN (and GUILD_ID for instant slash commands)
 pnpm dev
 ```
+
+`DATABASE_PATH` (default `./data/tincazz.db`) is the SQLite file; it is created and migrated on
+startup. `GUILD_ID` is optional: when set, slash commands register to that server instantly,
+otherwise they register globally, which can take up to an hour.
 
 `.env` is gitignored. Never commit it. Before opening a PR, run the same checks CI does:
 
@@ -62,6 +66,14 @@ docker compose pull && docker compose up -d
 The container restarts automatically after crashes and reboots (`restart: unless-stopped`). It runs
 as a non-root user with a read-only filesystem and no extra capabilities, and its logs are rotated
 (3 files of 10 MB), so it will not fill the disk.
+
+The SQLite database lives on the `tincazz-data` Docker volume, mounted at `/app/data` (the only
+writable path in the container). To back it up:
+
+```sh
+docker compose exec bot node -e "require('better-sqlite3')('/app/data/tincazz.db').backup('/app/data/backup.db')"
+docker compose cp bot:/app/data/backup.db .
+```
 
 To roll back, set the `image:` tag in `docker-compose.yml` to an earlier build (every image is also
 tagged `sha-<commit>`, and `v*` git tags publish versioned images), then run
