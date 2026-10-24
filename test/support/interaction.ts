@@ -94,3 +94,21 @@ export function makeButton(
     followUp: vi.fn(async (_options: unknown) => undefined),
   };
 }
+
+export interface SelectOptions extends ButtonOptions {
+  values: string[];
+}
+
+/** An interaction stub for a string select menu choice. */
+export function makeSelect(
+  client: ReturnType<typeof createClient>,
+  { values, ...options }: SelectOptions,
+) {
+  return {
+    ...makeButton(client, options),
+    isButton: () => false,
+    isStringSelectMenu: () => true,
+    isAnySelectMenu: () => true,
+    values,
+  };
+}
