@@ -1,6 +1,7 @@
 import { existsSync, mkdtempSync, rmSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
+import { container } from '@sapphire/framework';
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 import { closeDatabase, openDatabase } from '../src/db/index.js';
 import { ledger, playerStats, pots, spins, wallets } from '../src/db/schema.js';
@@ -14,6 +15,12 @@ describe('database', () => {
 
   afterEach(() => {
     rmSync(dir, { recursive: true });
+  });
+
+  it('is reachable from the Sapphire container', () => {
+    container.db = openDatabase(':memory:');
+
+    expect(container.db.select().from(pots).all()).toEqual([]);
   });
 
   it('applies migrations to a fresh in-memory database', () => {

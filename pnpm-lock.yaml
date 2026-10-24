@@ -211,6 +211,9 @@ importers:
       '@sapphire/framework':
         specifier: ^5.5.1
         version: 5.5.1
+      '@sapphire/pieces':
+        specifier: ^4.4.1
+        version: 4.4.1
       better-sqlite3:
         specifier: ^13.0.3
         version: 13.0.3

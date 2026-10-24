@@ -28,3 +28,9 @@ export function openDatabase(path: string): Db {
 export function closeDatabase(db: Db): void {
   db.$client.close();
 }
+
+declare module '@sapphire/pieces' {
+  interface Container {
+    db: Db;
+  }
+}

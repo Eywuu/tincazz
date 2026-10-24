@@ -21,6 +21,7 @@
   },
   "dependencies": {
     "@sapphire/framework": "^5.5.1",
+    "@sapphire/pieces": "^4.4.1",
     "better-sqlite3": "^13.0.3",
     "discord.js": "^14.27.0",
     "drizzle-orm": "^0.45.4",
