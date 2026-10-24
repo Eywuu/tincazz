@@ -11,6 +11,7 @@ import {
   adminCard,
   admin as adminConfig,
   botsHaveNoWallets,
+  ecoNeedsManageServer,
   InsufficientFundsError,
 } from '../../features/economy/index.js';
 import { cardReply, coins, errorReply } from '../../features/ui/index.js';
@@ -53,6 +54,11 @@ export class EcoCommand extends Command {
   }
 
   public override async chatInputRun(interaction: ChatInputCommandInteraction) {
+    // The default member permission can be widened in Server Settings -> Integrations; coins only
+    // move for members who really have Manage Server.
+    if (!interaction.memberPermissions?.has(PermissionFlagsBits.ManageGuild)) {
+      return interaction.reply(errorReply(ecoNeedsManageServer));
+    }
     const action = interaction.options.getSubcommand() as AdminAction;
     const user = interaction.options.getUser('user', true);
     const amount = interaction.options.getInteger('amount', true);

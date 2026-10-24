@@ -1,3 +1,4 @@
+import { PermissionsBitField } from 'discord.js';
 import { vi } from 'vitest';
 import type { createClient } from '../../src/client.js';
 
@@ -7,6 +8,8 @@ export interface ChatInputOptions {
   guildId?: string;
   options?: Record<string, unknown>;
   subcommand?: string;
+  /** The invoking member's permission bits in the channel (default: all). */
+  permissions?: bigint;
 }
 
 export function makeUser(id: string, bot = false) {
@@ -21,7 +24,14 @@ export function makeUser(id: string, bot = false) {
 /** An interaction stub for slash commands, in the style of the `/ping` test. */
 export function makeChatInput(
   client: ReturnType<typeof createClient>,
-  { commandName, userId, guildId = '2', options = {}, subcommand }: ChatInputOptions,
+  {
+    commandName,
+    userId,
+    guildId = '2',
+    options = {},
+    subcommand,
+    permissions = PermissionsBitField.All,
+  }: ChatInputOptions,
 ) {
   const announce = vi.fn(async () => ({}));
   return {
@@ -41,6 +51,7 @@ export function makeChatInput(
     guildId,
     channelId: '3',
     user: makeUser(userId),
+    memberPermissions: new PermissionsBitField(permissions),
     replied: false,
     deferred: false,
     options: {
