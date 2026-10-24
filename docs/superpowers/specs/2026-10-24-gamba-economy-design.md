@@ -53,6 +53,8 @@ A "pair" is exactly two equal reels; the odd reel is ignored.
 
 ### Free spin
 
+> Superseded: free spins were removed by the [coinflip design](2026-10-24-coinflip-economy-design.md).
+
 `?gamba` / `/gamba` with no bet. Pairs pay nothing.
 
 | Result    | Prize                      |

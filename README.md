@@ -8,9 +8,13 @@ Currently implemented:
 - `?gamba [bet]` / `/gamba bet:<bet>`: wagered spins with a progressive pot (see below).
   `?gamba` is the classic plain-text reply, `/gamba` the polished card with buttons; both share the
   same economy
+- `/coinflip bot|challenge|open [bet] [side]`: flip a coin against the bot, challenge a member
+  (60 seconds to accept) or open a flip anyone can accept (120 seconds). Bets are gamba's (10 to
+  10,000, default 10). The winner takes the pool minus a 3% rake (at least 1 coin) that goes into
+  the gamba pot; against the bot a win nets the bet minus the rake and a loss costs the bet
 - `/balance`, `/daily`, `/bailout`: your coins, the daily streak and a bailout when broke
 - `/stats [user]`: a player profile with spins, win rate, biggest win, net profit and daily streak
-- `/leaderboard [category]`: the top 10 by `coins`, `biggest-win`, `jackpots`, `profit` or `spins`; only
+- `/leaderboard [category]`: the top 10 by `coins`, `biggest-win`, `jackpots`, `profit`, `spins` or `coinflip`; only
   the person who ran it can use its category select and Previous/Next buttons
 - chat rewards: a few coins for chatting, at most once a minute
 - `/eco give|take`: moderators adjust coins (Manage Server)
