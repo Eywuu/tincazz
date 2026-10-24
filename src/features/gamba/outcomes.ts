@@ -17,9 +17,6 @@ export interface GambaOutcome {
   weight: number;
 }
 
-// Shown with python and cpp wins.
-export const gambaWinGif = 'https://klipy.com/gifs/smol-smolcat-5';
-
 export const gambaJackpotRoleId = '1561827731400822845';
 
 // Weights sum to 21: six yt emojis at 3 each, python at 2, cpp at 1.

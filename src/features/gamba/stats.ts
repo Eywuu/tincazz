@@ -35,3 +35,42 @@ export function recordFreeSpinStats(
     })
     .run();
 }
+
+/** Counts a wagered spin in `player_stats`, including the wager columns. */
+export function recordWagerSpinStats(
+  tx: DbOrTx,
+  guildId: string,
+  userId: string,
+  spin: { evaluation: Evaluation; bet: number; payout: number; potWon: number },
+): void {
+  const { evaluation, bet } = spin;
+  const total = spin.payout + spin.potWon;
+  const win = total > 0 ? 1 : 0;
+  const jackpot = evaluation.result === 'jackpot' ? 1 : 0;
+  const odds = evaluation.odds ?? 0;
+  tx.insert(playerStats)
+    .values({
+      guildId,
+      userId,
+      spins: 1,
+      wins: win,
+      jackpots: jackpot,
+      wagered: bet,
+      won: total,
+      biggestWin: total,
+      bestOdds: odds,
+    })
+    .onConflictDoUpdate({
+      target: [playerStats.guildId, playerStats.userId],
+      set: {
+        spins: sql`${playerStats.spins} + 1`,
+        wins: sql`${playerStats.wins} + ${win}`,
+        jackpots: sql`${playerStats.jackpots} + ${jackpot}`,
+        wagered: sql`${playerStats.wagered} + ${bet}`,
+        won: sql`${playerStats.won} + ${total}`,
+        biggestWin: sql`max(${playerStats.biggestWin}, ${total})`,
+        bestOdds: sql`max(${playerStats.bestOdds}, ${odds})`,
+      },
+    })
+    .run();
+}

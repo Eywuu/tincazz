@@ -1,22 +1,31 @@
-import {
-  gambaJackpotRoleId,
-  gambaOutcomes,
-  gambaWinGif,
-  type OutcomeKey,
-  outcomeEmoji,
-} from './outcomes.js';
+import { gambaJackpotRoleId, gambaOutcomes, type OutcomeKey } from './outcomes.js';
+import type { FreeSpin, WagerSpin } from './play.js';
 import { type RandomInt, rollOutcome } from './roll.js';
 
+export { InvalidBetError, parseBet } from './bet.js';
+export {
+  announcementCard,
+  freeSpinCard,
+  notYourSpin,
+  spinErrorText,
+  tierLabels,
+  wagerCard,
+} from './cards.js';
+export {
+  decodeSpinId,
+  encodeSpinId,
+  type SpinAction,
+  type SpinButtonId,
+} from './custom-ids.js';
 export type { Evaluation } from './evaluate.js';
 export { evaluate } from './evaluate.js';
-export { type FreeSpin, playFree } from './play.js';
+export { assignJackpotRole, type JackpotMember } from './jackpot.js';
+export { type FreeSpin, playFree, playWager, type WagerSpin } from './play.js';
+export { type SpinMessages, type SpinRequest, spin } from './spin.js';
+export type Spin = FreeSpin | WagerSpin;
 export { gambaJackpotRoleId };
 
 export type Reels = readonly [OutcomeKey, OutcomeKey, OutcomeKey];
-
-export interface JackpotResult {
-  roleAssigned: boolean;
-}
 
 export function spinGamba(randomInt?: RandomInt): Reels {
   const spin = () => rollOutcome(gambaOutcomes, randomInt).key;
@@ -39,39 +48,4 @@ export function threeOfAKindOdds(reels: Reels): number | undefined {
   }
   const total = gambaOutcomes.reduce((sum, { weight }) => sum + weight, 0);
   return Math.round((total / outcome.weight) ** 3);
-}
-
-export function formatGambaReply(reels: Reels): string {
-  return reels.map(outcomeEmoji).join(' ');
-}
-
-/**
- * The message sent right after the reels, or undefined when there is no win (three of a kind).
- * Every win says so and shows the odds; python and cpp wins add a gif, and a cpp (jackpot) win
- * tells the winner they are a pro and which role they got.
- */
-export function formatGambaFollowUp(
-  userMention: string,
-  reels: Reels,
-  prize: { amount: number; balance: number },
-  jackpot?: JackpotResult,
-): string | undefined {
-  const odds = threeOfAKindOdds(reels);
-  if (odds === undefined) {
-    return undefined;
-  }
-
-  const lines = [`${userMention} won!`];
-  if (jackpot) {
-    const note = jackpot.roleAssigned ? '' : " (couldn't assign the role, tell a mod)";
-    lines.push(`You are a pro! You just won <@&${gambaJackpotRoleId}>${note}`);
-  }
-  lines.push(
-    `+${prize.amount.toLocaleString('en-US')} coins (balance: ${prize.balance.toLocaleString('en-US')})`,
-  );
-  lines.push(`\`Odds: 1 in ${odds.toLocaleString('en-US')}\``);
-  if (reels[0] === 'python' || reels[0] === 'cpp') {
-    lines.push(gambaWinGif);
-  }
-  return lines.join('\n');
 }
