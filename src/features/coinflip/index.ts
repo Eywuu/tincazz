@@ -1,3 +1,17 @@
+export {
+  botFlipCard,
+  type ChallengeClosedReason,
+  type ChallengeView,
+  cannotChallengeBot,
+  cannotChallengeSelf,
+  challengeCard,
+  challengeClosedCard,
+  challengeResultCard,
+  challengeTaken,
+  flipErrorText,
+  notYourChallenge,
+  notYourFlip,
+} from './cards.js';
 export { clearChallenges, reopen, scheduleExpiry, tryClose } from './challenges.js';
 export { coinflip } from './config.js';
 export {
