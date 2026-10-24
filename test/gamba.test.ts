@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import {
-  formatGambaOdds,
+  formatGambaFollowUp,
   formatGambaReply,
   isJackpot,
   spinGamba,
@@ -37,26 +37,8 @@ describe('spinGamba', () => {
 });
 
 describe('formatGambaReply', () => {
-  const reels = ['a', 'b', 'c'] as const;
-
-  it('formats a normal spin as just the reels', () => {
-    expect(formatGambaReply('<@1>', reels)).toBe('a b c');
-  });
-
-  it('formats a jackpot', () => {
-    expect(formatGambaReply('<@1>', reels, { roleAssigned: true })).toBe(
-      'a b c\nJACKPOT! <@1> just won <@&1561827731400822845>',
-    );
-  });
-
-  it('formats a jackpot without the role', () => {
-    expect(formatGambaReply('<@1>', reels, { roleAssigned: false })).toBe(
-      "a b c\nJACKPOT! <@1> just won <@&1561827731400822845> (couldn't assign the role, tell a mod)",
-    );
-  });
-
-  it('leaves the odds to the follow-up message', () => {
-    expect(formatGambaReply('<@1>', [cppEmoji, cppEmoji, cppEmoji])).not.toContain('Odds');
+  it('is just the reels', () => {
+    expect(formatGambaReply(['a', 'b', 'c'])).toBe('a b c');
   });
 });
 
@@ -95,18 +77,27 @@ describe('threeOfAKindOdds', () => {
   });
 });
 
-describe('formatGambaOdds', () => {
+describe('formatGambaFollowUp', () => {
   const yt = '<:gamba4Head:1202741378161840239>';
+  const cpp = [cppEmoji, cppEmoji, cppEmoji] as const;
 
   it('formats the odds of three of a kind as inline code', () => {
-    expect(formatGambaOdds([yt, yt, yt])).toBe('`Odds: 1 in 343`');
-  });
-
-  it('uses thousands separators', () => {
-    expect(formatGambaOdds([cppEmoji, cppEmoji, cppEmoji])).toBe('`Odds: 1 in 9,261`');
+    expect(formatGambaFollowUp('<@1>', [yt, yt, yt])).toBe('`Odds: 1 in 343`');
   });
 
   it('is undefined when the reels differ', () => {
-    expect(formatGambaOdds([yt, yt, cppEmoji])).toBeUndefined();
+    expect(formatGambaFollowUp('<@1>', [yt, yt, cppEmoji])).toBeUndefined();
+  });
+
+  it('announces a jackpot winner above the odds', () => {
+    expect(formatGambaFollowUp('<@1>', cpp, { roleAssigned: true })).toBe(
+      '<@1> just won <@&1561827731400822845>\n`Odds: 1 in 9,261`',
+    );
+  });
+
+  it('notes when the jackpot role could not be assigned', () => {
+    expect(formatGambaFollowUp('<@1>', cpp, { roleAssigned: false })).toBe(
+      "<@1> just won <@&1561827731400822845> (couldn't assign the role, tell a mod)\n`Odds: 1 in 9,261`",
+    );
   });
 });

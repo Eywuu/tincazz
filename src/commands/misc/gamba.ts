@@ -1,7 +1,7 @@
 import { Command, CommandOptionsRunTypeEnum } from '@sapphire/framework';
 import type { Message } from 'discord.js';
 import {
-  formatGambaOdds,
+  formatGambaFollowUp,
   formatGambaReply,
   gambaJackpotRoleId,
   isJackpot,
@@ -22,15 +22,16 @@ export class GambaCommand extends Command {
     const jackpot = isJackpot(reels)
       ? { roleAssigned: await this.awardJackpotRole(message) }
       : undefined;
-    // Ping the user being replied to; the role mention in the jackpot line stays suppressed.
+    // Ping the user being replied to. The follow-up sends with the client default (no mentions), so
+    // the user and role in the jackpot announcement render as mentions without pinging anyone.
     await message.reply({
-      content: formatGambaReply(message.author.toString(), reels, jackpot),
+      content: formatGambaReply(reels),
       allowedMentions: { repliedUser: true },
     });
 
-    const odds = formatGambaOdds(reels);
-    if (odds && message.channel.isSendable()) {
-      await message.channel.send(odds);
+    const followUp = formatGambaFollowUp(message.author.toString(), reels, jackpot);
+    if (followUp && message.channel.isSendable()) {
+      await message.channel.send(followUp);
     }
   }
 

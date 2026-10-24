@@ -15,6 +15,7 @@ function mockRandomInt(...values: number[]) {
 }
 
 const head = '<:gamba4Head:1202741378161840239>';
+const cpp = '<:cpp:1226477956541448194>';
 
 function buildClient() {
   return createClient({ DISCORD_TOKEN: 'x', COMMAND_PREFIX: '?', LOG_LEVEL: 'error' });
@@ -140,14 +141,12 @@ describe('?gamba', () => {
 
     await vi.waitFor(() => expect(message.reply).toHaveBeenCalledTimes(1), { timeout: 2000 });
     expect(message.member?.roles.add).toHaveBeenCalledWith('1561827731400822845', 'gamba jackpot');
-    expect(message.reply.mock.calls[0]?.[0]?.content).toMatch(
-      /\nJACKPOT! <@1> just won <@&1561827731400822845>$/,
-    );
-    await vi.waitFor(
-      () => expect(message.channel.send).toHaveBeenCalledWith('`Odds: 1 in 9,261`'),
-      {
-        timeout: 2000,
-      },
+    expect(message.reply.mock.calls[0]?.[0]?.content).toBe(`${cpp} ${cpp} ${cpp}`);
+    await vi.waitFor(() => expect(message.channel.send).toHaveBeenCalledTimes(1), {
+      timeout: 2000,
+    });
+    expect(message.channel.send).toHaveBeenCalledWith(
+      '<@1> just won <@&1561827731400822845>\n`Odds: 1 in 9,261`',
     );
   });
 
@@ -161,9 +160,12 @@ describe('?gamba', () => {
 
     client.emit(Events.MessageCreate, message as never);
 
-    await vi.waitFor(() => expect(message.reply).toHaveBeenCalledTimes(1), { timeout: 2000 });
-    expect(message.reply.mock.calls[0]?.[0]?.content).toMatch(
-      / \(couldn't assign the role, tell a mod\)$/,
+    await vi.waitFor(() => expect(message.channel.send).toHaveBeenCalledTimes(1), {
+      timeout: 2000,
+    });
+    expect(message.reply).toHaveBeenCalledTimes(1);
+    expect(message.channel.send).toHaveBeenCalledWith(
+      "<@1> just won <@&1561827731400822845> (couldn't assign the role, tell a mod)\n`Odds: 1 in 9,261`",
     );
   });
 
@@ -173,9 +175,12 @@ describe('?gamba', () => {
 
     client.emit(Events.MessageCreate, message as never);
 
-    await vi.waitFor(() => expect(message.reply).toHaveBeenCalledTimes(1), { timeout: 2000 });
-    expect(message.reply.mock.calls[0]?.[0]?.content).toMatch(
-      / \(couldn't assign the role, tell a mod\)$/,
+    await vi.waitFor(() => expect(message.channel.send).toHaveBeenCalledTimes(1), {
+      timeout: 2000,
+    });
+    expect(message.reply).toHaveBeenCalledTimes(1);
+    expect(message.channel.send).toHaveBeenCalledWith(
+      "<@1> just won <@&1561827731400822845> (couldn't assign the role, tell a mod)\n`Odds: 1 in 9,261`",
     );
   });
 });
