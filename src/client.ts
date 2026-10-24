@@ -19,6 +19,8 @@ export function createClient(env: Env) {
     // Required for prefix commands: this loads the listeners that turn messages into command runs.
     loadMessageCommandListeners: true,
     logger: { level: logLevels[env.LOG_LEVEL] },
+    // Never ping anyone by default; a command that needs to must opt in per message.
+    allowedMentions: { parse: [], repliedUser: false },
     intents: [
       GatewayIntentBits.Guilds,
       GatewayIntentBits.GuildMessages,

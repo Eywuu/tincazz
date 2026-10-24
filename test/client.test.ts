@@ -19,4 +19,10 @@ describe('createClient', () => {
     // Without loadMessageCommandListeners, Sapphire never turns messages into command runs.
     expect([...client.stores.get('listeners').keys()]).toContain('CoreMessageCreate');
   });
+
+  it('does not ping anyone by default', () => {
+    const client = createClient(env);
+
+    expect(client.options.allowedMentions).toEqual({ parse: [], repliedUser: false });
+  });
 });
