@@ -8,6 +8,20 @@ import {
 import { type RandomInt, rollOutcome } from './roll.js';
 
 export { InvalidBetError, parseBet } from './bet.js';
+export {
+  announcementCard,
+  freeSpinCard,
+  notYourSpin,
+  spinErrorText,
+  tierLabels,
+  wagerCard,
+} from './cards.js';
+export {
+  decodeSpinId,
+  encodeSpinId,
+  type SpinAction,
+  type SpinButtonId,
+} from './custom-ids.js';
 export type { Evaluation } from './evaluate.js';
 export { evaluate } from './evaluate.js';
 
