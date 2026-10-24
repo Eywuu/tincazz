@@ -174,7 +174,7 @@ in `cards.ts` files, so they can be tested through `toJSON()`.
 | Command                              | Card                                                                                                                              |
 | ------------------------------------ | --------------------------------------------------------------------------------------------------------------------------------- |
 | `?gamba`, `/gamba`                   | Free spin: reels, prize on a win, balance. Button: Spin again                                                                     |
-| `?gamba <bet>`, `/gamba bet:<bet>`   | Wager: reels, bet -> payout and profit, result name and multiplier, balance, pot. Buttons: Spin again, Double                     |
+| `?gamba <bet>`, `/gamba bet:<bet>`   | Wager: reels, bet -> payout and profit, result name and multiplier, balance, pot. Buttons: Spin again, Double (when valid)        |
 | `/balance [user]`                    | Balance and coins rank                                                                                                            |
 | `/daily`                             | Amount, streak, next reset countdown                                                                                              |
 | `/bailout`                           | Amount, or when it is next available                                                                                              |
@@ -188,8 +188,13 @@ Rows with a value of 0 are left out. Ties are ordered by user ID.
 ### Buttons and selects
 
 State lives in the custom ID, so components survive bot restarts:
-- `gamba:again:<userId>:<bet>` (bet 0 = free) and `gamba:double:<userId>:<bet>`. They edit the
-  card in place (`interaction.update`), so repeated spins do not flood the channel.
+- `gamba:again:<userId>:<bet>` (bet 0 = free) and `gamba:double:<userId>:<bet>`. The ID carries
+  the bet that will be played, so a Double ID already holds `2 * bet`. They edit the card in place
+  (`interaction.update`), so repeated spins do not flood the channel.
+- Double starts a new wagered spin at twice the bet. The button is only shown when `2 * bet` is at
+  most the maximum bet and at most the balance after the spin. If the balance changes before the
+  click, the usual insufficient-funds error is returned and the card is left as it is.
+- IDs that do not decode (unknown prefix, non-numeric or out-of-range bet) are ignored.
 - `lb:page:<ownerId>:<category>:<page>` and `lb:cat:<ownerId>`. They edit the leaderboard in place.
 - Only the user in the ID may use the component. Anyone else gets an ephemeral "use `/gamba` (or
   `/leaderboard`) to get your own".
@@ -198,8 +203,13 @@ State lives in the custom ID, so components survive bot restarts:
 
 Any triple, free or wagered, also posts a separate gold card replying to the result card. It
 mentions the winner with `allowedMentions: { users: [winnerId] }`, the prize, the odds, the role
-for cpp x3, the pot win if any, and the win gif for python and cpp. The win stays visible even
-after the result card is re-spun.
+for cpp x3 and the pot win if any. The win stays visible even after the result card is re-spun.
+For button spins it replies to the card message.
+
+Announcements are the only gamba messages that ping. Result cards never ping, including `?gamba`
+replies (today's `repliedUser: true` ping goes away).
+
+There is no win gif: the klipy link only works through link unfurling, which cards do not do.
 
 ### Errors
 
@@ -218,7 +228,8 @@ src/
     schema.ts       Drizzle tables
   features/
     economy/        wallets, ledger, daily, bailout, chat, admin, errors, config
-    gamba/          outcomes, roll, payouts, pot, bet parsing, play, cards, config
+    gamba/          outcomes, roll, payouts, pot, bet parsing, play, spin flow, custom IDs,
+                    jackpot role, cards, config
     leaderboard/    queries, cards
   commands/
     misc/gamba.ts   messageRun + chatInputRun (thin)
@@ -235,6 +246,14 @@ drizzle/            generated SQL migrations, committed, copied into the image
 - `index.ts` opens the database before login and exposes it as `container.db` (Sapphire container
   augmentation), and closes it on shutdown. Tests set `container.db` to a `:memory:` database.
 - Commands, handlers and listeners stay thin: parse input, call a feature function, render a card.
+- `?gamba`, `/gamba` and the gamba buttons share one flow in `features/gamba`:
+  `spin(db, request, now, { assignJackpotRole })` settles the spin, calls the role callback on
+  cpp x3 after the commit, and returns `{ card, announcement? }`. Each entry point only delivers
+  the messages (reply, or update plus a reply to the card) and passes a role callback for its own
+  kind of member. `spinErrorText(error)` turns expected errors (invalid bet, insufficient funds)
+  into card text; anything else is rethrown to the error listener.
+- In `playWager` the pot contribution is added before a pot win is computed, so the winner also
+  takes their own contribution.
 - New env vars, added to the zod schema and `.env.example` together:
   - `DATABASE_PATH`, default `./data/tincazz.db`.
   - `GUILD_ID`, optional. When set, application commands register to that guild, so updates are
@@ -259,7 +278,8 @@ drizzle/            generated SQL migrations, committed, copied into the image
 - Invalid input (bet, amount) is rejected before any transaction.
 - An error inside a transaction rolls back completely: no half-applied bet, prize or pot change.
 - If the database commits but the Discord reply fails, the result stands and is logged. The player
-  can see it in `/balance` and `/stats`.
+  can see it in `/balance` and `/stats`. A failed announcement never undoes or hides the result
+  card.
 - Role assignment failures behave as today: log a warning, show "(couldn't assign the role, tell a
   mod)".
 - If migrations fail or the database cannot be opened, the bot exits with a fatal log before
@@ -292,7 +312,7 @@ Vitest, no network, `:memory:` databases.
   - free spin;
   - a wager win and a loss;
   - insufficient funds;
-  - Spin again by the owner and by someone else;
+  - Spin again by the owner and by someone else, and Double;
   - the jackpot role;
   - an invalid bet;
   - the leaderboard paging owner check.
@@ -313,11 +333,6 @@ passing.
 3. **Gamba v2**: payouts, bet parsing, pot, wagered spins, `/gamba`, gamba Components V2 cards,
    Spin again and Double buttons, announcements.
 4. **Stats and leaderboards**: `/stats`, `/leaderboard` with select and paging.
-
-## Open items
-
-- Win gif: the current value is a klipy page URL that only works through link unfurling. Cards
-  need a direct `.gif` URL. If none is supplied before phase 3, the gif is dropped from cards.
 
 ## Out of scope
 
