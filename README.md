@@ -105,7 +105,9 @@ On the VPS, create a dedicated `deploy` user in the `docker` group with the comp
 command="cd ~/tincazz && docker compose pull && docker compose up -d && docker image prune -f",restrict ssh-ed25519 AAAA... tincazz-ci
 ```
 
-A leaked key can then do nothing except redeploy. The job does not update `docker-compose.yml` or
+Set the private key secret from the file so its formatting survives
+(`gh secret set VPS_SSH_KEY --env production < <path-to-private-key>`). A leaked key can then do
+nothing except redeploy. The job does not update `docker-compose.yml` or
 `.env` on the server.
 
 ### Manual update

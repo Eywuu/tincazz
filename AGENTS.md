@@ -113,12 +113,36 @@ ID (see `features/gamba/custom-ids.ts`), so handlers must ignore IDs they cannot
   also build the Docker image without pushing) and is reused by the publish workflow.
 - `.github/workflows/docker.yml` runs on pushes to `main` and `v*` tags. It calls CI first and
   publishes the image to `ghcr.io/cazzwastaken/tincazz` only if CI passes.
+- The `deploy` job in `docker.yml` runs after `publish`, only for pushes to `main` (not tags or
+  PRs), in the `production` GitHub environment. It SSHes into the VPS, which pulls the new image
+  and restarts the bot. See "Deploys" below.
 - Dependabot opens weekly PRs for npm, GitHub Actions and the Docker base image, using
   conventional prefixes (`chore(deps)`, `ci(deps)`, `build(deps)`).
 - Node major versions are ignored by Dependabot and upgraded by hand, only to LTS releases (update
   `.node-version`, `package.json` engines and the Dockerfile together). Newer images can drop tools
   the Dockerfile relies on: `node:25` no longer ships corepack, so `corepack enable` fails there.
 - Do not merge a PR with failing checks.
+
+## Deploys
+
+- Secrets live in the `production` GitHub environment, never in the repo: `VPS_HOST`, `VPS_USER`,
+  `VPS_SSH_KEY` (private key), `VPS_KNOWN_HOSTS` (`ssh-keyscan -t ed25519` output, the first field
+  must match `VPS_HOST`). Do not add real hosts, usernames, IPs or keys to docs, workflows or logs.
+- The server key is pinned in `authorized_keys` to a forced command (`docker compose pull`, `up -d`,
+  `image prune`) with `restrict`. The command passed to `ssh` in the workflow is therefore ignored, and
+  CI cannot run extra steps (such as a health check) over that key. To add one, extend the
+  server-side command instead, not the workflow.
+- CI does not update `docker-compose.yml` or `.env` on the server. Changes to either are a manual
+  step on the VPS. Deploys do not roll back on their own.
+- Set `VPS_SSH_KEY` from the key file so formatting survives, never by pasting into the web UI:
+  `gh secret set VPS_SSH_KEY --env production < <path-to-private-key>`.
+- Troubleshooting a failed deploy job (`gh run view <id> --log-failed`):
+  - `error in libcrypto` followed by `Permission denied (publickey,password)`: the
+    `VPS_SSH_KEY` secret is malformed. Re-set it as above.
+  - `Host key verification failed`: `VPS_KNOWN_HOSTS` is stale or does not match `VPS_HOST`.
+  - `Permission denied (publickey)` with a valid key: check ownership and modes of the deploy
+    user's home, `~/.ssh` (700) and `authorized_keys` (600) on the server.
+- Secret values never appear in the logs, but never `echo` them or enable shell tracing in the job.
 
 ## Git rules
 
