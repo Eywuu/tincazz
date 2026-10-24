@@ -91,6 +91,9 @@ To update to the latest version:
 docker compose pull && docker compose up -d
 ```
 
+`docker compose pull` only updates the image. When a release changes `docker-compose.yml`, fetch the
+new file too (the same `curl` as in the setup above) before running `up -d`.
+
 The container restarts automatically after crashes and reboots (`restart: unless-stopped`). It runs
 as a non-root user with a read-only filesystem and no extra capabilities, and its logs are rotated
 (3 files of 10 MB), so it will not fill the disk.
@@ -102,6 +105,12 @@ writable path in the container). To back it up:
 docker compose exec bot node -e "require('better-sqlite3')('/app/data/tincazz.db').backup('/app/data/backup.db')"
 docker compose cp bot:/app/data/backup.db .
 ```
+
+If the bot restarts in a loop with `SqliteError: unable to open database file`
+(`SQLITE_CANTOPEN`), the container has no writable `/app/data`. The usual cause is an outdated
+`docker-compose.yml` without the `tincazz-data` volume: check that `docker compose config` lists it
+under `volumes`, replace the file with the current one and run `docker compose up -d`. Also make sure
+`DATABASE_PATH` in `.env` is unset or points inside `/app/data`.
 
 To roll back, set the `image:` tag in `docker-compose.yml` to an earlier build (every image is also
 tagged `sha-<commit>`, and `v*` git tags publish versioned images), then run
