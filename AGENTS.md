@@ -45,6 +45,8 @@ src/
     economy/      wallets and ledger; the only code that changes balances
     gamba/        spin logic, odds and payouts, the pot, bet parsing, result cards and the
                   shared `spin()` flow used by commands and buttons
+    presence/     the bot's rotating status (live pot, last jackpot, spins today), started from
+                  the ready listener
     stats/        read-only profile and leaderboard queries, `lb:*` custom IDs and cards
     ui/           shared Components V2 card helpers
   interaction-handlers/  one file per component handler (gamba buttons, leaderboard
