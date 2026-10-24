@@ -131,7 +131,9 @@ integers. Timestamps are integer milliseconds since the epoch (UTC).
   - `biggest_win`: the largest single-spin payout plus pot win, or prize for free spins.
   - `best_odds`: the largest N in "1 in N" among triples hit.
 - Indexes: `ledger (guild_id, user_id, id)`, `spins (guild_id, user_id)`, and one per leaderboard
-  sort column on `player_stats` / `wallets` (guild_id first).
+  sort column on `player_stats` / `wallets` (guild_id first). `profit` is the expression
+  `won - wagered` and has no index: one guild's table is small, and an index would mean a migration
+  for no measurable gain.
 - Invariant: for every wallet, `balance` equals the sum of its ledger `delta`s.
 
 ## Economy API
@@ -183,7 +185,24 @@ in `cards.ts` files, so they can be tested through `toJSON()`.
 | `/eco give\|take user amount reason` | Ephemeral confirmation. `default_member_permissions` = Manage Server                                                              |
 
 Leaderboard categories: `coins` (wallet balance), `biggest-win`, `jackpots`, `profit`, `spins`.
-Rows with a value of 0 are left out. Ties are ordered by user ID.
+Only rows with a value above 0 are listed (so a negative profit never shows). Ties are ordered by
+numeric user ID, the same rule `/balance` uses for its rank.
+
+`/stats` details:
+- The rank is the coins rank, the same number `/balance` shows.
+- Win rate is `wins / spins` with one decimal; with 0 spins it, like best odds, shows `—`.
+- The daily streak shows 0 once it is broken (the last claim was before yesterday, UTC), even
+  though the stored value only resets on the next claim.
+- `/stats` for yourself creates your wallet, like `/balance`. For someone without a wallet it
+  says they have not played yet. Bots get the usual "Bots don't have wallets." error.
+
+`/leaderboard` details:
+- Public reply, 10 rows per page. Ranks continue across pages; medals only for ranks 1 to 3.
+- The last line is the caller's rank and value, or a note that they are not on this board yet.
+  The leaderboard never creates wallets.
+- The category select switches to page 1 of the chosen category. Previous/Next are hidden when
+  there is only one page and disabled at either end.
+- A page past the end (the board shrank since the card was drawn) shows the last page.
 
 ### Buttons and selects
 
@@ -195,7 +214,9 @@ State lives in the custom ID, so components survive bot restarts:
   most the maximum bet and at most the balance after the spin. If the balance changes before the
   click, the usual insufficient-funds error is returned and the card is left as it is.
 - IDs that do not decode (unknown prefix, non-numeric or out-of-range bet) are ignored.
-- `lb:page:<ownerId>:<category>:<page>` and `lb:cat:<ownerId>`. They edit the leaderboard in place.
+- `lb:page:<ownerId>:<category>:<page>` (page counted from 0) and `lb:cat:<ownerId>` (the category
+  comes from the selected value). They edit the leaderboard in place. An unknown category or a
+  malformed page is ignored like any other undecodable ID.
 - Only the user in the ID may use the component. Anyone else gets an ephemeral "use `/gamba` (or
   `/leaderboard`) to get your own".
 
@@ -230,7 +251,7 @@ src/
     economy/        wallets, ledger, daily, bailout, chat, admin, errors, config
     gamba/          outcomes, roll, payouts, pot, bet parsing, play, spin flow, custom IDs,
                     jackpot role, cards, config
-    leaderboard/    queries, cards
+    stats/          player profile and leaderboard queries, custom IDs, cards
   commands/
     misc/gamba.ts   messageRun + chatInputRun (thin)
     economy/        balance, daily, bailout, eco
