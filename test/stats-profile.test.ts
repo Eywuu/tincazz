@@ -1,5 +1,6 @@
 import { beforeEach, describe, expect, it } from 'vitest';
 import { type Db, openDatabase } from '../src/db/index.js';
+import { settleBotFlip } from '../src/features/coinflip/index.js';
 import {
   claimDaily,
   coinsRank,
@@ -41,6 +42,10 @@ describe('playerProfile', () => {
       won: 0,
       biggestWin: 0,
       bestOdds: 0,
+      flips: 0,
+      flipWins: 0,
+      flipWagered: 0,
+      flipWon: 0,
     });
   });
 
@@ -56,6 +61,16 @@ describe('playerProfile', () => {
       won: 150,
       balance: findWallet(db, '2', '1')?.balance,
       rank: coinsRank(db, '2', '1'),
+    });
+  });
+
+  it('reflects coinflips', () => {
+    settleBotFlip(db, { guildId: '2', userId: '1', bet: '100', side: 'heads' }, 5, () => 0);
+    expect(playerProfile(db, '2', '1', 10)).toMatchObject({
+      flips: 1,
+      flipWins: 1,
+      flipWagered: 100,
+      flipWon: 194,
     });
   });
 

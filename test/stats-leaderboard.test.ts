@@ -63,6 +63,17 @@ describe('leaderboardPage', () => {
     expect(leaderboardRank(db, '2', 'profit', '2')).toBeUndefined();
   });
 
+  it('ranks coinflip as won minus wagered and hides zero or negative', () => {
+    addStats('1', { flipWon: 194, flipWagered: 100 });
+    addStats('2', { flipWon: 0, flipWagered: 100 });
+    addStats('3', { flipWon: 0, flipWagered: 0 });
+    expect(leaderboardPage(db, '2', 'coinflip', 0).rows).toEqual([
+      { userId: '1', value: 94, rank: 1 },
+    ]);
+    expect(leaderboardRank(db, '2', 'coinflip', '1')).toEqual({ rank: 1, value: 94 });
+    expect(leaderboardRank(db, '2', 'coinflip', '2')).toBeUndefined();
+  });
+
   it.each([
     ['biggest-win', { biggestWin: 40 }],
     ['jackpots', { jackpots: 3 }],
@@ -91,6 +102,7 @@ describe('leaderboardPage', () => {
 describe('isLeaderboardCategory', () => {
   it('accepts categories only', () => {
     expect(isLeaderboardCategory('profit')).toBe(true);
+    expect(isLeaderboardCategory('coinflip')).toBe(true);
     expect(isLeaderboardCategory('gold')).toBe(false);
   });
 });

@@ -14,6 +14,10 @@ export interface PlayerProfile {
   won: number;
   biggestWin: number;
   bestOdds: number;
+  flips: number;
+  flipWins: number;
+  flipWagered: number;
+  flipWon: number;
 }
 
 /** Undefined without a wallet. A missing `player_stats` row reads as zeros. */
@@ -45,5 +49,9 @@ export function playerProfile(
     won: stats?.won ?? 0,
     biggestWin: stats?.biggestWin ?? 0,
     bestOdds: stats?.bestOdds ?? 0,
+    flips: stats?.flips ?? 0,
+    flipWins: stats?.flipWins ?? 0,
+    flipWagered: stats?.flipWagered ?? 0,
+    flipWon: stats?.flipWon ?? 0,
   };
 }
