@@ -1,0 +1,174 @@
+import fc from 'fast-check';
+import { describe, expect, it } from 'vitest';
+import { wager } from '../src/features/gamba/config.js';
+import { decodeSpinId, encodeSpinId, type SpinButtonId } from '../src/features/gamba/index.js';
+import {
+  decodeLeaderboardId,
+  encodeCategoryId,
+  encodePageId,
+  type LeaderboardId,
+  leaderboardCategories,
+} from '../src/features/stats/index.js';
+
+const snowflake = fc.stringMatching(/^[0-9]{1,20}$/);
+const validBet = fc.integer({ min: wager.minBet, max: wager.maxBet });
+
+const spinId: fc.Arbitrary<SpinButtonId> = fc.oneof(
+  fc.record({
+    action: fc.constant('again' as const),
+    userId: snowflake,
+    bet: fc.oneof(fc.constant(0), validBet),
+  }),
+  fc.record({ action: fc.constant('double' as const), userId: snowflake, bet: validBet }),
+);
+
+const leaderboardId: fc.Arbitrary<LeaderboardId> = fc.oneof(
+  fc.record({
+    kind: fc.constant('page' as const),
+    ownerId: snowflake,
+    category: fc.constantFrom(...leaderboardCategories),
+    page: fc.integer({ min: 0, max: 999_999 }),
+  }),
+  fc.record({ kind: fc.constant('cat' as const), ownerId: snowflake }),
+);
+
+function encodeLeaderboardId(id: LeaderboardId): string {
+  return id.kind === 'page'
+    ? encodePageId(id.ownerId, id.category, id.page)
+    : encodeCategoryId(id.ownerId);
+}
+
+// Values that slip past naive number checks: signs, exponents, hex, whitespace, non-ASCII digits.
+const nastyToken = fc.oneof(
+  fc.constantFrom(
+    '',
+    '-1',
+    '+10',
+    '1e3',
+    '0x10',
+    '10.0',
+    ' 10',
+    '10 ',
+    'NaN',
+    'Infinity',
+    '１０',
+    '١٠',
+    '9'.repeat(25),
+    '0'.repeat(30),
+    'again',
+    'double',
+    'gamba',
+    'lb',
+    'page',
+    'cat',
+    'coins',
+    '__proto__',
+    'constructor',
+  ),
+  fc.string({ unit: 'binary', maxLength: 8 }),
+);
+
+/** Replaces, inserts or drops one `:`-separated part of a valid ID. */
+function mutated(valid: fc.Arbitrary<string>): fc.Arbitrary<string> {
+  return fc
+    .tuple(valid, fc.nat(), nastyToken, fc.constantFrom('replace', 'insert', 'drop'))
+    .map(([id, index, token, edit]) => {
+      const parts = id.split(':');
+      const at = index % parts.length;
+      if (edit === 'replace') parts[at] = token;
+      else if (edit === 'insert') parts.splice(at, 0, token);
+      else parts.splice(at, 1);
+      return parts.join(':');
+    });
+}
+
+const anySpinIdString = fc.oneof(
+  fc.string({ unit: 'binary', maxLength: 100 }),
+  mutated(spinId.map(encodeSpinId)),
+);
+const anyLeaderboardIdString = fc.oneof(
+  fc.string({ unit: 'binary', maxLength: 100 }),
+  mutated(leaderboardId.map(encodeLeaderboardId)),
+);
+
+function expectValidSpinId(id: SpinButtonId): void {
+  expect(['again', 'double']).toContain(id.action);
+  expect(id.userId).toMatch(/^[0-9]{1,20}$/);
+  expect(Number.isSafeInteger(id.bet)).toBe(true);
+  if (id.bet === 0) {
+    expect(id.action).toBe('again');
+  } else {
+    expect(id.bet).toBeGreaterThanOrEqual(wager.minBet);
+    expect(id.bet).toBeLessThanOrEqual(wager.maxBet);
+  }
+}
+
+function expectValidLeaderboardId(id: LeaderboardId): void {
+  expect(id.ownerId).toMatch(/^[0-9]{1,20}$/);
+  if (id.kind === 'page') {
+    expect(leaderboardCategories).toContain(id.category);
+    expect(Number.isSafeInteger(id.page)).toBe(true);
+    expect(id.page).toBeGreaterThanOrEqual(0);
+    expect(id.page).toBeLessThanOrEqual(999_999);
+  }
+}
+
+describe('spin button id fuzz', () => {
+  it('round trips every valid id', () => {
+    fc.assert(
+      fc.property(spinId, (id) => {
+        expect(decodeSpinId(encodeSpinId(id))).toEqual(id);
+      }),
+    );
+  });
+
+  it('decodes anything only to a valid id, and decoding is stable', () => {
+    fc.assert(
+      fc.property(anySpinIdString, (customId) => {
+        const id = decodeSpinId(customId);
+        if (id === undefined) return;
+        expectValidSpinId(id);
+        expect(decodeSpinId(encodeSpinId(id))).toEqual(id);
+      }),
+      { numRuns: 2000 },
+    );
+  });
+
+  it('never claims a leaderboard id', () => {
+    fc.assert(
+      fc.property(leaderboardId, (id) => {
+        expect(decodeSpinId(encodeLeaderboardId(id))).toBeUndefined();
+      }),
+    );
+  });
+});
+
+describe('leaderboard id fuzz', () => {
+  it('round trips every valid id', () => {
+    fc.assert(
+      fc.property(leaderboardId, (id) => {
+        expect(decodeLeaderboardId(encodeLeaderboardId(id))).toEqual(id);
+      }),
+    );
+  });
+
+  it('decodes anything only to a valid id, and decoding is stable', () => {
+    fc.assert(
+      fc.property(anyLeaderboardIdString, (customId) => {
+        const id = decodeLeaderboardId(customId);
+        if (id === undefined) return;
+        expectValidLeaderboardId(id);
+        expect(decodeLeaderboardId(encodeLeaderboardId(id))).toEqual(id);
+      }),
+      { numRuns: 2000 },
+    );
+  });
+
+  it('never claims a spin button id', () => {
+    fc.assert(
+      fc.property(spinId, (id) => {
+        expect(decodeLeaderboardId(encodeSpinId(id))).toBeUndefined();
+      }),
+    );
+  });
+});
