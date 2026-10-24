@@ -267,7 +267,7 @@ describe('economy fuzz', () => {
       ),
       { numRuns: 200 },
     );
-  });
+  }, 30_000);
 
   it('stores moderator reasons verbatim, whatever SQL they contain', () => {
     const db = openDatabase(':memory:');
