@@ -5,7 +5,9 @@ Sapphire framework.
 
 Currently implemented:
 - `?ping` / `/ping`: the bot's latency
-- `?gamba [bet]` / `/gamba bet:<bet>`: free spins, or wagered spins with a progressive pot (see below)
+- `?gamba [bet]` / `/gamba bet:<bet>`: free spins, or wagered spins with a progressive pot (see below).
+  `?gamba` is the classic plain-text reply, `/gamba` the polished card with buttons; both share the
+  same economy
 - `/balance`, `/daily`, `/bailout`: your coins, the daily streak and a bailout when broke
 - `/stats [user]`: a player profile with spins, win rate, biggest win, net profit and daily streak
 - `/leaderboard [category]`: the top 10 by `coins`, `biggest-win`, `jackpots`, `profit` or `spins`; only
@@ -32,7 +34,8 @@ Every wagered spin adds 3% of the bet (at least 1 coin) to a shared pot. A wager
 wins the pot: all of it at bets of 500 or more, a proportional share below that. The pot starts at
 10,000 coins and never resets below that.
 
-Every result card has a **Spin again** button (same bet; a free spin repeats as a free spin).
+`?gamba` replies to you with the reels (plus a follow-up on a win), with no buttons. Every `/gamba`
+result card has a **Spin again** button (same bet; a free spin repeats as a free spin).
 Wagered cards also get **Double (N)**, shown only when twice the bet is at most 10,000 and at
 most your balance after the spin. Only the player can use the buttons.
 
