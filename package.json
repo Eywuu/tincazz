@@ -3,6 +3,7 @@
   "version": "0.1.0",
   "description": "Discord bot for managing the cazzwastaken community server",
   "private": true,
+  "license": "GPL-3.0-only",
   "type": "module",
   "packageManager": "pnpm@12.15.0",
   "engines": {
