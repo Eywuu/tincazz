@@ -37,6 +37,7 @@ src/
   client.ts       builds the SapphireClient (intents, logger, mention policy, piece path)
   config/env.ts   zod schema for environment variables
   commands/       one file per command, grouped in folders by category
+  features/       plain feature logic, one folder per feature (not auto-loaded)
   listeners/      one file per Discord/Sapphire event listener
 test/             Vitest tests
 .github/          CI, image publishing and Dependabot configuration
@@ -53,6 +54,8 @@ hand. Pieces export a class extending `Command`, `Listener`, etc.
   guards this.
 - **Mentions are suppressed by default** (`allowedMentions: { parse: [], repliedUser: false }`).
   A command that must ping someone has to opt in explicitly for that message.
+- **`?gamba` jackpot assigns a role**, so the bot needs the **Manage Roles** permission and its
+  highest role must sit above the jackpot role.
 - Prefix commands rely on the privileged **Message Content** intent. Prefer slash commands
   (`chatInputRun`) for new user-facing features, and add a gateway intent only when a feature needs
   it.
@@ -62,6 +65,9 @@ hand. Pieces export a class extending `Command`, `Listener`, etc.
 - Use `.js` extensions in relative imports (NodeNext ESM), and `import type` for type-only imports.
 - Read configuration only through `parseEnv` in `src/config/env.ts`. Add new variables to the zod
   schema **and** to `.env.example` in the same commit. Do not read `process.env` elsewhere.
+- Feature logic goes in `src/features/<name>/` with an `index.ts` public surface; commands and
+  listeners stay thin and call into it. Game/feature config (emojis, odds, role IDs) lives in the
+  feature folder.
 - Log through `this.container.logger` / `client.logger`, not `console`.
 - Keep logic that can be tested without Discord in plain functions and cover it with Vitest.
 - New behavior and bug fixes come with tests in `test/`. To test a command end to end, build the
