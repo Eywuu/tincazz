@@ -13,7 +13,7 @@ into a large, feature-rich bot, so structure and conventions matter more than sp
 - [discord.js](https://discord.js.org) on top of the [Sapphire framework](https://www.sapphirejs.dev)
 - [zod](https://zod.dev) for validating configuration
 - pnpm, [Biome](https://biomejs.dev) (lint + format), [Vitest](https://vitest.dev)
-- Docker + GitHub Actions (CI, image published to GHCR)
+- Docker + GitHub Actions (CI, image published to GHCR), Dependabot for dependency updates
 
 ## Commands
 
@@ -34,16 +34,28 @@ must pass. CI runs exactly these.
 ```
 src/
   index.ts        entry point: parse env, create client, log in, handle shutdown
-  client.ts       builds the SapphireClient (intents, logger, piece path)
+  client.ts       builds the SapphireClient (intents, logger, mention policy, piece path)
   config/env.ts   zod schema for environment variables
   commands/       one file per command, grouped in folders by category
   listeners/      one file per Discord/Sapphire event listener
 test/             Vitest tests
+.github/          CI, image publishing and Dependabot configuration
 ```
 
 Sapphire loads every file under `commands/` and `listeners/` automatically (and would do the same
 for `preconditions/`, `interaction-handlers/`, `arguments/` if added). Do not register pieces by
 hand. Pieces export a class extending `Command`, `Listener`, etc.
+
+## Discord and Sapphire notes
+
+- **Prefix commands need `loadMessageCommandListeners: true`** in `src/client.ts`. Without it the
+  bot receives messages but never runs a command, and nothing is logged. Do not remove it. A test
+  guards this.
+- **Mentions are suppressed by default** (`allowedMentions: { parse: [], repliedUser: false }`).
+  A command that must ping someone has to opt in explicitly for that message.
+- Prefix commands rely on the privileged **Message Content** intent. Prefer slash commands
+  (`chatInputRun`) for new user-facing features, and add a gateway intent only when a feature needs
+  it.
 
 ## Conventions
 
@@ -52,7 +64,20 @@ hand. Pieces export a class extending `Command`, `Listener`, etc.
   schema **and** to `.env.example` in the same commit. Do not read `process.env` elsewhere.
 - Log through `this.container.logger` / `client.logger`, not `console`.
 - Keep logic that can be tested without Discord in plain functions and cover it with Vitest.
+- New behavior and bug fixes come with tests in `test/`. To test a command end to end, build the
+  client with `createClient`, load the stores, emit `Events.MessageCreate` with a stubbed message
+  and assert on the replies (see `test/ping.test.ts`). No network or real token is needed.
 - Add dependencies with `pnpm add` (no hand-edited versions). Keep `pnpm-lock.yaml` committed.
+
+## CI/CD
+
+- `.github/workflows/ci.yml` runs lint, typecheck, tests and build. It runs on pull requests (which
+  also build the Docker image without pushing) and is reused by the publish workflow.
+- `.github/workflows/docker.yml` runs on pushes to `main` and `v*` tags. It calls CI first and
+  publishes the image to `ghcr.io/cazzwastaken/tincazz` only if CI passes.
+- Dependabot opens weekly PRs for npm, GitHub Actions and the Docker base image, using
+  conventional prefixes (`chore(deps)`, `ci(deps)`, `build(deps)`).
+- Do not merge a PR with failing checks.
 
 ## Git rules
 
