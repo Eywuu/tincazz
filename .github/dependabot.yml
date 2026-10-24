@@ -23,3 +23,8 @@ updates:
       interval: weekly
     commit-message:
       prefix: "build(deps)"
+    # Node majors are upgraded by hand, and only to LTS releases: newer images can drop tools the
+    # Dockerfile relies on (node:25 no longer ships corepack).
+    ignore:
+      - dependency-name: node
+        update-types: ["version-update:semver-major"]

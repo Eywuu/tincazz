@@ -77,6 +77,9 @@ hand. Pieces export a class extending `Command`, `Listener`, etc.
   publishes the image to `ghcr.io/cazzwastaken/tincazz` only if CI passes.
 - Dependabot opens weekly PRs for npm, GitHub Actions and the Docker base image, using
   conventional prefixes (`chore(deps)`, `ci(deps)`, `build(deps)`).
+- Node major versions are ignored by Dependabot and upgraded by hand, only to LTS releases (update
+  `.node-version`, `package.json` engines and the Dockerfile together). Newer images can drop tools
+  the Dockerfile relies on: `node:25` no longer ships corepack, so `corepack enable` fails there.
 - Do not merge a PR with failing checks.
 
 ## Git rules
