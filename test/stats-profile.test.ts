@@ -49,8 +49,8 @@ describe('playerProfile', () => {
     playWager(db, '2', '1', 100, 20, roll(0, 3, 6));
     expect(playerProfile(db, '2', '1', 30)).toMatchObject({
       spins: 2,
-      wins: 1,
-      biggestWin: 50,
+      wins: 0,
+      biggestWin: 0,
       bestOdds: 343,
       wagered: 100,
       won: 0,

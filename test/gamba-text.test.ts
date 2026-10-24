@@ -8,12 +8,11 @@ import {
   type Spin,
 } from '../src/features/gamba/index.js';
 
-const free = (reels: Reels, prize = 0): Spin => ({
+const free = (reels: Reels): Spin => ({
   mode: 'free',
   reels,
   evaluation: evaluate(reels),
-  prize,
-  balance: 1_000 + prize,
+  balance: 1_000,
   spinId: 1,
 });
 
@@ -49,14 +48,15 @@ describe('formatGambaFollowUp', () => {
   });
 
   it('announces a free triple with odds and no gif', () => {
-    const text = formatGambaFollowUp('<@1>', free(['head', 'head', 'head'], 50));
-    expect(text).toContain('<@1> won! +50 coins (balance: 1,050)');
+    const text = formatGambaFollowUp('<@1>', free(['head', 'head', 'head']));
+    expect(text).toContain('<@1> hit three of a kind!');
+    expect(text).not.toContain('coins');
     expect(text).toContain('`Odds: 1 in');
     expect(text).not.toContain('klipy');
   });
 
   it('adds the gif for python and the pot win and role for a jackpot', () => {
-    expect(formatGambaFollowUp('<@1>', free(['python', 'python', 'python'], 500))).toContain(
+    expect(formatGambaFollowUp('<@1>', free(['python', 'python', 'python']))).toContain(
       'klipy.com',
     );
     const text = formatGambaFollowUp('<@1>', wager(['cpp', 'cpp', 'cpp'], 30_000, 10_000), false);

@@ -106,7 +106,7 @@ describe('gamba', () => {
       });
 
       expect(message.spinReply.mock.calls[0]?.[0]).toMatchObject({
-        content: expect.stringContaining('<@1> won! +50 coins (balance: 1,050)'),
+        content: expect.stringContaining('<@1> hit three of a kind!'),
         allowedMentions: { users: ['1'] },
       });
       expect(message.reply.mock.invocationCallOrder[0]).toBeLessThan(
@@ -198,7 +198,7 @@ describe('gamba', () => {
       });
 
       expect(json(message.spinReply.mock.calls[0])).toContain("couldn't assign the role");
-      expect(findWallet(container.db, '2', '1')?.balance).toBe(3_500);
+      expect(findWallet(container.db, '2', '1')?.balance).toBe(1_000);
     });
 
     it('jackpot with no cached member', async () => {
@@ -211,7 +211,7 @@ describe('gamba', () => {
       expect(json(message.spinReply.mock.calls[0])).toContain("couldn't assign the role");
     });
 
-    it('keeps the roll and prize when the follow-up fails', async () => {
+    it('keeps the roll when the follow-up fails', async () => {
       mockRandomInt(0);
       const error = vi.spyOn(container.logger, 'error').mockImplementation(() => undefined);
       const spinReply = vi.fn(async () => Promise.reject(new Error('Unknown Message')));
@@ -223,7 +223,7 @@ describe('gamba', () => {
       await vi.waitFor(() => expect(error).toHaveBeenCalled(), { timeout: 2000 });
 
       expect(message.reply).toHaveBeenCalledTimes(1);
-      expect(findWallet(container.db, '2', '1')?.balance).toBe(1_050);
+      expect(findWallet(container.db, '2', '1')?.balance).toBe(1_000);
     });
   });
 

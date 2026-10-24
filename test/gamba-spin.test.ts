@@ -32,6 +32,19 @@ describe('spin', () => {
     expect(assignJackpotRole).not.toHaveBeenCalled();
   });
 
+  it('assigns the role on a free jackpot without paying coins or touching the pot', async () => {
+    const assignJackpotRole = vi.fn(async () => true);
+    const { played, roleAssigned } = await settleSpin(db, request, 1000, {
+      assignJackpotRole,
+      randomInt: draws(20, 20, 20),
+    });
+
+    expect(assignJackpotRole).toHaveBeenCalledTimes(1);
+    expect(roleAssigned).toBe(true);
+    expect(played.balance).toBe(1_000);
+    expect(db.select().from(pots).all()).toEqual([]);
+  });
+
   it('has no announcement on a free loss', async () => {
     const result = await spin(db, request, 1000, {
       assignJackpotRole: async () => true,

@@ -28,21 +28,19 @@ function button(label: string, customId: string, style: ButtonStyle): ButtonBuil
 }
 
 export function freeSpinCard(userId: string, spin: FreeSpin): ContainerBuilder {
-  const accent =
-    spin.evaluation.result === 'jackpot'
-      ? accents.gold
-      : spin.prize > 0
-        ? accents.win
-        : accents.loss;
+  const { result, tier } = spin.evaluation;
+  const accent = result === 'jackpot' ? accents.gold : accents.loss;
   const outcome =
-    spin.prize > 0
-      ? `**${tierLabels[spin.evaluation.tier]}** +${coins(spin.prize)} coins`
-      : 'No prize this time';
+    result === 'jackpot'
+      ? `**${tierLabels[tier]}**`
+      : result === 'triple'
+        ? `**${tierLabels[tier]}** No coins on a free spin, bet to win`
+        : 'Nothing this time';
   return card(
     accent,
     reelsHeading(spin),
     outcome,
-    `-# <@${userId}> · free spin · balance ${coins(spin.balance)}`,
+    `-# <@${userId}> · free spin (jackpot role only, bet to win coins) · balance ${coins(spin.balance)}`,
   ).addActionRowComponents(
     new ActionRowBuilder<ButtonBuilder>().addComponents(
       button('Spin again', encodeSpinId({ action: 'again', userId, bet: 0 }), ButtonStyle.Primary),
@@ -97,11 +95,10 @@ export function announcementCard(
   roleAssigned?: boolean,
 ): ContainerBuilder {
   const emoji = outcomeEmoji(spin.reels[0]);
-  const win =
-    spin.mode === 'free'
-      ? `+${coins(spin.prize)} coins`
-      : `Won ${coins(spin.payout)} on a ${coins(spin.bet)} bet`;
-  const texts = [`## <@${userId}> hit ${emoji} x3!`, win];
+  const texts = [`## <@${userId}> hit ${emoji} x3!`];
+  if (spin.mode === 'wager') {
+    texts.push(`Won ${coins(spin.payout)} on a ${coins(spin.bet)} bet`);
+  }
   if (spin.mode === 'wager' && spin.potWon > 0) {
     texts.push(`+${coins(spin.potWon)} from the pot`);
   }
