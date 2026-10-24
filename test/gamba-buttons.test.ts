@@ -64,7 +64,7 @@ describe('gamba buttons', () => {
     const interaction = await click('gamba:again:1:0');
 
     expect(interaction.update).toHaveBeenCalledTimes(1);
-    expect(json(interaction.update.mock.calls[0])).toContain('Nothing this time');
+    expect(json(interaction.update.mock.calls[0])).toContain('free spin');
     expect(interaction.reply).not.toHaveBeenCalled();
     expect(spinCount()).toBe(1);
   });

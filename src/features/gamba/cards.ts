@@ -28,18 +28,10 @@ function button(label: string, customId: string, style: ButtonStyle): ButtonBuil
 }
 
 export function freeSpinCard(userId: string, spin: FreeSpin): ContainerBuilder {
-  const { result, tier } = spin.evaluation;
-  const accent = result === 'jackpot' ? accents.gold : accents.loss;
-  const outcome =
-    result === 'jackpot'
-      ? `**${tierLabels[tier]}**`
-      : result === 'triple'
-        ? `**${tierLabels[tier]}** No coins on a free spin, bet to win`
-        : 'Nothing this time';
+  const accent = spin.evaluation.result === 'jackpot' ? accents.gold : accents.loss;
   return card(
     accent,
     reelsHeading(spin),
-    outcome,
     `-# <@${userId}> · free spin (jackpot role only, bet to win coins) · balance ${coins(spin.balance)}`,
   ).addActionRowComponents(
     new ActionRowBuilder<ButtonBuilder>().addComponents(

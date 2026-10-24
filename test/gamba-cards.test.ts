@@ -48,7 +48,7 @@ describe('freeSpinCard', () => {
   it('shows a triple without any coins', () => {
     const c = freeSpinCard('1', free(['head', 'head', 'head']));
     expect(accent(c)).toBe(accents.loss);
-    expect(json(c)).toContain('No coins on a free spin');
+    expect(json(c)).toContain('free spin');
     expect(json(c)).not.toContain('+50');
     expect(json(c)).toContain('balance 1,050');
     expect(json(c)).toContain('gamba:again:1:0');
@@ -57,7 +57,7 @@ describe('freeSpinCard', () => {
   it('shows a loss', () => {
     const c = freeSpinCard('1', free(['head', 'cry', 'grr']));
     expect(accent(c)).toBe(accents.loss);
-    expect(json(c)).toContain('Nothing this time');
+    expect(json(c)).not.toContain('Nothing this time');
   });
 
   it('is gold for a jackpot', () => {
