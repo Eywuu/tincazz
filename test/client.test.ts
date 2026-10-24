@@ -4,11 +4,12 @@ import { createClient } from '../src/client.js';
 const env = { DISCORD_TOKEN: 'x', COMMAND_PREFIX: '?', LOG_LEVEL: 'error' } as const;
 
 describe('createClient', () => {
-  it('registers the ping command and ready listener', async () => {
+  it('registers the ping and gamba commands and ready listener', async () => {
     const client = createClient(env);
     await client.stores.load();
 
     expect([...client.stores.get('commands').keys()]).toContain('ping');
+    expect([...client.stores.get('commands').keys()]).toContain('gamba');
     expect([...client.stores.get('listeners').keys()]).toContain('ready');
   });
 
