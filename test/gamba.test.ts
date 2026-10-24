@@ -1,5 +1,10 @@
 import { describe, expect, it } from 'vitest';
-import { formatGambaReply, isJackpot, spinGamba } from '../src/features/gamba/index.js';
+import {
+  formatGambaReply,
+  isJackpot,
+  spinGamba,
+  threeOfAKindOdds,
+} from '../src/features/gamba/index.js';
 import { cppEmoji, gambaOutcomes } from '../src/features/gamba/outcomes.js';
 import { rollOutcome } from '../src/features/gamba/roll.js';
 
@@ -62,5 +67,39 @@ describe('isJackpot', () => {
   it('is false for three yt emojis', () => {
     const yt = '<:gamba4Head:1202741378161840239>';
     expect(isJackpot([yt, yt, yt])).toBe(false);
+  });
+});
+
+describe('threeOfAKindOdds', () => {
+  it('is 1 in 343 for a yt emoji', () => {
+    const yt = '<:gamba4Head:1202741378161840239>';
+    expect(threeOfAKindOdds([yt, yt, yt])).toBe(343);
+  });
+
+  it('is 1 in 1158 for python (9261 / 8, rounded)', () => {
+    const python = '<:python:1226479453039759410>';
+    expect(threeOfAKindOdds([python, python, python])).toBe(1158);
+  });
+
+  it('is 1 in 9261 for cpp', () => {
+    expect(threeOfAKindOdds([cppEmoji, cppEmoji, cppEmoji])).toBe(9261);
+  });
+
+  it('is undefined when the reels differ', () => {
+    expect(threeOfAKindOdds([cppEmoji, cppEmoji, '<:python:1226479453039759410>'])).toBeUndefined();
+  });
+});
+
+describe('formatGambaReply odds', () => {
+  const yt = '<:gamba4Head:1202741378161840239>';
+
+  it('shows the odds for any three of a kind', () => {
+    expect(formatGambaReply([yt, yt, yt])).toBe(`${yt} ${yt} ${yt}\nOdds: 1 in 343`);
+  });
+
+  it('shows the odds above the jackpot line with thousands separators', () => {
+    expect(formatGambaReply([cppEmoji, cppEmoji, cppEmoji], { roleAssigned: true })).toBe(
+      `${cppEmoji} ${cppEmoji} ${cppEmoji}\nOdds: 1 in 9,261\nJACKPOT! You won <@&1561827731400822845>`,
+    );
   });
 });
