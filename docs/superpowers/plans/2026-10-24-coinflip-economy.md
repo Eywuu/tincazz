@@ -52,14 +52,17 @@
 // test/gamba-spin.test.ts
 it('plays a 10-coin wager when no bet is given', async () => {
   const { played } = await settleSpin(db, { guildId: 'g', userId: 'u' }, 10, {
-    assignJackpotRole: async () => true, randomInt: roll(0, 3, 6),
+    assignJackpotRole: async () => true,
+    randomInt: roll(0, 3, 6),
   });
   expect(played.bet).toBe(10);
   expect(findWallet(db, 'g', 'u')?.balance).toBe(startingBalance - 10);
 });
 it('rejects a no-bet spin under 10 coins with a funds error', async () => {
   // drain the wallet to 9 with debit(), then:
-  await expect(settleSpin(db, { guildId: 'g', userId: 'u' }, 10, opts)).rejects.toBeInstanceOf(InsufficientFundsError);
+  await expect(settleSpin(db, { guildId: 'g', userId: 'u' }, 10, opts)).rejects.toBeInstanceOf(
+    InsufficientFundsError,
+  );
 });
 
 // test/gamba-custom-ids.test.ts
@@ -78,23 +81,22 @@ it('ignores an old free-spin button', async () => {
 });
 
 // test/gamba-command.test.ts — replaces 'announces a free triple…'
-it('treats ?gamba with no bet as a 10-coin bet', async () => { /* reply text contains 'bet 10' */ });
+it('treats ?gamba with no bet as a 10-coin bet', async () => {
+  /* reply text contains 'bet 10' */
+});
 ```
 
 - [ ] **Step 2: Run tests to verify they fail**
 
 Run: `pnpm vitest run test/gamba-spin.test.ts test/gamba-custom-ids.test.ts test/gamba-buttons.test.ts test/gamba-command.test.ts`
 Expected: FAIL (`played.bet` is undefined on a free spin; `gamba:again:1:0` decodes).
-
 - [ ] **Step 3: Implement**
 
 `settleSpin` uses `request.bet?.trim() || String(wager.defaultBet)` and always calls `playWager`. Delete the free-spin functions and every `mode === 'free'` branch. `/gamba` option description becomes `'Coins to bet: 10 to 10,000, all, half or 2.5k (default: 10)'`. `decodeSpinId`: any bet outside `[minBet, maxBet]` (including 0) is `undefined`. Delete or convert the remaining free-spin tests (`gamba-play` `playFree` block, `gamba-cards` `freeSpinCard` block and free announcement, `gamba-text` free cases, `gamba-spin` free cases, `stats-profile` `playFree` call → `playWager`), drop the `free` op from `fuzz-economy.test.ts`, and drop `fc.constant(0)` from the `again` arbitrary and the `bet === 0` branch in `fuzz-custom-ids.test.ts`. `test/db.test.ts` keeps its `mode: 'free'` rows (legacy values stay valid).
-
 - [ ] **Step 4: Run the full suite**
 
 Run: `pnpm lint && pnpm typecheck && pnpm test && pnpm build`
 Expected: all pass; `grep -rn "playFree\|FreeSpin\|freeSpinCard\|recordFreeSpinStats" src test` prints nothing.
-
 - [ ] **Step 5: Commit**
 
 ```bash
@@ -126,33 +128,49 @@ wager 10 coins."
 
 ```ts
 it('stores a flip and rejects a second flip for the same message', () => {
-  const row = { guildId: '2', mode: 'open' as const, challengerId: '1', opponentId: '3', bet: 100,
-    challengerSide: 'heads' as const, resultSide: 'tails' as const, winnerId: '3', rake: 6,
-    messageId: 'm1', createdAt: 1 };
+  const row = {
+    guildId: '2',
+    mode: 'open' as const,
+    challengerId: '1',
+    opponentId: '3',
+    bet: 100,
+    challengerSide: 'heads' as const,
+    resultSide: 'tails' as const,
+    winnerId: '3',
+    rake: 6,
+    messageId: 'm1',
+    createdAt: 1,
+  };
   db.insert(flips).values(row).run();
   expect(() => db.insert(flips).values(row).run()).toThrow(/UNIQUE/);
-  db.insert(flips).values({ ...row, mode: 'bot', opponentId: null, messageId: null }).run();
-  db.insert(flips).values({ ...row, mode: 'bot', opponentId: null, messageId: null }).run(); // NULLs don't collide
+  db.insert(flips)
+    .values({ ...row, mode: 'bot', opponentId: null, messageId: null })
+    .run();
+  db.insert(flips)
+    .values({ ...row, mode: 'bot', opponentId: null, messageId: null })
+    .run(); // NULLs don't collide
 });
 it('defaults the coinflip stats columns to zero', () => {
   db.insert(playerStats).values({ guildId: '2', userId: '1' }).run();
-  expect(db.select().from(playerStats).get()).toMatchObject({ flips: 0, flipWins: 0, flipWagered: 0, flipWon: 0 });
+  expect(db.select().from(playerStats).get()).toMatchObject({
+    flips: 0,
+    flipWins: 0,
+    flipWagered: 0,
+    flipWon: 0,
+  });
 });
 ```
 
 - [ ] **Step 2: Run to verify failure**
 
 Run: `pnpm vitest run test/db.test.ts` — Expected: FAIL (`flips` not exported).
-
 - [ ] **Step 3: Edit the schema, then generate**
 
 Run: `pnpm db:generate --name coinflip`
 Expected: `drizzle/0002_coinflip.sql` with `CREATE TABLE flips`, a unique index on `message_id`, the guild/created index and four `ALTER TABLE player_stats ADD` statements.
-
 - [ ] **Step 4: Verify**
 
 Run: `pnpm vitest run test/db.test.ts && pnpm db:generate` — Expected: tests PASS; the second generate reports no changes (`git status drizzle` clean after the new files are added).
-
 - [ ] **Step 5: Commit**
 
 ```bash
@@ -186,8 +204,14 @@ git commit -m "feat(db): add flips table and coinflip stats columns"
 
 ```ts
 // coinflip-rake.test.ts
-it.each([[10, 1], [16, 1], [17, 1], [34, 2], [100, 6], [10_000, 600]])('rake for %i is %i', (bet, rake) =>
-  expect(flipRake(bet)).toBe(rake));
+it.each([
+  [10, 1],
+  [16, 1],
+  [17, 1],
+  [34, 2],
+  [100, 6],
+  [10_000, 600],
+])('rake for %i is %i', (bet, rake) => expect(flipRake(bet)).toBe(rake));
 it('flips heads on 0 and tails on 1', () => {
   expect(flipCoin(() => 0)).toBe('heads');
   expect(flipCoin(() => 1)).toBe('tails');
@@ -195,17 +219,36 @@ it('flips heads on 0 and tails on 1', () => {
 
 // coinflip-custom-ids.test.ts
 it('round-trips an open challenge', () => {
-  const id = { action: 'accept', challengerId: '123456789012345678', opponentId: undefined,
-    bet: 250, side: 'tails', expiresAt: 1_800_000_000_000 } as const;
+  const id = {
+    action: 'accept',
+    challengerId: '123456789012345678',
+    opponentId: undefined,
+    bet: 250,
+    side: 'tails',
+    expiresAt: 1_800_000_000_000,
+  } as const;
   expect(decodeCoinflipId(encodeChallengeId(id))).toEqual({ kind: 'challenge', ...id });
 });
 it('rounds expiry up to the second', () => {
-  const encoded = encodeChallengeId({ action: 'cancel', challengerId: '1', opponentId: '2', bet: 10, side: 'heads', expiresAt: 1_500 });
+  const encoded = encodeChallengeId({
+    action: 'cancel',
+    challengerId: '1',
+    opponentId: '2',
+    bet: 10,
+    side: 'heads',
+    expiresAt: 1_500,
+  });
   expect(decodeCoinflipId(encoded)).toMatchObject({ expiresAt: 2_000 });
 });
-it.each(['cf:again:1:9:heads', 'cf:again:1:10001:heads', 'cf:again:1:10:edge', 'cf:decline:1:0:10:heads:z',
-  'cf:accept:1:2:10:heads:', 'gamba:again:1:10', 'cf:accept:1:2:10:heads:z:extra'])('rejects %s', (id) =>
-  expect(decodeCoinflipId(id)).toBeUndefined());
+it.each([
+  'cf:again:1:9:heads',
+  'cf:again:1:10001:heads',
+  'cf:again:1:10:edge',
+  'cf:decline:1:0:10:heads:z',
+  'cf:accept:1:2:10:heads:',
+  'gamba:again:1:10',
+  'cf:accept:1:2:10:heads:z:extra',
+])('rejects %s', (id) => expect(decodeCoinflipId(id)).toBeUndefined());
 // decline needs a named opponent, hence 'cf:decline:1:0:…' is rejected.
 
 // fuzz-coinflip.test.ts (fast-check)
@@ -218,15 +261,12 @@ it.each(['cf:again:1:9:heads', 'cf:again:1:10001:heads', 'cf:again:1:10:edge', '
 - [ ] **Step 2: Run to verify failure**
 
 Run: `pnpm vitest run test/coinflip-rake.test.ts test/coinflip-custom-ids.test.ts test/fuzz-coinflip.test.ts` — Expected: FAIL (modules missing).
-
 - [ ] **Step 3: Implement**
 
 Decode validates: prefix `cf`, exact part count (5 for `again`, 7 for challenges), snowflakes `/^\d{1,20}$/`, opponent `0` or a snowflake (`0` not allowed for `decline`), bet `/^\d{1,5}$/` within `[wager.minBet, wager.maxBet]`, side in `flipSides`, expiry `/^[0-9a-z]{1,9}$/`. `index.ts` re-exports these modules (it grows in later tasks).
-
 - [ ] **Step 4: Verify**
 
 Run: `pnpm vitest run test/coinflip-rake.test.ts test/coinflip-custom-ids.test.ts test/fuzz-coinflip.test.ts` — Expected: PASS.
-
 - [ ] **Step 5: Commit**
 
 ```bash
@@ -257,7 +297,6 @@ git commit -m "feat(coinflip): add rake, coin flip and button ids"
   - `settleChallenge(db: Db, request: ChallengeRequest, now: number, randomInt?: RandomInt): SettledChallenge` — everything (wallet creation included) inside one transaction, so any throw leaves the database unchanged. Throws `ShortStakeError` (challenger checked first) or `ChallengeTakenError` (UNIQUE `message_id` violation, `SqliteError` code `SQLITE_CONSTRAINT_UNIQUE`).
 
 Order inside both transactions: insert the `flips` row (for `ref`), debit stake(s) with `flip_bet`, credit the winner `2 × bet − rake` with `flip_win`, `addToPot(rake)`, `recordFlipStats` for each human player. `opponentId` in the row is the acceptor; `winnerId` null when the bot wins.
-
 - [ ] **Step 1: Write the failing tests**
 
 ```ts
@@ -269,21 +308,58 @@ it('addToPot seeds a missing pot and adds', () => {
 
 // coinflip-play.test.ts — db = openDatabase(':memory:') per test
 it('pays a won bot flip 2B minus rake and feeds the pot', () => {
-  const flip = settleBotFlip(db, { guildId: 'g', userId: 'u', bet: '100', side: 'heads' }, 5, () => 0);
-  expect(flip).toMatchObject({ won: true, result: 'heads', rake: 6, credited: 194, balance: startingBalance + 94, pot: pot.seed + 6 });
+  const flip = settleBotFlip(
+    db,
+    { guildId: 'g', userId: 'u', bet: '100', side: 'heads' },
+    5,
+    () => 0,
+  );
+  expect(flip).toMatchObject({
+    won: true,
+    result: 'heads',
+    rake: 6,
+    credited: 194,
+    balance: startingBalance + 94,
+    pot: pot.seed + 6,
+  });
   expect(ledgerReasonsFor('u')).toEqual(['start', 'flip_bet', 'flip_win']); // both with ref = flip.flipId
   expect(statsFor('u')).toMatchObject({ flips: 1, flipWins: 1, flipWagered: 100, flipWon: 194 });
 });
 it('burns a lost bot flip except the rake', () => {
-  const flip = settleBotFlip(db, { guildId: 'g', userId: 'u', bet: '100', side: 'heads' }, 5, () => 1);
-  expect(flip).toMatchObject({ won: false, credited: 0, balance: startingBalance - 100, pot: pot.seed + 6 });
-  expect(flipRow(flip.flipId)).toMatchObject({ mode: 'bot', winnerId: null, opponentId: null, messageId: null });
+  const flip = settleBotFlip(
+    db,
+    { guildId: 'g', userId: 'u', bet: '100', side: 'heads' },
+    5,
+    () => 1,
+  );
+  expect(flip).toMatchObject({
+    won: false,
+    credited: 0,
+    balance: startingBalance - 100,
+    pot: pot.seed + 6,
+  });
+  expect(flipRow(flip.flipId)).toMatchObject({
+    mode: 'bot',
+    winnerId: null,
+    opponentId: null,
+    messageId: null,
+  });
 });
-it('defaults a bot flip to 10 coins', () => { /* bet undefined → flip.bet === 10, rake 1 */ });
-it('settles a challenge: winner +B-rake, loser -B, pot +rake, both stats', () => { /* challengerSide heads, draw 1 → acceptor wins */ });
-it('creates the wallet of an acceptor who never played', () => { /* acceptor has no wallet; settles from startingBalance */ });
-it('throws ShortStakeError for a short challenger and changes nothing', () => { /* snapshot wallets/ledger/flips/pots equal before/after */ });
-it('throws ShortStakeError for a short acceptor and changes nothing', () => { /* who === 'acceptor', needed === bet */ });
+it('defaults a bot flip to 10 coins', () => {
+  /* bet undefined → flip.bet === 10, rake 1 */
+});
+it('settles a challenge: winner +B-rake, loser -B, pot +rake, both stats', () => {
+  /* challengerSide heads, draw 1 → acceptor wins */
+});
+it('creates the wallet of an acceptor who never played', () => {
+  /* acceptor has no wallet; settles from startingBalance */
+});
+it('throws ShortStakeError for a short challenger and changes nothing', () => {
+  /* snapshot wallets/ledger/flips/pots equal before/after */
+});
+it('throws ShortStakeError for a short acceptor and changes nothing', () => {
+  /* who === 'acceptor', needed === bet */
+});
 it('settles a message at most once', () => {
   settleChallenge(db, req, 5, () => 0);
   expect(() => settleChallenge(db, req, 6, () => 0)).toThrow(ChallengeTakenError);
@@ -294,13 +370,11 @@ it('settles a message at most once', () => {
 - [ ] **Step 2: Run to verify failure**
 
 Run: `pnpm vitest run test/gamba-pot.test.ts test/coinflip-play.test.ts` — Expected: FAIL (missing exports).
-
 - [ ] **Step 3: Implement** the signatures above in the listed files.
 
 - [ ] **Step 4: Verify**
 
 Run: `pnpm vitest run test/gamba-pot.test.ts test/coinflip-play.test.ts` — Expected: PASS.
-
 - [ ] **Step 5: Commit**
 
 ```bash
@@ -326,8 +400,15 @@ git commit -m "feat(coinflip): settle bot flips and challenges with a pot rake"
 - [ ] **Step 1: Write the failing tests** (`vi.useFakeTimers()`)
 
 ```ts
-it('closes once', () => { expect(tryClose('m')).toBe(true); expect(tryClose('m')).toBe(false); });
-it('reopens after a short acceptor', () => { tryClose('m'); reopen('m'); expect(tryClose('m')).toBe(true); });
+it('closes once', () => {
+  expect(tryClose('m')).toBe(true);
+  expect(tryClose('m')).toBe(false);
+});
+it('reopens after a short acceptor', () => {
+  tryClose('m');
+  reopen('m');
+  expect(tryClose('m')).toBe(true);
+});
 it('expires an open challenge', async () => {
   const onExpire = vi.fn(async () => undefined);
   scheduleExpiry('m', 60_000, onExpire);
@@ -342,7 +423,9 @@ it('does not expire a challenge that was already accepted', async () => {
   await vi.advanceTimersByTimeAsync(60_000);
   expect(onExpire).not.toHaveBeenCalled();
 });
-it('logs and swallows a failed expiry edit', async () => { /* onExpire rejects; logger.warn called */ });
+it('logs and swallows a failed expiry edit', async () => {
+  /* onExpire rejects; logger.warn called */
+});
 ```
 
 - [ ] **Step 2: Run to verify failure** — `pnpm vitest run test/coinflip-challenges.test.ts`, Expected: FAIL.
@@ -502,7 +585,7 @@ git commit -m "feat(stats): show coinflips in /stats and add a coinflip board"
 
 - [ ] **Step 1: Add ops**
   - `flipBot`: `{ who, bet: betText, side: fc.constantFrom(...flipSides), draw: fc.constantFrom(0, 1) }` → `settleBotFlip(db, { ...who, bet, side }, now, () => draw)`.
-  - `flipChallenge`: `{ guildId, challengerId, acceptorId (distinct users via fc.constantFrom(...users) pairs filtered), mode: 'challenge'|'open', bet: fc.integer({ min: 10, max: 10_000 }), side, draw, message: fc.nat({ max: 5 }) }` → `settleChallenge` with `messageId: \`m${message}\`` (small range so repeats exercise `ChallengeTakenError`).
+  - `flipChallenge`: `{ guildId, challengerId, acceptorId (distinct users via fc.constantFrom(...users) pairs filtered), mode: 'challenge'|'open', bet: fc.integer({ min: 10, max: 10_000 }), side, draw, message: fc.nat({ max: 5 }) }` → `settleChallenge` with `messageId: \`m${message}\``(small range so repeats exercise`ChallengeTakenError`).
   - `snapshot` includes `flips`. `isExpectedFailure` already accepts `EconomyError` (which `CoinflipError` extends). A failed `flipBot` may leave a fresh wallet exactly like `wager`; extend that branch to `step.kind === 'wager' || step.kind === 'flipBot'`.
   - `expectInvariants`: every `flips` row has `1 <= rake <= bet` and a `flip_bet` ledger row with `ref = id`.
 - [ ] **Step 2: Run** — `pnpm vitest run test/fuzz-economy.test.ts`, Expected: PASS. If it fails, the counterexample is a real bug: fix it in the owning module with a regression test before continuing.

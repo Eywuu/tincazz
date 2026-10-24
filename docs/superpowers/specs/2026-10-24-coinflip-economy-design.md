@@ -12,15 +12,15 @@ feeds the gamba pot.
 
 ## Decisions
 
-| Topic            | Decision                                                                        |
-| ---------------- | ------------------------------------------------------------------------------- |
-| Gamba default    | No bet means a 10-coin wager (the minimum bet, unchanged)                       |
-| Free spins       | Removed entirely; historical rows stay untouched                                |
-| Coinflip modes   | vs bot, targeted challenge, open challenge (anyone with funds can accept)       |
-| Rake             | 3% of the flip pool (`2 × bet`), at least 1 coin, paid into the gamba pot       |
-| Challenge escrow | None: affordability checked at creation, both stakes debited atomically on accept |
-| Challenge expiry | 60 s targeted, 120 s open                                                       |
-| Stats            | `flips` history table, coinflip columns in `player_stats`, `/stats` line, board |
+| Topic            | Decision                                                                             |
+| ---------------- | ------------------------------------------------------------------------------------ |
+| Gamba default    | No bet means a 10-coin wager (the minimum bet, unchanged)                            |
+| Free spins       | Removed entirely; historical rows stay untouched                                     |
+| Coinflip modes   | vs bot, targeted challenge, open challenge (anyone with funds can accept)            |
+| Rake             | 3% of the flip pool (`2 × bet`), at least 1 coin, paid into the gamba pot            |
+| Challenge escrow | None: affordability checked at creation, both stakes debited atomically on accept    |
+| Challenge expiry | 60 s targeted, 120 s open                                                            |
+| Stats            | `flips` history table, coinflip columns in `player_stats`, `/stats` line, board      |
 | Surface          | Slash command only (`/coinflip`); buttons for flip again / accept / decline / cancel |
 
 ## Part 1: paid-only gamba
@@ -46,11 +46,11 @@ feeds the gamba pot.
 integer, `all`, `half`, `2.5k`; default 10) and `side` (choice `heads` / `tails`; default heads).
 Bet limits are the gamba limits (10 to 10,000).
 
-| Subcommand                                        | Meaning                                         |
-| ------------------------------------------------- | ----------------------------------------------- |
-| `/coinflip bot [bet] [side]`                      | Flip against the bot, settled immediately       |
-| `/coinflip challenge opponent:<user> [bet] [side]` | Only `opponent` can accept, 60 s to accept      |
-| `/coinflip open [bet] [side]`                     | Anyone but the challenger can accept, 120 s     |
+| Subcommand                                         | Meaning                                     |
+| -------------------------------------------------- | ------------------------------------------- |
+| `/coinflip bot [bet] [side]`                       | Flip against the bot, settled immediately   |
+| `/coinflip challenge opponent:<user> [bet] [side]` | Only `opponent` can accept, 60 s to accept  |
+| `/coinflip open [bet] [side]`                      | Anyone but the challenger can accept, 120 s |
 
 No prefix command: prefix commands depend on the privileged Message Content intent and the
 challenge flows need buttons anyway.
@@ -61,11 +61,11 @@ For a bet `B` the pool is `2B` (in bot mode the bot matches the stake).
 `rake = max(1, floor(2B × 3 / 100))`. The rake goes to the guild pot (created at its seed if
 missing). The winner receives `pool − rake`.
 
-| Mode               | Winner                                       | Loser                                              |
-| ------------------ | -------------------------------------------- | -------------------------------------------------- |
-| bot, player wins   | player credited `2B − rake` (net `B − rake`) | -                                                  |
-| bot, bot wins      | -                                            | player loses `B`; `rake` to the pot, rest burned   |
-| challenge / open   | credited `2B − rake` (net `B − rake`)        | loses `B`                                          |
+| Mode             | Winner                                       | Loser                                            |
+| ---------------- | -------------------------------------------- | ------------------------------------------------ |
+| bot, player wins | player credited `2B − rake` (net `B − rake`) | -                                                |
+| bot, bot wins    | -                                            | player loses `B`; `rake` to the pot, rest burned |
+| challenge / open | credited `2B − rake` (net `B − rake`)        | loses `B`                                        |
 
 Example, `B = 100`: pool 200, rake 6. A win nets +94, a loss costs 100. Against the bot the player
 expects to lose `rake / 2`, about 3% of the bet, which makes bot flips a coin sink. In player
@@ -99,8 +99,8 @@ acceptor takes the other side.
    - targeted: **Accept** and **Decline** (opponent only), **Cancel** (challenger only). The
      message pings the opponent through an explicit `allowedMentions: { users: [opponentId] }`.
    - open: **Accept** (anyone but the challenger), **Cancel** (challenger only). Pings nobody.
-   Custom ID: `cf:<action>:<challengerId>:<opponentId or 0>:<bet>:<side>:<expiresAt base36 seconds>`,
-   with `action` in `accept | decline | cancel`. It stays well under Discord's 100 characters.
+     Custom ID: `cf:<action>:<challengerId>:<opponentId or 0>:<bet>:<side>:<expiresAt base36 seconds>`,
+     with `action` in `accept | decline | cancel`. It stays well under Discord's 100 characters.
 3. **Accept.** In order:
    - wrong user (not the opponent of a targeted challenge, or the challenger on an open one):
      ephemeral "not your challenge", nothing changes;
@@ -134,20 +134,20 @@ Migration generated with `pnpm db:generate --name coinflip`.
 
 ### `flips`
 
-| Column           | Type    | Notes                                                    |
-| ---------------- | ------- | -------------------------------------------------------- |
-| `id`             | integer | primary key, autoincrement                               |
-| `guild_id`       | text    | not null                                                 |
-| `mode`           | text    | `bot`, `challenge`, `open`                               |
-| `challenger_id`  | text    | not null                                                 |
-| `opponent_id`    | text    | null in bot mode                                         |
-| `bet`            | integer | not null, per player                                     |
-| `challenger_side`| text    | `heads` / `tails`                                        |
-| `result_side`    | text    | `heads` / `tails`                                        |
-| `winner_id`      | text    | null when the bot won                                    |
-| `rake`           | integer | not null                                                 |
-| `message_id`     | text    | unique, null in bot mode                                 |
-| `created_at`     | integer | epoch ms                                                 |
+| Column            | Type    | Notes                      |
+| ----------------- | ------- | -------------------------- |
+| `id`              | integer | primary key, autoincrement |
+| `guild_id`        | text    | not null                   |
+| `mode`            | text    | `bot`, `challenge`, `open` |
+| `challenger_id`   | text    | not null                   |
+| `opponent_id`     | text    | null in bot mode           |
+| `bet`             | integer | not null, per player       |
+| `challenger_side` | text    | `heads` / `tails`          |
+| `result_side`     | text    | `heads` / `tails`          |
+| `winner_id`       | text    | null when the bot won      |
+| `rake`            | integer | not null                   |
+| `message_id`      | text    | unique, null in bot mode   |
+| `created_at`      | integer | epoch ms                   |
 
 Index `flips_guild_created_idx` on `(guild_id, created_at)`.
 
