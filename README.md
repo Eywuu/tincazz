@@ -7,6 +7,9 @@ Currently implemented:
 - `?ping` / `/ping`: the bot's latency
 - `?gamba [bet]` / `/gamba bet:<bet>`: free spins, or wagered spins with a progressive pot (see below)
 - `/balance`, `/daily`, `/bailout`: your coins, the daily streak and a bailout when broke
+- `/stats [user]`: a player profile with spins, win rate, biggest win, net profit and daily streak
+- `/leaderboard [category]`: the top 10 by `coins`, `biggest-win`, `jackpots`, `profit` or `spins`; only
+  the person who ran it can use its category select and Previous/Next buttons
 - chat rewards: a few coins for chatting, at most once a minute
 - `/eco give|take`: moderators adjust coins (Manage Server)
 

@@ -10,7 +10,12 @@ export interface ChatInputOptions {
 }
 
 export function makeUser(id: string, bot = false) {
-  return { id, bot, toString: () => `<@${id}>` };
+  return {
+    id,
+    bot,
+    toString: () => `<@${id}>`,
+    displayAvatarURL: () => `https://cdn.example/${id}.png`,
+  };
 }
 
 /** An interaction stub for slash commands, in the style of the `/ping` test. */
@@ -87,5 +92,23 @@ export function makeButton(
     reply: vi.fn(async (_options: unknown) => undefined),
     update: vi.fn(async (_options: unknown) => undefined),
     followUp: vi.fn(async (_options: unknown) => undefined),
+  };
+}
+
+export interface SelectOptions extends ButtonOptions {
+  values: string[];
+}
+
+/** An interaction stub for a string select menu choice. */
+export function makeSelect(
+  client: ReturnType<typeof createClient>,
+  { values, ...options }: SelectOptions,
+) {
+  return {
+    ...makeButton(client, options),
+    isButton: () => false,
+    isStringSelectMenu: () => true,
+    isAnySelectMenu: () => true,
+    values,
   };
 }
