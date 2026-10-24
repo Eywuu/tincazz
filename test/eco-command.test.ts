@@ -3,7 +3,11 @@ import { Events, MessageFlags, PermissionFlagsBits, SlashCommandBuilder } from '
 import { beforeAll, beforeEach, describe, expect, it } from 'vitest';
 import { createClient } from '../src/client.js';
 import { openDatabase } from '../src/db/index.js';
-import { botsHaveNoWallets } from '../src/features/economy/cards.js';
+import {
+  botsHaveNoWallets,
+  ecoNeedsManageServer,
+  ecoNeedsReason,
+} from '../src/features/economy/cards.js';
 import { adminAdjust, findWallet } from '../src/features/economy/index.js';
 import { testEnv } from './support/env.js';
 import { makeChatInput, makeUser } from './support/interaction.js';
@@ -19,12 +23,13 @@ beforeEach(() => {
   container.db = openDatabase(':memory:');
 });
 
-async function run(subcommand: string, options: Record<string, unknown>) {
+async function run(subcommand: string, options: Record<string, unknown>, permissions?: bigint) {
   const interaction = makeChatInput(client, {
     commandName: 'eco',
     userId: '9',
     subcommand,
     options,
+    permissions,
   });
   client.emit(Events.InteractionCreate, interaction as never);
   await new Promise((resolve) => setTimeout(resolve, 100));
@@ -59,6 +64,24 @@ describe('/eco', () => {
     const result = await run('give', { user: makeUser('7', true), amount: 5, reason: 'x' });
     expect(result.text).toContain(botsHaveNoWallets);
     expect(findWallet(container.db, '2', '7')).toBeUndefined();
+  });
+
+  it('refuses a member without Manage Server even if the command is visible to them', async () => {
+    const result = await run(
+      'give',
+      { user: makeUser('1'), amount: 500, reason: 'event' },
+      PermissionFlagsBits.SendMessages | PermissionFlagsBits.ManageMessages,
+    );
+    expect(result.text).toContain(ecoNeedsManageServer);
+    expect(result.flags & MessageFlags.Ephemeral).toBeTruthy();
+    expect(findWallet(container.db, '2', '1')).toBeUndefined();
+  });
+
+  it('asks for a reason when it is only whitespace', async () => {
+    const result = await run('give', { user: makeUser('1'), amount: 500, reason: ' \t ' });
+    expect(result.text).toContain(ecoNeedsReason);
+    expect(result.flags & MessageFlags.Ephemeral).toBeTruthy();
+    expect(findWallet(container.db, '2', '1')).toBeUndefined();
   });
 
   it('requires Manage Server', () => {
