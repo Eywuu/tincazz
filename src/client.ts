@@ -1,6 +1,11 @@
 import { dirname } from 'node:path';
 import { fileURLToPath } from 'node:url';
-import { LogLevel, SapphireClient } from '@sapphire/framework';
+import {
+  ApplicationCommandRegistries,
+  LogLevel,
+  RegisterBehavior,
+  SapphireClient,
+} from '@sapphire/framework';
 import { GatewayIntentBits } from 'discord.js';
 import type { Env } from './config/env.js';
 
@@ -14,6 +19,10 @@ const logLevels: Record<Env['LOG_LEVEL'], LogLevel> = {
 };
 
 export function createClient(env: Env) {
+  // Guild commands update instantly; global ones can take up to an hour to propagate.
+  ApplicationCommandRegistries.setDefaultGuildIds(env.GUILD_ID ? [env.GUILD_ID] : null);
+  ApplicationCommandRegistries.setDefaultBehaviorWhenNotIdentical(RegisterBehavior.BulkOverwrite);
+
   const client = new SapphireClient({
     defaultPrefix: env.COMMAND_PREFIX,
     // Required for prefix commands: this loads the listeners that turn messages into command runs.
