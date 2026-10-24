@@ -43,3 +43,12 @@ export function settlePot(
     .run();
   return { potWon, pot: remaining };
 }
+
+/** Adds coins to the guild pot (creating it at the seed) and returns the new amount. */
+export function addToPot(tx: DbOrTx, guildId: string, amount: number): number {
+  tx.insert(pots).values({ guildId, amount: pot.seed }).onConflictDoNothing().run();
+  const current = tx.select().from(pots).where(eq(pots.guildId, guildId)).get();
+  const next = (current?.amount ?? pot.seed) + amount;
+  tx.update(pots).set({ amount: next }).where(eq(pots.guildId, guildId)).run();
+  return next;
+}

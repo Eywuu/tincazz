@@ -22,6 +22,7 @@ export type { Evaluation } from './evaluate.js';
 export { evaluate } from './evaluate.js';
 export { assignJackpotRole, type JackpotMember } from './jackpot.js';
 export { playWager, type WagerSpin } from './play.js';
+export { addToPot } from './pot.js';
 export {
   type SettledSpin,
   type SpinMessages,

@@ -2,7 +2,8 @@ import { eq } from 'drizzle-orm';
 import { describe, expect, it } from 'vitest';
 import { openDatabase } from '../src/db/index.js';
 import { pots } from '../src/db/schema.js';
-import { potContribution, potShare, settlePot } from '../src/features/gamba/pot.js';
+import { pot } from '../src/features/gamba/config.js';
+import { addToPot, potContribution, potShare, settlePot } from '../src/features/gamba/pot.js';
 
 function rowOf(db: ReturnType<typeof openDatabase>, guildId: string) {
   return db.select().from(pots).where(eq(pots.guildId, guildId)).get();
@@ -56,5 +57,13 @@ describe('settlePot', () => {
     settlePot(db, 'a', 100, false, 'u', 1);
     expect(settlePot(db, 'b', 10, false, 'u', 1).pot).toBe(10_001);
     expect(rowOf(db, 'a')?.amount).toBe(10_003);
+  });
+});
+
+describe('addToPot', () => {
+  it('seeds a missing pot and adds', () => {
+    const db = openDatabase(':memory:');
+    expect(addToPot(db, 'g', 6)).toBe(pot.seed + 6);
+    expect(addToPot(db, 'g', 1)).toBe(pot.seed + 7);
   });
 });
