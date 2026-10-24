@@ -8,6 +8,9 @@ import * as schema from './schema.js';
 
 export type Db = BetterSQLite3Database<typeof schema> & { $client: Database.Database };
 
+export type Tx = Parameters<Parameters<Db['transaction']>[0]>[0];
+export type DbOrTx = Db | Tx;
+
 // Resolves to the repo's drizzle/ folder from both src/db (tsx) and dist/db (compiled).
 const migrationsFolder = fileURLToPath(new URL('../../drizzle', import.meta.url));
 

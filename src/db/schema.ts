@@ -50,6 +50,7 @@ export const ledger = sqliteTable(
     reason: text('reason', { enum: ledgerReasons }).notNull(),
     ref: integer('ref'),
     actorId: text('actor_id'),
+    note: text('note'),
     createdAt: integer('created_at').notNull(),
   },
   (table) => [index('ledger_user_idx').on(table.guildId, table.userId, table.id)],
