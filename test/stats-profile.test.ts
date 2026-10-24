@@ -6,7 +6,7 @@ import {
   findWallet,
   getOrCreateWallet,
 } from '../src/features/economy/index.js';
-import { playFree, playWager } from '../src/features/gamba/play.js';
+import { playWager } from '../src/features/gamba/play.js';
 import { playerProfile } from '../src/features/stats/index.js';
 
 let db: Db;
@@ -44,16 +44,16 @@ describe('playerProfile', () => {
     });
   });
 
-  it('reflects free and wagered spins', () => {
-    playFree(db, '2', '1', 10, roll(0, 0, 0));
+  it('reflects wagered spins', () => {
+    playWager(db, '2', '1', 10, 10, roll(0, 0, 0));
     playWager(db, '2', '1', 100, 20, roll(0, 3, 6));
     expect(playerProfile(db, '2', '1', 30)).toMatchObject({
       spins: 2,
-      wins: 0,
-      biggestWin: 0,
+      wins: 1,
+      biggestWin: 150,
       bestOdds: 343,
-      wagered: 100,
-      won: 0,
+      wagered: 110,
+      won: 150,
       balance: findWallet(db, '2', '1')?.balance,
       rank: coinsRank(db, '2', '1'),
     });

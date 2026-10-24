@@ -1,5 +1,5 @@
 import { gambaJackpotRoleId, gambaOutcomes, type OutcomeKey } from './outcomes.js';
-import type { FreeSpin, WagerSpin } from './play.js';
+import type { WagerSpin } from './play.js';
 import { type RandomInt, rollOutcome } from './roll.js';
 
 export { clearActiveCards, isActiveCard, setActiveCard } from './active-card.js';
@@ -7,7 +7,6 @@ export { InvalidBetError, parseBet } from './bet.js';
 export {
   announcementCard,
   expiredSpin,
-  freeSpinCard,
   notYourSpin,
   spinErrorText,
   tierLabels,
@@ -22,7 +21,7 @@ export {
 export type { Evaluation } from './evaluate.js';
 export { evaluate } from './evaluate.js';
 export { assignJackpotRole, type JackpotMember } from './jackpot.js';
-export { type FreeSpin, playFree, playWager, type WagerSpin } from './play.js';
+export { playWager, type WagerSpin } from './play.js';
 export {
   type SettledSpin,
   type SpinMessages,
@@ -31,7 +30,7 @@ export {
   spin,
 } from './spin.js';
 export { formatGambaFollowUp, formatGambaReply } from './text.js';
-export type Spin = FreeSpin | WagerSpin;
+export type Spin = WagerSpin;
 export { gambaJackpotRoleId };
 
 export type Reels = readonly [OutcomeKey, OutcomeKey, OutcomeKey];

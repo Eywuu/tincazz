@@ -17,7 +17,7 @@ import {
   utcDay,
 } from '../src/features/economy/index.js';
 import { pot } from '../src/features/gamba/config.js';
-import { InvalidBetError, playFree, settleSpin } from '../src/features/gamba/index.js';
+import { InvalidBetError, settleSpin } from '../src/features/gamba/index.js';
 import { leaderboardPage, leaderboardRank } from '../src/features/stats/index.js';
 import { expectLedgerConsistent } from './support/ledger.js';
 
@@ -64,7 +64,6 @@ const adminAmount = fc.oneof(
 );
 
 const op = fc.oneof(
-  fc.record({ kind: fc.constant('free' as const), who, reels }),
   fc.record({ kind: fc.constant('wager' as const), who, reels, bet: betText }),
   fc.record({ kind: fc.constant('daily' as const), who }),
   fc.record({ kind: fc.constant('bailout' as const), who }),
@@ -97,9 +96,6 @@ async function apply(db: Db, step: Op, now: number): Promise<void> {
   if (step.kind === 'wait') return;
   const { guildId, userId } = step.who;
   switch (step.kind) {
-    case 'free':
-      playFree(db, guildId, userId, now, draws(step.reels));
-      return;
     case 'wager':
       await settleSpin(db, { guildId, userId, bet: step.bet }, now, {
         assignJackpotRole: async () => true,

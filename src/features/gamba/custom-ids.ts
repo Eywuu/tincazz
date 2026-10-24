@@ -5,7 +5,7 @@ export type SpinAction = 'again' | 'double';
 export interface SpinButtonId {
   action: SpinAction;
   userId: string;
-  /** The bet the click will play: 0 is a free spin, and a Double ID already holds twice the bet. */
+  /** The bet the click will play; a Double ID already holds twice the bet. */
   bet: number;
 }
 
@@ -28,10 +28,7 @@ export function decodeSpinId(customId: string): SpinButtonId | undefined {
     return undefined;
   }
   const bet = Number(rawBet);
-  if (bet !== 0 && (bet < wager.minBet || bet > wager.maxBet)) {
-    return undefined;
-  }
-  if (action === 'double' && bet === 0) {
+  if (bet < wager.minBet || bet > wager.maxBet) {
     return undefined;
   }
   return { action, userId, bet };

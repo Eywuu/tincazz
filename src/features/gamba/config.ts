@@ -1,5 +1,5 @@
-/** Bet limits for a wagered spin, in coins. */
-export const wager = { minBet: 10, maxBet: 10_000 } as const;
+/** Bet limits for a wagered spin, in coins; `defaultBet` is what a spin without a bet costs. */
+export const wager = { minBet: 10, maxBet: 10_000, defaultBet: 10 } as const;
 
 export const payoutTiers = [
   'none',

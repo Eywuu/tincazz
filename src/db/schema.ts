@@ -6,13 +6,14 @@ export const ledgerReasons = [
   'daily',
   'bailout',
   'chat',
-  'free_prize',
+  'free_prize', // legacy: free spins are gone, rows stay in history
   'bet',
   'payout',
   'pot_win',
   'admin_grant',
   'admin_take',
 ] as const;
+// 'free' is legacy (free spins are gone); old rows keep it.
 export const spinModes = ['free', 'wager'] as const;
 export const spinResults = ['none', 'pair', 'triple', 'jackpot'] as const;
 

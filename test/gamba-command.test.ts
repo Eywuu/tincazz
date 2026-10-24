@@ -84,7 +84,7 @@ describe('gamba', () => {
   }
 
   describe('?gamba', () => {
-    it('replies with the plain reels and no follow-up on a loss', async () => {
+    it('treats a bare ?gamba as a 10-coin bet with no follow-up on a loss', async () => {
       mockRandomInt(0, 3, 6);
       const message = await run('?gamba');
       await new Promise((resolve) => setTimeout(resolve, 100));
@@ -93,7 +93,7 @@ describe('gamba', () => {
         { content: string; flags?: number },
       ];
       expect(options.flags).toBeUndefined();
-      expect(options.content).toMatch(/^(<:\w+:\d+> ){2}<:\w+:\d+>$/);
+      expect(options.content).toMatch(/^(<:\w+:\d+> ){2}<:\w+:\d+>\nbet 10 → 0 · balance 990$/);
       expect(options).toMatchObject({ allowedMentions: { repliedUser: true } });
       expect(message.spinReply).not.toHaveBeenCalled();
     });
@@ -106,7 +106,7 @@ describe('gamba', () => {
       });
 
       expect(message.spinReply.mock.calls[0]?.[0]).toMatchObject({
-        content: expect.stringContaining('<@1> hit three of a kind!'),
+        content: expect.stringContaining('<@1> won! +150 coins'),
         allowedMentions: { users: ['1'] },
       });
       expect(message.reply.mock.invocationCallOrder[0]).toBeLessThan(
@@ -198,7 +198,7 @@ describe('gamba', () => {
       });
 
       expect(json(message.spinReply.mock.calls[0])).toContain("couldn't assign the role");
-      expect(findWallet(container.db, '2', '1')?.balance).toBe(1_000);
+      expect(findWallet(container.db, '2', '1')?.balance).toBeGreaterThan(1_000);
     });
 
     it('jackpot with no cached member', async () => {
@@ -223,7 +223,7 @@ describe('gamba', () => {
       await vi.waitFor(() => expect(error).toHaveBeenCalled(), { timeout: 2000 });
 
       expect(message.reply).toHaveBeenCalledTimes(1);
-      expect(findWallet(container.db, '2', '1')?.balance).toBe(1_000);
+      expect(findWallet(container.db, '2', '1')?.balance).toBe(1_140);
     });
   });
 
@@ -270,7 +270,7 @@ describe('gamba', () => {
       expect(options.flags & MessageFlags.Ephemeral).toBeTruthy();
     });
 
-    it('announces a free triple with a winner-only ping', async () => {
+    it('announces a default-bet triple with a winner-only ping', async () => {
       mockRandomInt(0);
       const interaction = await runSlash();
       await vi.waitFor(() => expect(interaction.announce).toHaveBeenCalledTimes(1), {

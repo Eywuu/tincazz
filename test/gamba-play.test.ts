@@ -2,8 +2,8 @@ import { beforeEach, describe, expect, it } from 'vitest';
 import { type Db, openDatabase } from '../src/db/index.js';
 import { ledger, playerStats, pots, spins } from '../src/db/schema.js';
 import { InsufficientFundsError } from '../src/features/economy/errors.js';
-import { findWallet, getOrCreateWallet } from '../src/features/economy/wallets.js';
-import { playFree, playWager } from '../src/features/gamba/play.js';
+import { getOrCreateWallet } from '../src/features/economy/wallets.js';
+import { playWager } from '../src/features/gamba/play.js';
 import { expectLedgerConsistent } from './support/ledger.js';
 
 let db: Db;
@@ -16,67 +16,6 @@ const roll = (...draws: number[]) => {
 
 beforeEach(() => {
   db = openDatabase(':memory:');
-});
-
-describe('playFree', () => {
-  it('pays nothing for a triple but records the spin and stats', () => {
-    const result = playFree(db, 'g', 'u', 10, roll(0, 0, 0));
-    expect(result).toMatchObject({ balance: 1_000, reels: ['head', 'head', 'head'] });
-    expect(db.select().from(spins).all()).toEqual([
-      expect.objectContaining({
-        id: result.spinId,
-        mode: 'free',
-        reels: 'head,head,head',
-        result: 'triple',
-        bet: 0,
-        payout: 0,
-        potWon: 0,
-      }),
-    ]);
-    expect(reasons()).toEqual(['start']);
-    expect(findWallet(db, 'g', 'u')?.balance).toBe(1_000);
-    expect(db.select().from(playerStats).get()).toMatchObject({
-      spins: 1,
-      wins: 0,
-      jackpots: 0,
-      biggestWin: 0,
-      bestOdds: 343,
-      wagered: 0,
-      won: 0,
-    });
-    expectLedgerConsistent(db);
-  });
-
-  it('records a loss without a ledger row', () => {
-    playFree(db, 'g', 'u', 10, roll(0, 3, 6));
-    expect(db.select().from(spins).get()).toMatchObject({ result: 'none', payout: 0 });
-    expect(
-      db
-        .select()
-        .from(ledger)
-        .all()
-        .map((row) => row.reason),
-    ).toEqual(['start']);
-    expect(db.select().from(playerStats).get()).toMatchObject({ spins: 1, wins: 0 });
-    expectLedgerConsistent(db);
-  });
-
-  it('counts a jackpot and keeps the best odds', () => {
-    playFree(db, 'g', 'u', 10, roll(20, 20, 20));
-    expect(db.select().from(playerStats).get()).toMatchObject({
-      jackpots: 1,
-      biggestWin: 0,
-      bestOdds: 9_261,
-    });
-    playFree(db, 'g', 'u', 11, roll(0, 0, 0));
-    expect(db.select().from(playerStats).get()).toMatchObject({
-      spins: 2,
-      wins: 0,
-      biggestWin: 0,
-      bestOdds: 9_261,
-    });
-    expectLedgerConsistent(db);
-  });
 });
 
 const reasons = () =>
@@ -152,12 +91,6 @@ describe('playWager', () => {
     expect(db.select().from(pots).all()).toEqual([]);
     expect(db.select().from(playerStats).all()).toEqual([]);
     expect(reasons()).toEqual(['start']);
-  });
-
-  it('keeps free and wager stats columns together', () => {
-    playFree(db, 'g', 'u', 10, roll(0, 3, 6));
-    playWager(db, 'g', 'u', 100, 11, roll(0, 3, 6));
-    expect(db.select().from(playerStats).get()).toMatchObject({ spins: 2, wagered: 100 });
   });
 
   it('stays ledger consistent over 200 seeded spins', () => {
