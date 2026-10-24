@@ -26,6 +26,11 @@ jobs:
       - run: pnpm typecheck
       - run: pnpm test
       - run: pnpm build
+      - name: Check migrations match the schema
+        run: |
+          pnpm db:generate
+          git status --porcelain -- drizzle
+          test -z "$(git status --porcelain -- drizzle)"
 
   # Catches Dockerfile breakage before it reaches main. Publishing happens in docker.yml.
   docker:
