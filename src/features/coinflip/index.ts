@@ -1,3 +1,4 @@
+export { clearChallenges, reopen, scheduleExpiry, tryClose } from './challenges.js';
 export { coinflip } from './config.js';
 export {
   type ChallengeAction,
