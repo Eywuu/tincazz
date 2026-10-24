@@ -95,6 +95,10 @@ ID (see `features/gamba/custom-ids.ts`), so handlers must ignore IDs they cannot
   feature folder.
 - Log through `this.container.logger` / `client.logger`, not `console`.
 - Keep logic that can be tested without Discord in plain functions and cover it with Vitest.
+- Anything that parses user input (bet strings, custom IDs, option strings) also gets
+  [fast-check](https://fast-check.dev) property tests next to the example tests (see
+  `test/fuzz-*.test.ts`). Code that moves coins is covered by the model-based run in
+  `test/fuzz-economy.test.ts`: extend it when adding a new way to earn or spend.
 - New behavior and bug fixes come with tests in `test/`. To test a command end to end, build the
   client with `createClient`, load the stores, emit `Events.MessageCreate` with a stubbed message
   and assert on the replies (see `test/ping.test.ts`). No network or real token is needed.
