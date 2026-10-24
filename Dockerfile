@@ -1,6 +1,9 @@
 # syntax=docker/dockerfile:1
 FROM node:24-alpine AS base
 RUN corepack enable
+# Fallback toolchain for better-sqlite3 when no musl prebuilt binary matches. The runtime stage
+# starts from a clean image and gets none of this.
+RUN apk add --no-cache python3 make g++
 WORKDIR /app
 
 FROM base AS build
@@ -20,5 +23,7 @@ WORKDIR /app
 COPY --from=prod-deps --chown=node:node /app/node_modules ./node_modules
 COPY --from=build --chown=node:node /app/dist ./dist
 COPY --chown=node:node package.json ./
+COPY --chown=node:node drizzle ./drizzle
+RUN mkdir -p /app/data && chown node:node /app/data
 USER node
 CMD ["node", "dist/index.js"]

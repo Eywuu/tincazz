@@ -7,7 +7,24 @@ describe('parseEnv', () => {
       DISCORD_TOKEN: 'abc',
       COMMAND_PREFIX: '?',
       LOG_LEVEL: 'info',
+      DATABASE_PATH: './data/tincazz.db',
     });
+  });
+
+  it('treats empty optional values as unset', () => {
+    const env = parseEnv({ DISCORD_TOKEN: 'abc', GUILD_ID: '', DATABASE_PATH: '' });
+    expect(env.GUILD_ID).toBeUndefined();
+    expect(env.DATABASE_PATH).toBe('./data/tincazz.db');
+  });
+
+  it('accepts a guild ID', () => {
+    expect(parseEnv({ DISCORD_TOKEN: 'abc', GUILD_ID: '123456789012345678' }).GUILD_ID).toBe(
+      '123456789012345678',
+    );
+  });
+
+  it('rejects a guild ID that is not a snowflake', () => {
+    expect(() => parseEnv({ DISCORD_TOKEN: 'abc', GUILD_ID: 'my-server' })).toThrow(/GUILD_ID/);
   });
 
   it('rejects a missing token', () => {

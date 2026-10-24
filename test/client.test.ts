@@ -1,11 +1,11 @@
+import { ApplicationCommandRegistries, RegisterBehavior } from '@sapphire/framework';
 import { describe, expect, it } from 'vitest';
 import { createClient } from '../src/client.js';
-
-const env = { DISCORD_TOKEN: 'x', COMMAND_PREFIX: '?', LOG_LEVEL: 'error' } as const;
+import { testEnv } from './support/env.js';
 
 describe('createClient', () => {
   it('registers the ping and gamba commands and ready listener', async () => {
-    const client = createClient(env);
+    const client = createClient(testEnv);
     await client.stores.load();
 
     expect([...client.stores.get('commands').keys()]).toContain('ping');
@@ -13,8 +13,17 @@ describe('createClient', () => {
     expect([...client.stores.get('listeners').keys()]).toContain('ready');
   });
 
+  it('loads both error listeners', async () => {
+    const client = createClient(testEnv);
+    await client.stores.load();
+
+    const listeners = [...client.stores.get('listeners').keys()];
+    expect(listeners).toContain('ChatInputCommandErrorReply');
+    expect(listeners).toContain('InteractionHandlerErrorReply');
+  });
+
   it('wires up prefix message commands', async () => {
-    const client = createClient(env);
+    const client = createClient(testEnv);
     await client.stores.load();
 
     // Without loadMessageCommandListeners, Sapphire never turns messages into command runs.
@@ -22,8 +31,24 @@ describe('createClient', () => {
   });
 
   it('does not ping anyone by default', () => {
-    const client = createClient(env);
+    const client = createClient(testEnv);
 
     expect(client.options.allowedMentions).toEqual({ parse: [], repliedUser: false });
+  });
+
+  it('registers slash commands to GUILD_ID when set', () => {
+    createClient({ ...testEnv, GUILD_ID: '123456789012345678' });
+
+    expect(ApplicationCommandRegistries.getDefaultGuildIds()).toEqual(['123456789012345678']);
+    expect(ApplicationCommandRegistries.getDefaultBehaviorWhenNotIdentical()).toBe(
+      RegisterBehavior.BulkOverwrite,
+    );
+  });
+
+  it('registers slash commands globally without GUILD_ID', () => {
+    createClient({ ...testEnv, GUILD_ID: '123456789012345678' });
+    createClient(testEnv);
+
+    expect(ApplicationCommandRegistries.getDefaultGuildIds()).toBeFalsy();
   });
 });

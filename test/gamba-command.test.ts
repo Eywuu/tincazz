@@ -3,6 +3,7 @@ import { syncBuiltinESMExports } from 'node:module';
 import { Events } from 'discord.js';
 import { afterEach, beforeAll, describe, expect, it, vi } from 'vitest';
 import { createClient } from '../src/client.js';
+import { testEnv } from './support/env.js';
 
 // Sapphire loads the command with Node's native loader, so vi.mock cannot reach it. Patch the real
 // crypto.randomInt instead and re-sync the builtin ESM exports so native imports see it.
@@ -19,7 +20,7 @@ const cpp = '<:cpp:1226477956541448194>';
 const gif = 'https://klipy.com/gifs/smol-smolcat-5';
 
 function buildClient() {
-  return createClient({ DISCORD_TOKEN: 'x', COMMAND_PREFIX: '?', LOG_LEVEL: 'error' });
+  return createClient(testEnv);
 }
 
 function makeMessage(
