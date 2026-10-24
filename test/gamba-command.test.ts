@@ -1,8 +1,10 @@
 import crypto from 'node:crypto';
 import { syncBuiltinESMExports } from 'node:module';
+import { container } from '@sapphire/framework';
 import { Events } from 'discord.js';
 import { afterEach, beforeAll, describe, expect, it, vi } from 'vitest';
 import { createClient } from '../src/client.js';
+import { openDatabase } from '../src/db/index.js';
 import { testEnv } from './support/env.js';
 
 // Sapphire loads the command with Node's native loader, so vi.mock cannot reach it. Patch the real
@@ -59,6 +61,7 @@ describe('?gamba', () => {
   let client: ReturnType<typeof buildClient>;
 
   beforeAll(async () => {
+    container.db = openDatabase(':memory:');
     client = buildClient();
     await client.stores.load();
   });

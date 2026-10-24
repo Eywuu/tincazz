@@ -1,5 +1,6 @@
 export * from './bailout.js';
 export * from './cards.js';
+export * from './chat.js';
 export * from './config.js';
 export * from './daily.js';
 export * from './errors.js';
