@@ -6,7 +6,10 @@ services:
     restart: unless-stopped
     env_file: .env
     # The bot only makes outbound connections to Discord, so no ports are published.
+    # /app/data is the only writable path; it holds the SQLite database.
     read_only: true
+    volumes:
+      - tincazz-data:/app/data
     cap_drop: [ALL]
     security_opt: [no-new-privileges:true]
     logging:
@@ -14,3 +17,6 @@ services:
       options:
         max-size: 10m
         max-file: "3"
+
+volumes:
+  tincazz-data: {}
