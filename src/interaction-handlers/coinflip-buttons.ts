@@ -12,11 +12,11 @@ import {
   decodeCoinflipId,
   type FlipAgainId,
   flipErrorText,
+  isChallengeSettled,
   notYourChallenge,
   notYourFlip,
   reopen,
   ShortStakeError,
-  scheduleExpiry,
   settleBotFlip,
   settleChallenge,
   tryClose,
@@ -61,7 +61,24 @@ export class CoinflipButtonsHandler extends InteractionHandler {
       { guildId: interaction.guildId as string, userId, bet: String(id.bet), side: id.side },
       Date.now(),
     );
-    return interaction.update(cardReply(botFlipCard(userId, flip)));
+    return this.updateCard(interaction, cardReply(botFlipCard(userId, flip)));
+  }
+
+  /**
+   * Updates the card. The coins have already moved, so if Discord rejects the update the result is
+   * put on the message by a plain edit instead of being lost behind "interaction failed".
+   */
+  private async updateCard(interaction: ButtonInteraction, reply: ReturnType<typeof cardReply>) {
+    try {
+      return await interaction.update(reply);
+    } catch (error) {
+      this.container.logger.error(
+        `coinflip: could not update ${interaction.message.id}, editing instead: ${
+          error instanceof Error ? error.message : String(error)
+        }`,
+      );
+      return interaction.message.edit(reply);
+    }
   }
 
   private async answer(interaction: ButtonInteraction, id: ChallengeId) {
@@ -88,7 +105,8 @@ export class CoinflipButtonsHandler extends InteractionHandler {
     if (clickerId !== owner) {
       return interaction.reply(errorReply(notYourChallenge));
     }
-    if (!tryClose(messageId)) {
+    // The registry is lost on restart; the flip row is not.
+    if (!tryClose(messageId) || isChallengeSettled(this.container.db, messageId)) {
       return interaction.reply(errorReply(challengeTaken));
     }
     const reason = id.action === 'decline' ? 'declined' : 'cancelled';
@@ -101,7 +119,7 @@ export class CoinflipButtonsHandler extends InteractionHandler {
     view: ChallengeView,
     messageId: string,
   ) {
-    if (!tryClose(messageId)) {
+    if (!tryClose(messageId) || isChallengeSettled(this.container.db, messageId)) {
       return interaction.reply(errorReply(challengeTaken));
     }
     if (Date.now() > id.expiresAt) {
@@ -131,13 +149,10 @@ export class CoinflipButtonsHandler extends InteractionHandler {
         return interaction.reply(errorReply(challengeTaken));
       }
       // The acceptor can try again once funded (or someone else can accept), so the card stays
-      // live, with its expiry timer put back for the time that is left.
-      reopen(messageId);
-      scheduleExpiry(messageId, Math.max(0, id.expiresAt - Date.now()), () =>
-        interaction.message.edit(cardReply(challengeClosedCard(view, 'expired'))),
-      );
+      // live, with its original expiry handler armed again for the time that is left.
+      reopen(messageId, Math.max(0, id.expiresAt - Date.now()));
       throw error;
     }
-    return interaction.update(cardReply(challengeResultCard(view, settled)));
+    return this.updateCard(interaction, cardReply(challengeResultCard(view, settled)));
   }
 }

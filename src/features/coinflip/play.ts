@@ -118,7 +118,8 @@ function isUniqueViolation(error: unknown): boolean {
   return false;
 }
 
-function messageSettled(tx: DbOrTx, messageId: string): boolean {
+/** Whether a challenge message already has its flip, which outlives the in-memory registry. */
+export function isChallengeSettled(tx: DbOrTx, messageId: string): boolean {
   return (
     tx.select({ id: flips.id }).from(flips).where(eq(flips.messageId, messageId)).get() !==
     undefined
@@ -139,7 +140,7 @@ export function settleChallenge(
   const { guildId, messageId, mode, challengerId, acceptorId, bet, challengerSide } = request;
 
   return db.transaction((tx) => {
-    if (messageSettled(tx, messageId)) {
+    if (isChallengeSettled(tx, messageId)) {
       throw new ChallengeTakenError();
     }
     const challenger = getOrCreateWallet(tx, guildId, challengerId, now);

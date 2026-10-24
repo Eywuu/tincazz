@@ -3,6 +3,10 @@ import { container } from '@sapphire/framework';
 interface ChallengeState {
   closed: Set<string>;
   timers: Map<string, NodeJS.Timeout>;
+  /** Expiry handlers of challenges whose timer is armed, by message ID. */
+  handlers: Map<string, () => Promise<unknown>>;
+  /** The handler of the challenge `tryClose` claimed last, so `reopen` can arm it again. */
+  held?: { messageId: string; onExpire: () => Promise<unknown> };
 }
 
 declare module '@sapphire/pieces' {
@@ -14,7 +18,7 @@ declare module '@sapphire/pieces' {
 
 // Held on the container so every loaded copy of this module (pieces included) shares one state.
 const state = (): ChallengeState => {
-  container.coinflipChallenges ??= { closed: new Set(), timers: new Map() };
+  container.coinflipChallenges ??= { closed: new Set(), timers: new Map(), handlers: new Map() };
   return container.coinflipChallenges;
 };
 
@@ -35,12 +39,26 @@ export function tryClose(messageId: string): boolean {
   }
   closed.add(messageId);
   clearTimer(messageId);
+  const { handlers } = state();
+  const onExpire = handlers.get(messageId);
+  handlers.delete(messageId);
+  // Claiming and reopening happen in one synchronous flow, so one slot is enough.
+  state().held = onExpire ? { messageId, onExpire } : undefined;
   return true;
 }
 
-/** Gives a claimed message back (an acceptor who could not cover the stake). Does not reschedule. */
-export function reopen(messageId: string): void {
-  state().closed.delete(messageId);
+/**
+ * Gives a claimed message back (an acceptor who could not cover the stake). With `delayMs` it also
+ * arms the challenge's original expiry handler again, if it had one.
+ */
+export function reopen(messageId: string, delayMs?: number): void {
+  const current = state();
+  current.closed.delete(messageId);
+  const { held } = current;
+  current.held = undefined;
+  if (delayMs !== undefined && held?.messageId === messageId) {
+    scheduleExpiry(messageId, delayMs, held.onExpire);
+  }
 }
 
 /** Runs `onExpire` after `delayMs` unless the challenge was closed first. Never throws. */
@@ -50,8 +68,10 @@ export function scheduleExpiry(
   onExpire: () => Promise<unknown>,
 ): void {
   clearTimer(messageId);
+  state().handlers.set(messageId, onExpire);
   const timer = setTimeout(async () => {
     state().timers.delete(messageId);
+    state().handlers.delete(messageId);
     if (!tryClose(messageId)) {
       return;
     }
@@ -74,5 +94,7 @@ export function clearChallenges(): void {
     clearTimeout(timer);
   }
   state().timers.clear();
+  state().handlers.clear();
+  state().held = undefined;
   state().closed.clear();
 }

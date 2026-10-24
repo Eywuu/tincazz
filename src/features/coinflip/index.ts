@@ -29,6 +29,7 @@ export {
   type BotFlip,
   type BotFlipRequest,
   type ChallengeRequest,
+  isChallengeSettled,
   type SettledChallenge,
   settleBotFlip,
   settleChallenge,

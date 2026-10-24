@@ -30,6 +30,22 @@ describe('coinflip challenges', () => {
     expect(tryClose('m')).toBe(true);
   });
 
+  it('re-arms the expiry of a reopened challenge with the same handler', async () => {
+    const onExpire = vi.fn(async () => undefined);
+    scheduleExpiry('m', 60_000, onExpire);
+    expect(tryClose('m')).toBe(true);
+    reopen('m', 5_000);
+    await vi.advanceTimersByTimeAsync(5_000);
+    expect(onExpire).toHaveBeenCalledTimes(1);
+  });
+
+  it('does not re-arm a challenge that never had an expiry', async () => {
+    tryClose('m');
+    reopen('m', 5_000);
+    await vi.advanceTimersByTimeAsync(5_000);
+    expect(tryClose('m')).toBe(true);
+  });
+
   it('expires an open challenge', async () => {
     const onExpire = vi.fn(async () => undefined);
     scheduleExpiry('m', 60_000, onExpire);

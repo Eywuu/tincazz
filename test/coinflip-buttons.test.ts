@@ -200,16 +200,17 @@ describe('coinflip buttons', () => {
       expect(flipCount()).toBe(1);
     });
 
-    it('still expires the card after a short acceptor', async () => {
+    it('still expires the card with the original handler after a short acceptor', async () => {
       vi.useFakeTimers({ toFake: ['setTimeout', 'clearTimeout'] });
       try {
         drain('3', 5);
-        const interaction = await click(challengeId('accept', { opponentId: undefined }), '3');
+        const onExpire = vi.fn(async () => undefined);
+        scheduleExpiry('m1', 600_000, onExpire);
+        await click(challengeId('accept', { opponentId: undefined }), '3');
         // The id rounds the expiry up to the next whole second.
         await vi.advanceTimersByTimeAsync(61_000);
 
-        expect(interaction.message.edit).toHaveBeenCalledTimes(1);
-        expect(json(interaction.message.edit.mock.calls[0])).toContain('Challenge expired.');
+        expect(onExpire).toHaveBeenCalledTimes(1);
       } finally {
         vi.useRealTimers();
       }
@@ -236,6 +237,64 @@ describe('coinflip buttons', () => {
       } finally {
         vi.useRealTimers();
       }
+    });
+  });
+
+  describe('after a restart or a failed card update', () => {
+    it('shows the result in a message edit when the card update fails', async () => {
+      mockRandomInt(0);
+      const interaction = makeButton(client, { customId: challengeId('accept'), userId: '3' });
+      interaction.update.mockRejectedValueOnce(new Error('Service Unavailable'));
+      const edit = vi.fn(async (_options: unknown) => ({}));
+      interaction.message.edit = edit;
+      const error = vi.spyOn(container.logger, 'error').mockImplementation(() => undefined);
+      client.emit(Events.InteractionCreate, interaction as never);
+      await vi.waitFor(() => expect(edit).toHaveBeenCalledTimes(1), { timeout: 2000 });
+
+      expect(json(edit.mock.calls[0])).toContain('wins');
+      expect(error).toHaveBeenCalled();
+      expect(flipCount()).toBe(1);
+    });
+
+    it('shows a flip again result in a message edit when the card update fails', async () => {
+      mockRandomInt(0);
+      const interaction = makeButton(client, {
+        customId: encodeFlipAgainId({ userId: '1', bet: 100, side: 'heads' }),
+        userId: '1',
+      });
+      interaction.update.mockRejectedValueOnce(new Error('Service Unavailable'));
+      const edit = vi.fn(async (_options: unknown) => ({}));
+      interaction.message.edit = edit;
+      vi.spyOn(container.logger, 'error').mockImplementation(() => undefined);
+      client.emit(Events.InteractionCreate, interaction as never);
+      await vi.waitFor(() => expect(edit).toHaveBeenCalledTimes(1), { timeout: 2000 });
+
+      expect(json(edit.mock.calls[0])).toContain('Heads');
+    });
+
+    it('does not let a cancel or decline overwrite a settled challenge after a restart', async () => {
+      mockRandomInt(0);
+      await click(challengeId('accept'), '3');
+      clearChallenges();
+      const cancel = await click(challengeId('cancel'), '1');
+      clearChallenges();
+      const decline = await click(challengeId('decline'), '3');
+
+      for (const interaction of [cancel, decline]) {
+        expect(json(interaction.reply.mock.calls[0])).toContain('Someone already took this');
+        expect(interaction.update).not.toHaveBeenCalled();
+      }
+    });
+
+    it('does not rewrite a settled challenge as expired after a restart', async () => {
+      mockRandomInt(0);
+      const expiresAt = Date.now() + 60_000;
+      await click(challengeId('accept', { expiresAt }), '3');
+      clearChallenges();
+      const late = await click(challengeId('accept', { expiresAt: Date.now() - 5_000 }), '3');
+
+      expect(json(late.reply.mock.calls[0])).toContain('Someone already took this');
+      expect(late.update).not.toHaveBeenCalled();
     });
   });
 
