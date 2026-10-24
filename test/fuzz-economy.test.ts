@@ -197,10 +197,23 @@ function expectInvariants(db: Db): void {
   for (const row of db.select().from(flips).all()) {
     expect(row.rake).toBeGreaterThanOrEqual(1);
     expect(row.rake).toBeLessThanOrEqual(row.bet);
+    const mine = ledgerRows.filter(
+      (entry) =>
+        (entry.reason === 'flip_bet' || entry.reason === 'flip_win') && entry.ref === row.id,
+    );
     expect(
-      ledgerRows.some((entry) => entry.reason === 'flip_bet' && entry.ref === row.id),
+      mine.some((entry) => entry.reason === 'flip_bet'),
       'every flip has a stake row',
     ).toBe(true);
+    // Coins only leave a flip as the rake (and, against the bot, the bot's side of the pool).
+    const net = mine.reduce((sum, entry) => sum + entry.delta, 0);
+    if (row.mode === 'bot') {
+      expect(net, 'a bot flip nets bet - rake on a win and -bet on a loss').toBe(
+        row.winnerId === null ? -row.bet : row.bet - row.rake,
+      );
+    } else {
+      expect(net, 'a player flip loses exactly the rake').toBe(-row.rake);
+    }
   }
   for (const row of db.select().from(pots).all()) {
     expect(row.amount).toBeGreaterThanOrEqual(pot.seed);

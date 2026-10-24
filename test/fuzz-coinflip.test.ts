@@ -72,13 +72,14 @@ describe('coinflip fuzz', () => {
     );
   });
 
-  it('keeps the rake between 1 and the bet, and the pool whole', () => {
+  it('keeps the rake between 1 and the bet, and a win above the stake', () => {
     fc.assert(
       fc.property(bet, (value) => {
         const rake = flipRake(value);
         expect(rake).toBeGreaterThanOrEqual(1);
         expect(rake).toBeLessThanOrEqual(value);
-        expect(2 * value - rake + rake).toBe(2 * value);
+        // The winner's credit never drops below the stake, so a win can't lose coins.
+        expect(2 * value - rake).toBeGreaterThanOrEqual(value);
       }),
     );
   });
