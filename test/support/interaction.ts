@@ -10,7 +10,12 @@ export interface ChatInputOptions {
 }
 
 export function makeUser(id: string, bot = false) {
-  return { id, bot, toString: () => `<@${id}>` };
+  return {
+    id,
+    bot,
+    toString: () => `<@${id}>`,
+    displayAvatarURL: () => `https://cdn.example/${id}.png`,
+  };
 }
 
 /** An interaction stub for slash commands, in the style of the `/ping` test. */
