@@ -55,3 +55,7 @@ docker compose pull && docker compose up -d
 ```
 
 The container restarts automatically after crashes and reboots (`restart: unless-stopped`).
+
+## License
+
+Released under the [GNU General Public License v3.0](LICENSE) (GPL-3.0-only).
