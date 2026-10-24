@@ -7,6 +7,7 @@ import {
 } from './outcomes.js';
 import { type RandomInt, rollOutcome } from './roll.js';
 
+export { InvalidBetError, parseBet } from './bet.js';
 export type { Evaluation } from './evaluate.js';
 export { evaluate } from './evaluate.js';
 export { type FreeSpin, playFree } from './play.js';
