@@ -4,12 +4,9 @@ import { gambaJackpotRoleId, outcomeEmoji } from './outcomes.js';
 
 const prizeGif = 'https://klipy.com/gifs/smol-smolcat-5';
 
-/** The classic `?gamba` roll: the reels, plus the stake and balance when a bet was placed. */
+/** The classic `?gamba` roll: the reels, the stake and the balance. */
 export function formatGambaReply(spin: Spin): string {
   const reels = spin.reels.map(outcomeEmoji).join(' ');
-  if (spin.mode === 'free') {
-    return reels;
-  }
   return `${reels}\nbet ${coins(spin.bet)} → ${coins(spin.payout)} · balance ${coins(spin.balance)}`;
 }
 
@@ -23,11 +20,10 @@ export function formatGambaFollowUp(
   if (result !== 'triple' && result !== 'jackpot') {
     return undefined;
   }
-  const lines =
-    spin.mode === 'free'
-      ? [`${userMention} hit three of a kind!`]
-      : [`${userMention} won! +${coins(spin.payout)} coins (balance: ${coins(spin.balance)})`];
-  if (spin.mode === 'wager' && spin.potWon > 0) {
+  const lines = [
+    `${userMention} won! +${coins(spin.payout)} coins (balance: ${coins(spin.balance)})`,
+  ];
+  if (spin.potWon > 0) {
     lines.push(`+${coins(spin.potWon)} from the pot`);
   }
   if (result === 'jackpot') {

@@ -1,7 +1,13 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { type Db, openDatabase } from '../src/db/index.js';
 import { pots, spins } from '../src/db/schema.js';
-import { InsufficientFundsError } from '../src/features/economy/index.js';
+import {
+  debit,
+  findWallet,
+  getOrCreateWallet,
+  InsufficientFundsError,
+  startingBalance,
+} from '../src/features/economy/index.js';
 import { InvalidBetError } from '../src/features/gamba/index.js';
 import { settleSpin, spin } from '../src/features/gamba/spin.js';
 
@@ -20,38 +26,23 @@ describe('spin', () => {
     db = openDatabase(':memory:');
   });
 
-  it('announces a free triple without assigning a role', async () => {
-    const assignJackpotRole = vi.fn(async () => true);
-    const result = await spin(db, request, 1000, {
-      assignJackpotRole,
-      randomInt: draws(0, 0, 0),
-    });
-
-    expect(json(result.card)).toContain('free spin');
-    expect(result.announcement).toBeDefined();
-    expect(assignJackpotRole).not.toHaveBeenCalled();
-  });
-
-  it('assigns the role on a free jackpot without paying coins or touching the pot', async () => {
-    const assignJackpotRole = vi.fn(async () => true);
-    const { played, roleAssigned } = await settleSpin(db, request, 1000, {
-      assignJackpotRole,
-      randomInt: draws(20, 20, 20),
-    });
-
-    expect(assignJackpotRole).toHaveBeenCalledTimes(1);
-    expect(roleAssigned).toBe(true);
-    expect(played.balance).toBe(1_000);
-    expect(db.select().from(pots).all()).toEqual([]);
-  });
-
-  it('has no announcement on a free loss', async () => {
-    const result = await spin(db, request, 1000, {
+  it('plays a 10-coin wager when no bet is given', async () => {
+    const { played } = await settleSpin(db, request, 1000, {
       assignJackpotRole: async () => true,
       randomInt: draws(0, 3, 6),
     });
 
-    expect(result.announcement).toBeUndefined();
+    expect(played.bet).toBe(10);
+    expect(findWallet(db, '2', '1')?.balance).toBe(startingBalance - 10);
+  });
+
+  it('rejects a no-bet spin under 10 coins with a funds error', async () => {
+    getOrCreateWallet(db, '2', '1', 1000);
+    debit(db, { guildId: '2', userId: '1', amount: startingBalance - 9, reason: 'bet', now: 1000 });
+
+    await expect(
+      settleSpin(db, request, 1000, { assignJackpotRole: async () => true }),
+    ).rejects.toBeInstanceOf(InsufficientFundsError);
   });
 
   it('settles a wager and does not announce a pair', async () => {

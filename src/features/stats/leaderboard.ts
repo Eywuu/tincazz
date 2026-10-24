@@ -46,6 +46,12 @@ function source(category: LeaderboardCategory): Source {
         ...columns(playerStats),
         value: sql<number>`(${playerStats.won} - ${playerStats.wagered})`,
       };
+    case 'coinflip':
+      return {
+        table: playerStats,
+        ...columns(playerStats),
+        value: sql<number>`(${playerStats.flipWon} - ${playerStats.flipWagered})`,
+      };
     case 'spins':
       return {
         table: playerStats,

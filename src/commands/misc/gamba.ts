@@ -35,7 +35,7 @@ export class GambaCommand extends Command {
         .addStringOption((option) =>
           option
             .setName('bet')
-            .setDescription('Coins to bet: 10 to 10,000, all, half or 2.5k (default: free spin)'),
+            .setDescription('Coins to bet: 10 to 10,000, all, half or 2.5k (default: 10)'),
         ),
     );
   }

@@ -59,14 +59,14 @@ describe('gamba buttons', () => {
     return interaction;
   }
 
-  it('plays a free spin again', async () => {
-    mockRandomInt(0, 3, 6);
-    const interaction = await click('gamba:again:1:0');
+  it('ignores an old free-spin button', async () => {
+    const interaction = makeButton(client, { customId: 'gamba:again:1:0', userId: '1' });
+    client.emit(Events.InteractionCreate, interaction as never);
+    await wait(50);
 
-    expect(interaction.update).toHaveBeenCalledTimes(1);
-    expect(json(interaction.update.mock.calls[0])).toContain('free spin');
     expect(interaction.reply).not.toHaveBeenCalled();
-    expect(spinCount()).toBe(1);
+    expect(interaction.update).not.toHaveBeenCalled();
+    expect(spinCount()).toBe(0);
   });
 
   it('plays the same bet again and announces a triple with a ping', async () => {
@@ -116,7 +116,7 @@ describe('gamba buttons', () => {
 
   it('expires the buttons on a card that is not the latest', async () => {
     setActiveCard('1', 'm2');
-    const interaction = await click('gamba:again:1:0', '1', 'm1');
+    const interaction = await click('gamba:again:1:10', '1', 'm1');
 
     expect(json(interaction.reply.mock.calls[0])).toContain(expiredSpin);
     expect(interaction.update).not.toHaveBeenCalled();
@@ -125,15 +125,15 @@ describe('gamba buttons', () => {
 
   it('keeps the latest card live across clicks', async () => {
     setActiveCard('1', 'm2');
-    await click('gamba:again:1:0', '1', 'm2');
-    await click('gamba:again:1:0', '1', 'm2');
+    await click('gamba:again:1:10', '1', 'm2');
+    await click('gamba:again:1:10', '1', 'm2');
 
     expect(spinCount()).toBe(2);
   });
 
   it('adopts the first clicked card when none is tracked, then expires others', async () => {
-    await click('gamba:again:1:0', '1', 'm1');
-    const other = await click('gamba:again:1:0', '1', 'm9');
+    await click('gamba:again:1:10', '1', 'm1');
+    const other = await click('gamba:again:1:10', '1', 'm9');
 
     expect(json(other.reply.mock.calls[0])).toContain(expiredSpin);
     expect(spinCount()).toBe(1);

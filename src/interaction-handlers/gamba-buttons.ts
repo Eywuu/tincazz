@@ -41,7 +41,7 @@ export class GambaButtonsHandler extends InteractionHandler {
         {
           guildId: interaction.guildId as string,
           userId,
-          bet: id.bet === 0 ? undefined : String(id.bet),
+          bet: String(id.bet),
         },
         Date.now(),
         {

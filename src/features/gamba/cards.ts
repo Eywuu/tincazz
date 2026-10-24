@@ -4,7 +4,7 @@ import { accents, card, coins } from '../ui/index.js';
 import { InvalidBetError } from './bet.js';
 import { type PayoutTier, wager } from './config.js';
 import { encodeSpinId } from './custom-ids.js';
-import { type FreeSpin, type Spin, threeOfAKindOdds, type WagerSpin } from './index.js';
+import { type Spin, threeOfAKindOdds, type WagerSpin } from './index.js';
 import { gambaJackpotRoleId, outcomeEmoji } from './outcomes.js';
 
 export const tierLabels: Record<PayoutTier, string> = {
@@ -25,19 +25,6 @@ const reelsHeading = (spin: Spin) => `# ${spin.reels.map(outcomeEmoji).join(' ')
 
 function button(label: string, customId: string, style: ButtonStyle): ButtonBuilder {
   return new ButtonBuilder().setLabel(label).setCustomId(customId).setStyle(style);
-}
-
-export function freeSpinCard(userId: string, spin: FreeSpin): ContainerBuilder {
-  const accent = spin.evaluation.result === 'jackpot' ? accents.gold : accents.loss;
-  return card(
-    accent,
-    reelsHeading(spin),
-    `-# <@${userId}> · free spin (jackpot role only, bet to win coins) · balance ${coins(spin.balance)}`,
-  ).addActionRowComponents(
-    new ActionRowBuilder<ButtonBuilder>().addComponents(
-      button('Spin again', encodeSpinId({ action: 'again', userId, bet: 0 }), ButtonStyle.Primary),
-    ),
-  );
 }
 
 export function wagerCard(userId: string, spin: WagerSpin): ContainerBuilder {
@@ -88,10 +75,8 @@ export function announcementCard(
 ): ContainerBuilder {
   const emoji = outcomeEmoji(spin.reels[0]);
   const texts = [`## <@${userId}> hit ${emoji} x3!`];
-  if (spin.mode === 'wager') {
-    texts.push(`Won ${coins(spin.payout)} on a ${coins(spin.bet)} bet`);
-  }
-  if (spin.mode === 'wager' && spin.potWon > 0) {
+  texts.push(`Won ${coins(spin.payout)} on a ${coins(spin.bet)} bet`);
+  if (spin.potWon > 0) {
     texts.push(`+${coins(spin.potWon)} from the pot`);
   }
   if (spin.evaluation.result === 'jackpot') {

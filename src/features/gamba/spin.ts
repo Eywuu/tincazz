@@ -2,15 +2,16 @@ import type { ContainerBuilder } from 'discord.js';
 import type { Db } from '../../db/index.js';
 import { getOrCreateWallet } from '../economy/wallets.js';
 import { parseBet } from './bet.js';
-import { announcementCard, freeSpinCard, wagerCard } from './cards.js';
+import { announcementCard, wagerCard } from './cards.js';
+import { wager } from './config.js';
 import type { Spin } from './index.js';
-import { playFree, playWager } from './play.js';
+import { playWager } from './play.js';
 import type { RandomInt } from './roll.js';
 
 export interface SpinRequest {
   guildId: string;
   userId: string;
-  /** Absent or empty means a free spin. */
+  /** Absent or blank means the default bet. */
   bet?: string;
 }
 
@@ -41,18 +42,16 @@ export async function settleSpin(
   options: SpinOptions,
 ): Promise<SettledSpin> {
   const { guildId, userId } = request;
-  const bet = request.bet?.trim();
+  const bet = request.bet?.trim() || String(wager.defaultBet);
 
-  const played = bet
-    ? playWager(
-        db,
-        guildId,
-        userId,
-        parseBet(bet, getOrCreateWallet(db, guildId, userId, now).balance),
-        now,
-        options.randomInt,
-      )
-    : playFree(db, guildId, userId, now, options.randomInt);
+  const played = playWager(
+    db,
+    guildId,
+    userId,
+    parseBet(bet, getOrCreateWallet(db, guildId, userId, now).balance),
+    now,
+    options.randomInt,
+  );
 
   const jackpot = played.evaluation.result === 'jackpot';
   const roleAssigned = jackpot ? await options.assignJackpotRole() : undefined;
@@ -69,7 +68,7 @@ export async function spin(
   const { played, roleAssigned } = await settleSpin(db, request, now, options);
   const { userId } = request;
   const { result } = played.evaluation;
-  const card = played.mode === 'free' ? freeSpinCard(userId, played) : wagerCard(userId, played);
+  const card = wagerCard(userId, played);
   const announced = result === 'triple' || result === 'jackpot';
   return announced
     ? { card, announcement: announcementCard(userId, played, roleAssigned) }

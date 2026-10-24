@@ -17,7 +17,7 @@ const spinId: fc.Arbitrary<SpinButtonId> = fc.oneof(
   fc.record({
     action: fc.constant('again' as const),
     userId: snowflake,
-    bet: fc.oneof(fc.constant(0), validBet),
+    bet: validBet,
   }),
   fc.record({ action: fc.constant('double' as const), userId: snowflake, bet: validBet }),
 );
@@ -95,12 +95,8 @@ function expectValidSpinId(id: SpinButtonId): void {
   expect(['again', 'double']).toContain(id.action);
   expect(id.userId).toMatch(/^[0-9]{1,20}$/);
   expect(Number.isSafeInteger(id.bet)).toBe(true);
-  if (id.bet === 0) {
-    expect(id.action).toBe('again');
-  } else {
-    expect(id.bet).toBeGreaterThanOrEqual(wager.minBet);
-    expect(id.bet).toBeLessThanOrEqual(wager.maxBet);
-  }
+  expect(id.bet).toBeGreaterThanOrEqual(wager.minBet);
+  expect(id.bet).toBeLessThanOrEqual(wager.maxBet);
 }
 
 function expectValidLeaderboardId(id: LeaderboardId): void {

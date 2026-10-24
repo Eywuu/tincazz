@@ -4,6 +4,7 @@ export const leaderboardCategories = [
   'jackpots',
   'profit',
   'spins',
+  'coinflip',
 ] as const;
 
 export type LeaderboardCategory = (typeof leaderboardCategories)[number];
@@ -14,6 +15,7 @@ export const categoryLabels: Record<LeaderboardCategory, string> = {
   jackpots: 'Jackpots',
   profit: 'Profit',
   spins: 'Spins',
+  coinflip: 'Coinflip net',
 };
 
 export const leaderboardPageSize = 10;

@@ -101,7 +101,7 @@ export function makeButton(
     deferred: false,
     inCachedGuild: () => true,
     member: { roles: { add: vi.fn(async () => undefined) } },
-    message: { id: messageId, reply: announce },
+    message: { id: messageId, reply: announce, edit: vi.fn(async (_options: unknown) => ({})) },
     reply: vi.fn(async (_options: unknown) => undefined),
     update: vi.fn(async (_options: unknown) => undefined),
     followUp: vi.fn(async (_options: unknown) => undefined),

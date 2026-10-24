@@ -5,21 +5,25 @@ Sapphire framework.
 
 Currently implemented:
 - `?ping` / `/ping`: the bot's latency
-- `?gamba [bet]` / `/gamba bet:<bet>`: free spins, or wagered spins with a progressive pot (see below).
+- `?gamba [bet]` / `/gamba bet:<bet>`: wagered spins with a progressive pot (see below).
   `?gamba` is the classic plain-text reply, `/gamba` the polished card with buttons; both share the
   same economy
+- `/coinflip bot|challenge|open [bet] [side]`: flip a coin against the bot, challenge a member
+  (60 seconds to accept) or open a flip anyone can accept (120 seconds). Bets are gamba's (10 to
+  10,000, default 10). The winner takes the pool minus a 3% rake (at least 1 coin) that goes into
+  the gamba pot; against the bot a win nets the bet minus the rake and a loss costs the bet
 - `/balance`, `/daily`, `/bailout`: your coins, the daily streak and a bailout when broke
 - `/stats [user]`: a player profile with spins, win rate, biggest win, net profit and daily streak
-- `/leaderboard [category]`: the top 10 by `coins`, `biggest-win`, `jackpots`, `profit` or `spins`; only
+- `/leaderboard [category]`: the top 10 by `coins`, `biggest-win`, `jackpots`, `profit`, `spins` or `coinflip`; only
   the person who ran it can use its category select and Previous/Next buttons
 - chat rewards: a few coins for chatting, at most once a minute
 - `/eco give|take`: moderators adjust coins (Manage Server)
 
 ## Gamba
 
-Without a bet, `?gamba` is a free spin with fixed coin prizes for three of a kind. With a bet
-(`100`, `2.5k`, `all` or `half`; 10 to 10,000 coins) the spin costs that stake and pays a multiple
-of it. Payouts include the stake:
+Every spin costs a stake: `100`, `2.5k`, `all` or `half` (10 to 10,000 coins), or 10 coins when
+you give no bet. There are no free spins. A spin pays a multiple of the stake. Payouts include the
+stake:
 
 | Result        | Payout |
 | ------------- | ------ |
@@ -35,7 +39,7 @@ wins the pot: all of it at bets of 500 or more, a proportional share below that.
 10,000 coins and never resets below that.
 
 `?gamba` replies to you with the reels (plus a follow-up on a win), with no buttons. Every `/gamba`
-result card has a **Spin again** button (same bet; a free spin repeats as a free spin).
+result card has a **Spin again** button (same bet).
 Wagered cards also get **Double (N)**, shown only when twice the bet is at most 10,000 and at
 most your balance after the spin. Only the player can use the buttons.
 

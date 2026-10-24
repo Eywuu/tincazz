@@ -3,7 +3,7 @@ import { decodeSpinId, encodeSpinId } from '../src/features/gamba/index.js';
 
 describe('spin button ids', () => {
   it.each([
-    { action: 'again', userId: '1', bet: 0 },
+    { action: 'again', userId: '1', bet: 10 },
     { action: 'again', userId: '123456789012345678', bet: 100 },
     { action: 'double', userId: '1', bet: 10_000 },
   ] as const)('round trips %o', (id) => {
@@ -12,6 +12,10 @@ describe('spin button ids', () => {
 
   it('encodes as gamba:<action>:<userId>:<bet>', () => {
     expect(encodeSpinId({ action: 'double', userId: '7', bet: 200 })).toBe('gamba:double:7:200');
+  });
+
+  it('no longer decodes a free-spin id', () => {
+    expect(decodeSpinId('gamba:again:1:0')).toBeUndefined();
   });
 
   it.each([

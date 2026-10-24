@@ -19,6 +19,10 @@ const profile: PlayerProfile = {
   won: 11_200,
   biggestWin: 4_500,
   bestOdds: 343,
+  flips: 4,
+  flipWins: 3,
+  flipWagered: 400,
+  flipWon: 582,
 };
 
 describe('profileCard', () => {
@@ -36,6 +40,7 @@ describe('profileCard', () => {
       'Spins **120** · win rate **35.0%** · jackpots **1**',
       'Biggest win **4,500** · best odds **1 in 343**',
       'Net profit **+1,200** · wagered 10,000 · won 11,200',
+      'Coinflips **4** · won **3** · net **+182**',
       '-# Daily streak: 3 days',
       'https://cdn/a.png',
     ]) {
@@ -102,7 +107,9 @@ describe('leaderboardCard', () => {
     expect(text).not.toContain('Page 1');
     expect(text).not.toContain('Previous');
     expect(text).toContain('lb:cat:1');
-    expect(text.match(/"value":"(coins|biggest-win|jackpots|profit|spins)"/g)).toHaveLength(5);
+    expect(
+      text.match(/"value":"(coins|biggest-win|jackpots|profit|spins|coinflip)"/g),
+    ).toHaveLength(6);
     expect(text).toMatch(/"value":"coins"[^}]*"default":true|"default":true[^}]*"value":"coins"/);
   });
 
@@ -120,6 +127,18 @@ describe('leaderboardCard', () => {
     expect(text).toContain('lb:page:1:profit:0');
     expect(text).toContain('lb:page:1:profit:2');
     expect(text).not.toContain('"disabled":true');
+  });
+
+  it('shows signed coinflip net values', () => {
+    const text = json(
+      leaderboardCard({
+        ownerId: '1',
+        category: 'coinflip',
+        board: board([['9', 94]], 0, 1),
+        caller: undefined,
+      }),
+    );
+    expect(text).toContain('<@9> · **+94**');
   });
 
   it('disables Previous on the first page and Next on the last', () => {

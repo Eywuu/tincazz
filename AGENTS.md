@@ -42,15 +42,17 @@ src/
     economy/      slash commands for coins (/balance, /daily, /bailout, /eco)
     stats/        slash commands for profiles and boards (/stats, /leaderboard)
   features/       plain feature logic, one folder per feature (not auto-loaded)
+    coinflip/     `/coinflip` rules: rake, flips, `cf:*` custom IDs, the one transactional settle
+                  module, the in-memory challenge registry (exactly-once and expiry) and cards
     economy/      wallets and ledger; the only code that changes balances
     gamba/        spin logic, odds and payouts, the pot, bet parsing, result cards and the
-                  shared `spin()` flow used by commands and buttons
+                  shared `spin()` flow used by commands and buttons (every spin is a wager, default 10)
     presence/     the bot's rotating status (live pot, last jackpot, spins today), started from
                   the ready listener
     stats/        read-only profile and leaderboard queries, `lb:*` custom IDs and cards
     ui/           shared Components V2 card helpers
-  interaction-handlers/  one file per component handler (gamba buttons, leaderboard
-                  paging and category select)
+  interaction-handlers/  one file per component handler (gamba and coinflip buttons,
+                  leaderboard paging and category select)
   listeners/      one file per Discord/Sapphire event listener
 drizzle/          generated SQL migrations, committed and shipped in the image
 test/             Vitest tests

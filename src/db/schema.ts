@@ -6,18 +6,25 @@ export const ledgerReasons = [
   'daily',
   'bailout',
   'chat',
-  'free_prize',
+  'free_prize', // legacy: free spins are gone, rows stay in history
   'bet',
   'payout',
   'pot_win',
+  'flip_bet',
+  'flip_win',
   'admin_grant',
   'admin_take',
 ] as const;
+// 'free' is legacy (free spins are gone); old rows keep it.
 export const spinModes = ['free', 'wager'] as const;
+export const flipModes = ['bot', 'challenge', 'open'] as const;
+export const flipSides = ['heads', 'tails'] as const;
 export const spinResults = ['none', 'pair', 'triple', 'jackpot'] as const;
 
 export type LedgerReason = (typeof ledgerReasons)[number];
 export type SpinMode = (typeof spinModes)[number];
+export type FlipMode = (typeof flipModes)[number];
+export type FlipSide = (typeof flipSides)[number];
 export type SpinResult = (typeof spinResults)[number];
 
 export const wallets = sqliteTable(
@@ -73,6 +80,25 @@ export const spins = sqliteTable(
   (table) => [index('spins_user_idx').on(table.guildId, table.userId)],
 );
 
+export const flips = sqliteTable(
+  'flips',
+  {
+    id: integer('id').primaryKey({ autoIncrement: true }),
+    guildId: text('guild_id').notNull(),
+    mode: text('mode', { enum: flipModes }).notNull(),
+    challengerId: text('challenger_id').notNull(),
+    opponentId: text('opponent_id'),
+    bet: integer('bet').notNull(),
+    challengerSide: text('challenger_side', { enum: flipSides }).notNull(),
+    resultSide: text('result_side', { enum: flipSides }).notNull(),
+    winnerId: text('winner_id'),
+    rake: integer('rake').notNull(),
+    messageId: text('message_id').unique(),
+    createdAt: integer('created_at').notNull(),
+  },
+  (table) => [index('flips_guild_created_idx').on(table.guildId, table.createdAt)],
+);
+
 export const playerStats = sqliteTable(
   'player_stats',
   {
@@ -85,6 +111,10 @@ export const playerStats = sqliteTable(
     won: integer('won').notNull().default(0),
     biggestWin: integer('biggest_win').notNull().default(0),
     bestOdds: integer('best_odds').notNull().default(0),
+    flips: integer('flips').notNull().default(0),
+    flipWins: integer('flip_wins').notNull().default(0),
+    flipWagered: integer('flip_wagered').notNull().default(0),
+    flipWon: integer('flip_won').notNull().default(0),
   },
   (table) => [
     primaryKey({ columns: [table.guildId, table.userId] }),

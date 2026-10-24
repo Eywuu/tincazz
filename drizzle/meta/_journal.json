@@ -15,6 +15,13 @@
       "when": 1792841203259,
       "tag": "0001_ledger_note",
       "breakpoints": true
+    },
+    {
+      "idx": 2,
+      "version": "6",
+      "when": 1792864447942,
+      "tag": "0002_coinflip",
+      "breakpoints": true
     }
   ]
 }

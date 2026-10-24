@@ -6,50 +6,7 @@ import { type Evaluation, evaluate } from './evaluate.js';
 import { type Reels, spinGamba } from './index.js';
 import { settlePot } from './pot.js';
 import type { RandomInt } from './roll.js';
-import { recordFreeSpinStats, recordWagerSpinStats } from './stats.js';
-
-export interface FreeSpin {
-  mode: 'free';
-  reels: Reels;
-  evaluation: Evaluation;
-  balance: number;
-  spinId: number;
-}
-
-/**
- * Rolls a free spin and settles it (wallet, spin row, stats) in one transaction. A free spin never
- * moves coins; its only reward is the jackpot role, which the caller assigns.
- */
-export function playFree(
-  db: Db,
-  guildId: string,
-  userId: string,
-  now: number,
-  randomInt?: RandomInt,
-): FreeSpin {
-  const reels = spinGamba(randomInt);
-  const evaluation = evaluate(reels);
-  return db.transaction((tx) => {
-    const wallet = getOrCreateWallet(tx, guildId, userId, now);
-    const { id: spinId } = tx
-      .insert(spins)
-      .values({
-        guildId,
-        userId,
-        mode: 'free',
-        reels: reels.join(','),
-        result: evaluation.result,
-        bet: 0,
-        payout: 0,
-        potWon: 0,
-        createdAt: now,
-      })
-      .returning({ id: spins.id })
-      .get();
-    recordFreeSpinStats(tx, guildId, userId, evaluation);
-    return { mode: 'free', reels, evaluation, balance: wallet.balance, spinId };
-  });
-}
+import { recordWagerSpinStats } from './stats.js';
 
 export interface WagerSpin {
   mode: 'wager';
