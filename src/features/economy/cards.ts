@@ -9,6 +9,8 @@ export const botsHaveNoWallets = "Bots don't have wallets.";
 
 export const ecoNeedsManageServer = 'You need the Manage Server permission to use `/eco`.';
 
+export const ecoNeedsReason = 'Give a reason for the adjustment.';
+
 export function balanceCard(userId: string, wallet: { balance: number; rank: number } | undefined) {
   if (!wallet) {
     return card(accents.brand, '## Balance', `<@${userId}> hasn't played yet.`);

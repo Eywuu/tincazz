@@ -12,6 +12,7 @@ import {
   admin as adminConfig,
   botsHaveNoWallets,
   ecoNeedsManageServer,
+  ecoNeedsReason,
   InsufficientFundsError,
 } from '../../features/economy/index.js';
 import { cardReply, coins, errorReply } from '../../features/ui/index.js';
@@ -65,6 +66,10 @@ export class EcoCommand extends Command {
     const reason = interaction.options.getString('reason', true);
     if (user.bot) {
       return interaction.reply(errorReply(botsHaveNoWallets));
+    }
+    // Discord accepts a reason of only spaces; adminAdjust would reject it with a RangeError.
+    if (reason.trim() === '') {
+      return interaction.reply(errorReply(ecoNeedsReason));
     }
 
     try {

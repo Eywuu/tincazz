@@ -3,7 +3,11 @@ import { Events, MessageFlags, PermissionFlagsBits, SlashCommandBuilder } from '
 import { beforeAll, beforeEach, describe, expect, it } from 'vitest';
 import { createClient } from '../src/client.js';
 import { openDatabase } from '../src/db/index.js';
-import { botsHaveNoWallets, ecoNeedsManageServer } from '../src/features/economy/cards.js';
+import {
+  botsHaveNoWallets,
+  ecoNeedsManageServer,
+  ecoNeedsReason,
+} from '../src/features/economy/cards.js';
 import { adminAdjust, findWallet } from '../src/features/economy/index.js';
 import { testEnv } from './support/env.js';
 import { makeChatInput, makeUser } from './support/interaction.js';
@@ -69,6 +73,13 @@ describe('/eco', () => {
       PermissionFlagsBits.SendMessages | PermissionFlagsBits.ManageMessages,
     );
     expect(result.text).toContain(ecoNeedsManageServer);
+    expect(result.flags & MessageFlags.Ephemeral).toBeTruthy();
+    expect(findWallet(container.db, '2', '1')).toBeUndefined();
+  });
+
+  it('asks for a reason when it is only whitespace', async () => {
+    const result = await run('give', { user: makeUser('1'), amount: 500, reason: ' \t ' });
+    expect(result.text).toContain(ecoNeedsReason);
     expect(result.flags & MessageFlags.Ephemeral).toBeTruthy();
     expect(findWallet(container.db, '2', '1')).toBeUndefined();
   });
