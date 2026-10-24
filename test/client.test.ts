@@ -1,11 +1,10 @@
 import { describe, expect, it } from 'vitest';
 import { createClient } from '../src/client.js';
-
-const env = { DISCORD_TOKEN: 'x', COMMAND_PREFIX: '?', LOG_LEVEL: 'error' } as const;
+import { testEnv } from './support/env.js';
 
 describe('createClient', () => {
   it('registers the ping and gamba commands and ready listener', async () => {
-    const client = createClient(env);
+    const client = createClient(testEnv);
     await client.stores.load();
 
     expect([...client.stores.get('commands').keys()]).toContain('ping');
@@ -14,7 +13,7 @@ describe('createClient', () => {
   });
 
   it('wires up prefix message commands', async () => {
-    const client = createClient(env);
+    const client = createClient(testEnv);
     await client.stores.load();
 
     // Without loadMessageCommandListeners, Sapphire never turns messages into command runs.
@@ -22,7 +21,7 @@ describe('createClient', () => {
   });
 
   it('does not ping anyone by default', () => {
-    const client = createClient(env);
+    const client = createClient(testEnv);
 
     expect(client.options.allowedMentions).toEqual({ parse: [], repliedUser: false });
   });

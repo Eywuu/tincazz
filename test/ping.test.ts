@@ -1,9 +1,10 @@
 import { Events } from 'discord.js';
 import { expect, it, vi } from 'vitest';
 import { createClient } from '../src/client.js';
+import { testEnv } from './support/env.js';
 
 it('?ping replies with latency', async () => {
-  const client = createClient({ DISCORD_TOKEN: 'x', COMMAND_PREFIX: '?', LOG_LEVEL: 'error' });
+  const client = createClient(testEnv);
   await client.stores.load();
   const edit = vi.fn();
   const message = {
