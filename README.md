@@ -91,7 +91,26 @@ The first image is published after the first push to `main`. Open the package's 
 and set its visibility to **public** (or run `docker login ghcr.io` on the VPS with a token that
 has `read:packages`).
 
-To update to the latest version:
+### Automatic deploys
+
+The `deploy` job in `docker.yml` runs after a successful publish on `main` and SSHes into the VPS to
+pull the new image and restart the bot. It runs in the `production` GitHub environment, which holds
+these secrets: `VPS_HOST`, `VPS_USER`, `VPS_SSH_KEY` (private key) and `VPS_KNOWN_HOSTS` (the output of
+`ssh-keyscan -t ed25519 <host>`).
+
+On the VPS, create a dedicated `deploy` user in the `docker` group with the compose project in
+`~/tincazz`, and give CI a dedicated key restricted to one command in `~/.ssh/authorized_keys`:
+
+```
+command="cd ~/tincazz && docker compose pull && docker compose up -d && docker image prune -f",restrict ssh-ed25519 AAAA... tincazz-ci
+```
+
+A leaked key can then do nothing except redeploy. The job does not update `docker-compose.yml` or
+`.env` on the server.
+
+### Manual update
+
+To update to the latest version by hand:
 
 ```sh
 docker compose pull && docker compose up -d
