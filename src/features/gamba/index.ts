@@ -32,15 +32,21 @@ export function threeOfAKindOdds(reels: Reels): number | undefined {
   return Math.round((total / outcome.weight) ** 3);
 }
 
-export function formatGambaReply(reels: Reels, jackpot?: JackpotResult): string {
-  const lines = [reels.join(' ')];
+/** Inline-code odds line for a three-of-a-kind win; sent as its own message after the reels. */
+export function formatGambaOdds(reels: Reels): string | undefined {
   const odds = threeOfAKindOdds(reels);
-  if (odds !== undefined) {
-    lines.push(`Odds: 1 in ${odds.toLocaleString('en-US')}`);
-  }
+  return odds === undefined ? undefined : `\`Odds: 1 in ${odds.toLocaleString('en-US')}\``;
+}
+
+export function formatGambaReply(
+  userMention: string,
+  reels: Reels,
+  jackpot?: JackpotResult,
+): string {
+  const lines = [reels.join(' ')];
   if (jackpot) {
     const note = jackpot.roleAssigned ? '' : " (couldn't assign the role, tell a mod)";
-    lines.push(`JACKPOT! You won <@&${gambaJackpotRoleId}>${note}`);
+    lines.push(`JACKPOT! ${userMention} just won <@&${gambaJackpotRoleId}>${note}`);
   }
   return lines.join('\n');
 }

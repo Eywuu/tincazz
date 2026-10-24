@@ -1,6 +1,7 @@
 import { Command, CommandOptionsRunTypeEnum } from '@sapphire/framework';
 import type { Message } from 'discord.js';
 import {
+  formatGambaOdds,
   formatGambaReply,
   gambaJackpotRoleId,
   isJackpot,
@@ -23,9 +24,14 @@ export class GambaCommand extends Command {
       : undefined;
     // Ping the user being replied to; the role mention in the jackpot line stays suppressed.
     await message.reply({
-      content: formatGambaReply(reels, jackpot),
+      content: formatGambaReply(message.author.toString(), reels, jackpot),
       allowedMentions: { repliedUser: true },
     });
+
+    const odds = formatGambaOdds(reels);
+    if (odds && message.channel.isSendable()) {
+      await message.channel.send(odds);
+    }
   }
 
   private async awardJackpotRole(message: Message): Promise<boolean> {

@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import {
+  formatGambaOdds,
   formatGambaReply,
   isJackpot,
   spinGamba,
@@ -38,20 +39,24 @@ describe('spinGamba', () => {
 describe('formatGambaReply', () => {
   const reels = ['a', 'b', 'c'] as const;
 
-  it('formats a normal spin', () => {
-    expect(formatGambaReply(reels)).toBe('a b c');
+  it('formats a normal spin as just the reels', () => {
+    expect(formatGambaReply('<@1>', reels)).toBe('a b c');
   });
 
   it('formats a jackpot', () => {
-    expect(formatGambaReply(reels, { roleAssigned: true })).toBe(
-      'a b c\nJACKPOT! You won <@&1561827731400822845>',
+    expect(formatGambaReply('<@1>', reels, { roleAssigned: true })).toBe(
+      'a b c\nJACKPOT! <@1> just won <@&1561827731400822845>',
     );
   });
 
   it('formats a jackpot without the role', () => {
-    expect(formatGambaReply(reels, { roleAssigned: false })).toBe(
-      "a b c\nJACKPOT! You won <@&1561827731400822845> (couldn't assign the role, tell a mod)",
+    expect(formatGambaReply('<@1>', reels, { roleAssigned: false })).toBe(
+      "a b c\nJACKPOT! <@1> just won <@&1561827731400822845> (couldn't assign the role, tell a mod)",
     );
+  });
+
+  it('leaves the odds to the follow-up message', () => {
+    expect(formatGambaReply('<@1>', [cppEmoji, cppEmoji, cppEmoji])).not.toContain('Odds');
   });
 });
 
@@ -90,16 +95,18 @@ describe('threeOfAKindOdds', () => {
   });
 });
 
-describe('formatGambaReply odds', () => {
+describe('formatGambaOdds', () => {
   const yt = '<:gamba4Head:1202741378161840239>';
 
-  it('shows the odds for any three of a kind', () => {
-    expect(formatGambaReply([yt, yt, yt])).toBe(`${yt} ${yt} ${yt}\nOdds: 1 in 343`);
+  it('formats the odds of three of a kind as inline code', () => {
+    expect(formatGambaOdds([yt, yt, yt])).toBe('`Odds: 1 in 343`');
   });
 
-  it('shows the odds above the jackpot line with thousands separators', () => {
-    expect(formatGambaReply([cppEmoji, cppEmoji, cppEmoji], { roleAssigned: true })).toBe(
-      `${cppEmoji} ${cppEmoji} ${cppEmoji}\nOdds: 1 in 9,261\nJACKPOT! You won <@&1561827731400822845>`,
-    );
+  it('uses thousands separators', () => {
+    expect(formatGambaOdds([cppEmoji, cppEmoji, cppEmoji])).toBe('`Odds: 1 in 9,261`');
+  });
+
+  it('is undefined when the reels differ', () => {
+    expect(formatGambaOdds([yt, yt, cppEmoji])).toBeUndefined();
   });
 });
