@@ -7,11 +7,14 @@ import {
 } from 'discord.js';
 import {
   assignJackpotRole,
+  formatGambaFollowUp,
+  formatGambaReply,
   type JackpotMember,
+  settleSpin,
   spin,
   spinErrorText,
 } from '../../features/gamba/index.js';
-import { accents, card, cardReply, errorReply } from '../../features/ui/index.js';
+import { cardReply, errorReply } from '../../features/ui/index.js';
 
 export class GambaCommand extends Command {
   public constructor(context: Command.LoaderContext) {
@@ -40,26 +43,26 @@ export class GambaCommand extends Command {
     const bet = (await args.restResult('string')).unwrapOr(undefined);
     const userId = message.author.id;
     try {
-      const { card: result, announcement } = await spin(
+      const { played, roleAssigned } = await settleSpin(
         this.container.db,
         { guildId: message.guildId as string, userId, bet },
         Date.now(),
         { assignJackpotRole: () => assignJackpotRole(message.member, userId) },
       );
-      // No allowedMentions override: the result card never pings.
-      const sent = await message.reply(cardReply(result));
-      await this.announce(userId, announcement, () =>
-        sent.reply({
-          ...cardReply(announcement as ContainerBuilder),
-          allowedMentions: { users: [userId] },
-        }),
+      const sent = await message.reply({
+        content: formatGambaReply(played),
+        allowedMentions: { repliedUser: true },
+      });
+      const followUp = formatGambaFollowUp(message.author.toString(), played, roleAssigned);
+      await this.announce(userId, followUp !== undefined, () =>
+        sent.reply({ content: followUp, allowedMentions: { users: [userId] } }),
       );
     } catch (error) {
       const text = spinErrorText(error);
       if (text === undefined) {
         throw error;
       }
-      await message.reply(cardReply(card(accents.error, text)));
+      await message.reply(text);
     }
   }
 
@@ -88,7 +91,7 @@ export class GambaCommand extends Command {
       withResponse: true,
     });
     const { announcement } = messages;
-    await this.announce(userId, announcement, async () => {
+    await this.announce(userId, announcement !== undefined, async () => {
       await resource?.message?.reply({
         ...cardReply(announcement as ContainerBuilder),
         allowedMentions: { users: [userId] },
@@ -97,12 +100,8 @@ export class GambaCommand extends Command {
   }
 
   /** Sends the announcement on its own: a failure is logged and never undoes the sent card. */
-  private async announce(
-    userId: string,
-    announcement: ContainerBuilder | undefined,
-    send: () => Promise<unknown>,
-  ) {
-    if (!announcement) {
+  private async announce(userId: string, hasAnnouncement: boolean, send: () => Promise<unknown>) {
+    if (!hasAnnouncement) {
       return;
     }
     try {

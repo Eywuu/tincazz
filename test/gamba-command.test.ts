@@ -83,19 +83,21 @@ describe('gamba', () => {
   }
 
   describe('?gamba', () => {
-    it('replies with a result card and no announcement on a loss', async () => {
+    it('replies with the plain reels and no follow-up on a loss', async () => {
       mockRandomInt(0, 3, 6);
       const message = await run('?gamba');
       await new Promise((resolve) => setTimeout(resolve, 100));
 
-      const [options] = message.reply.mock.calls[0] as unknown as [{ flags: number }];
-      expect(options.flags & MessageFlags.IsComponentsV2).toBeTruthy();
-      expect(json(options)).toContain('No prize this time');
-      expect(options).not.toHaveProperty('allowedMentions');
+      const [options] = message.reply.mock.calls[0] as unknown as [
+        { content: string; flags?: number },
+      ];
+      expect(options.flags).toBeUndefined();
+      expect(options.content).toMatch(/^(<:\w+:\d+> ){2}<:\w+:\d+>$/);
+      expect(options).toMatchObject({ allowedMentions: { repliedUser: true } });
       expect(message.spinReply).not.toHaveBeenCalled();
     });
 
-    it('announces a triple after the card and pings only the winner', async () => {
+    it('sends a follow-up after the roll on a triple and pings only the winner', async () => {
       mockRandomInt(0);
       const message = await run('?gamba');
       await vi.waitFor(() => expect(message.spinReply).toHaveBeenCalledTimes(1), {
@@ -103,6 +105,7 @@ describe('gamba', () => {
       });
 
       expect(message.spinReply.mock.calls[0]?.[0]).toMatchObject({
+        content: expect.stringContaining('<@1> won! +50 coins (balance: 1,050)'),
         allowedMentions: { users: ['1'] },
       });
       expect(message.reply.mock.invocationCallOrder[0]).toBeLessThan(
@@ -114,7 +117,7 @@ describe('gamba', () => {
       mockRandomInt(0, 3, 6);
       const message = await run('?gamba 100');
 
-      expect(json(message.reply.mock.calls[0])).toContain('Bet 100 → 0 (-100)');
+      expect(json(message.reply.mock.calls[0])).toContain('bet 100 → 0 · balance 900');
       expect(findWallet(container.db, '2', '1')?.balance).toBe(900);
     });
 
@@ -124,13 +127,13 @@ describe('gamba', () => {
       container.db.$client.prepare('update wallets set balance = 50000').run();
       const message = await run('?gamba all');
 
-      expect(json(message.reply.mock.calls[0])).toContain('Bet 10,000 → 0 (-10,000)');
+      expect(json(message.reply.mock.calls[0])).toContain('bet 10,000 → 0');
     });
 
-    it('replies with a red card for a bad bet', async () => {
+    it('replies with plain text for a bad bet', async () => {
       const message = await run('?gamba lol');
 
-      expect(json(message.reply.mock.calls[0])).toContain("isn't a bet");
+      expect(message.reply.mock.calls[0]?.[0]).toEqual(expect.stringContaining("isn't a bet"));
       expect(container.db.select().from(spins).all()).toEqual([]);
     });
 
@@ -207,7 +210,7 @@ describe('gamba', () => {
       expect(json(message.spinReply.mock.calls[0])).toContain("couldn't assign the role");
     });
 
-    it('keeps the card and prize when the announcement fails', async () => {
+    it('keeps the roll and prize when the follow-up fails', async () => {
       mockRandomInt(0);
       const error = vi.spyOn(container.logger, 'error').mockImplementation(() => undefined);
       const spinReply = vi.fn(async () => Promise.reject(new Error('Unknown Message')));

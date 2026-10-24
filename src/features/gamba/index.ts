@@ -21,7 +21,14 @@ export type { Evaluation } from './evaluate.js';
 export { evaluate } from './evaluate.js';
 export { assignJackpotRole, type JackpotMember } from './jackpot.js';
 export { type FreeSpin, playFree, playWager, type WagerSpin } from './play.js';
-export { type SpinMessages, type SpinRequest, spin } from './spin.js';
+export {
+  type SettledSpin,
+  type SpinMessages,
+  type SpinRequest,
+  settleSpin,
+  spin,
+} from './spin.js';
+export { formatGambaFollowUp, formatGambaReply } from './text.js';
 export type Spin = FreeSpin | WagerSpin;
 export { gambaJackpotRoleId };
 
