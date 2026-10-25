@@ -14,10 +14,12 @@ export const ledgerReasons = [
   'flip_win',
   'admin_grant',
   'admin_take',
+  'pruned',
 ] as const;
 // 'free' is legacy (free spins are gone); old rows keep it.
 export const spinModes = ['free', 'wager'] as const;
 export const flipModes = ['bot', 'challenge', 'open'] as const;
+export const autoRoleTargets = ['member', 'bot'] as const;
 export const flipSides = ['heads', 'tails'] as const;
 export const spinResults = ['none', 'pair', 'triple', 'jackpot'] as const;
 
@@ -25,6 +27,7 @@ export type LedgerReason = (typeof ledgerReasons)[number];
 export type SpinMode = (typeof spinModes)[number];
 export type FlipMode = (typeof flipModes)[number];
 export type FlipSide = (typeof flipSides)[number];
+export type AutoRoleTarget = (typeof autoRoleTargets)[number];
 export type SpinResult = (typeof spinResults)[number];
 
 export const wallets = sqliteTable(
@@ -37,12 +40,14 @@ export const wallets = sqliteTable(
     lastDailyAt: integer('last_daily_at'),
     lastBailoutAt: integer('last_bailout_at'),
     lastChatRewardAt: integer('last_chat_reward_at'),
+    departedAt: integer('departed_at'),
     createdAt: integer('created_at').notNull(),
   },
   (table) => [
     primaryKey({ columns: [table.guildId, table.userId] }),
     check('wallets_balance_non_negative', sql`${table.balance} >= 0`),
     index('wallets_guild_balance_idx').on(table.guildId, table.balance),
+    index('wallets_guild_departed_idx').on(table.guildId, table.departedAt),
   ],
 );
 
@@ -129,4 +134,27 @@ export const pots = sqliteTable('pots', {
   amount: integer('amount').notNull(),
   lastWinnerId: text('last_winner_id'),
   lastWonAt: integer('last_won_at'),
+});
+
+export const guildSettings = sqliteTable('guild_settings', {
+  guildId: text('guild_id').primaryKey(),
+  economyLogChannelId: text('economy_log_channel_id'),
+  modLogChannelId: text('mod_log_channel_id'),
+  updatedAt: integer('updated_at').notNull(),
+});
+
+export const guildAutoRoles = sqliteTable(
+  'guild_auto_roles',
+  {
+    guildId: text('guild_id').notNull(),
+    roleId: text('role_id').notNull(),
+    target: text('target', { enum: autoRoleTargets }).notNull(),
+    createdAt: integer('created_at').notNull(),
+  },
+  (table) => [primaryKey({ columns: [table.guildId, table.roleId, table.target] })],
+);
+
+export const jobRuns = sqliteTable('job_runs', {
+  name: text('name').primaryKey(),
+  lastRunAt: integer('last_run_at').notNull(),
 });
