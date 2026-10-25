@@ -233,6 +233,8 @@ A jackpot spin emits `jackpot` only, never also `big_spin`.
 
 - `src/client.ts` adds `GatewayIntentBits.GuildMembers`, commented as privileged (Developer Portal →
   Bot → Server Members Intent). A `client.test.ts` case guards it.
+- `src/client.ts` also enables `partials: [Partials.GuildMember]`, so `guildMemberRemove` fires
+  for members that were not cached (for example right after a restart).
 - The bot needs Manage Roles with its highest role above every auto-role (already true for the
   jackpot role), plus View Channel and Send Messages in the log channels.
 
