@@ -18,6 +18,8 @@ Currently implemented:
   the person who ran it can use its category select and Previous/Next buttons
 - chat rewards: a few coins for chatting, at most once a minute
 - `/eco give|take`: moderators adjust coins (Manage Server)
+- `/settings show|logs|autorole`: admins pick log channels and join roles (Manage Server)
+- members who leave are hidden from boards and ranks, and purged after a 30 day grace period
 
 ## Gamba
 
@@ -49,8 +51,19 @@ most your balance after the spin. Only the player can use the buttons.
    application.
 2. **Bot** tab: reset/copy the token, and enable the **Message Content Intent** (required for
    `?` prefix commands).
-3. **OAuth2 -> URL Generator**: scopes `bot`, permissions as needed, then open the URL to invite
-   the bot to your server.
+3. Also enable the **Server Members Intent** (privileged). Without it joins and leaves are not
+   seen, auto-roles never fire and the daily member reconcile always skips.
+4. **OAuth2 -> URL Generator**: scopes `bot`, permissions as needed, then open the URL to invite
+   the bot to your server. Give it **Manage Roles** (for gamba jackpot roles and auto-roles) and
+   keep its highest role above those roles.
+
+## First-time server setup
+
+Run these as someone with Manage Server:
+- `/settings logs set type:<economy|mod> channel:<channel>`: where economy and moderation logs go
+  (`/settings logs clear` stops a log)
+- `/settings autorole add role:<role>`: roles given to new joiners (`remove` to stop)
+- `/settings show`: review the current settings
 
 ## Local development
 
