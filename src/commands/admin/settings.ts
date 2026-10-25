@@ -5,18 +5,32 @@ import {
   type GuildMember,
   InteractionContextType,
   PermissionFlagsBits,
+  type Role,
 } from 'discord.js';
+import type { AutoRoleTarget } from '../../db/schema.js';
 import type { ModEvent } from '../../features/logs/events.js';
 import { type LogKind, logKinds, logMod, modLogCard, sendLog } from '../../features/logs/index.js';
 import {
+  botCannotAssign,
+  botFacts,
   logChannelAlreadySet,
   logChannelProblem,
+  roleFacts,
   type SettingsView,
   settingsCard,
   settingsNeedsManageServer,
+  validateAutoRole,
 } from '../../features/settings/index.js';
-import { logChannelId, setLogChannel } from '../../features/settings/store.js';
+import {
+  addAutoRole,
+  autoRoles,
+  logChannelId,
+  removeAutoRole,
+  setLogChannel,
+} from '../../features/settings/store.js';
 import { accents, card, cardReply, errorReply } from '../../features/ui/index.js';
+
+const targetLabel: Record<AutoRoleTarget, string> = { member: 'members', bot: 'bots' };
 
 export class SettingsCommand extends Command {
   public constructor(context: Command.LoaderContext) {
@@ -30,6 +44,14 @@ export class SettingsCommand extends Command {
         .setDescription('Which log')
         .setRequired(true)
         .addChoices(...logKinds.map((k) => ({ name: k, value: k })));
+
+    const roleOption = (o: import('discord.js').SlashCommandRoleOption) =>
+      o.setName('role').setDescription('The role').setRequired(true);
+    const targetOption = (o: import('discord.js').SlashCommandStringOption) =>
+      o
+        .setName('target')
+        .setDescription('Who gets it (default: members)')
+        .addChoices({ name: 'members', value: 'member' }, { name: 'bots', value: 'bot' });
 
     registry.registerChatInputCommand((builder) =>
       builder
@@ -58,6 +80,25 @@ export class SettingsCommand extends Command {
             .addSubcommand((sub) =>
               sub.setName('clear').setDescription('Stop sending a log').addStringOption(typeOption),
             ),
+        )
+        .addSubcommandGroup((group) =>
+          group
+            .setName('autorole')
+            .setDescription('Roles given to new joiners')
+            .addSubcommand((sub) =>
+              sub
+                .setName('add')
+                .setDescription('Give a role to new joiners')
+                .addRoleOption(roleOption)
+                .addStringOption(targetOption),
+            )
+            .addSubcommand((sub) =>
+              sub
+                .setName('remove')
+                .setDescription('Stop giving a role to new joiners')
+                .addRoleOption(roleOption)
+                .addStringOption(targetOption),
+            ),
         ),
     );
   }
@@ -71,6 +112,8 @@ export class SettingsCommand extends Command {
     const sub = interaction.options.getSubcommand();
     if (group === 'logs' && sub === 'set') return this.logsSet(interaction);
     if (group === 'logs' && sub === 'clear') return this.logsClear(interaction);
+    if (group === 'autorole' && sub === 'add') return this.autoroleAdd(interaction);
+    if (group === 'autorole' && sub === 'remove') return this.autoroleRemove(interaction);
     if (!group && sub === 'show') return this.show(interaction);
     return interaction.reply(errorReply('Unknown subcommand.'));
   }
@@ -152,6 +195,57 @@ export class SettingsCommand extends Command {
     }
   }
 
+  private autoroleArgs(interaction: ChatInputCommandInteraction) {
+    const role = interaction.options.getRole('role', true) as Role;
+    const target = (interaction.options.getString('target') ?? 'member') as AutoRoleTarget;
+    return { role, target, label: targetLabel[target], guildId: interaction.guildId as string };
+  }
+
+  private async autoroleAdd(interaction: ChatInputCommandInteraction) {
+    const { role, target, label, guildId } = this.autoroleArgs(interaction);
+    const guild = interaction.guild as NonNullable<typeof interaction.guild>;
+    const invoker = interaction.member as GuildMember;
+    const problem = validateAutoRole(roleFacts(role), botFacts(guild), {
+      highest: invoker.roles.highest.position,
+      isOwner: guild.ownerId === interaction.user.id,
+    });
+    if (problem) return interaction.reply(errorReply(problem));
+
+    const now = Date.now();
+    const result = addAutoRole(this.container.db, guildId, role.id, target, now);
+    if (result === 'exists') {
+      return interaction.reply(errorReply(`<@&${role.id}> is already an auto-role for ${label}.`));
+    }
+    if (result === 'full') {
+      return interaction.reply(errorReply(`You can have at most 10 auto-roles for ${label}.`));
+    }
+    await interaction.reply(
+      cardReply(card(accents.brand, `New ${label} will get <@&${role.id}>.`), { ephemeral: true }),
+    );
+    void logMod(
+      guildId,
+      { type: 'autorole_added', actorId: interaction.user.id, roleId: role.id, target },
+      now,
+    );
+  }
+
+  private async autoroleRemove(interaction: ChatInputCommandInteraction) {
+    const { role, target, label, guildId } = this.autoroleArgs(interaction);
+    if (!removeAutoRole(this.container.db, guildId, role.id, target)) {
+      return interaction.reply(errorReply(`<@&${role.id}> isn't an auto-role for ${label}.`));
+    }
+    await interaction.reply(
+      cardReply(card(accents.brand, `<@&${role.id}> is no longer given to new ${label}.`), {
+        ephemeral: true,
+      }),
+    );
+    void logMod(
+      guildId,
+      { type: 'autorole_removed', actorId: interaction.user.id, roleId: role.id, target },
+      Date.now(),
+    );
+  }
+
   private async show(interaction: ChatInputCommandInteraction) {
     const guild = interaction.guild;
     const guildId = interaction.guildId as string;
@@ -167,8 +261,22 @@ export class SettingsCommand extends Command {
       }
       logs[kind] = { channelId, problem };
     }
+    const bot = guild ? botFacts(guild) : { highest: -1, canManageRoles: false };
+    const roleView = (target: AutoRoleTarget) =>
+      autoRoles(this.container.db, guildId, target).map((roleId) => {
+        const role = guild?.roles.cache.get(roleId);
+        return {
+          roleId,
+          problem: role ? botCannotAssign(roleFacts(role), bot) : 'role no longer exists',
+        };
+      });
     return interaction.reply(
-      cardReply(settingsCard({ autoRoles: { member: [], bot: [] }, logs }), { ephemeral: true }),
+      cardReply(
+        settingsCard({ autoRoles: { member: roleView('member'), bot: roleView('bot') }, logs }),
+        {
+          ephemeral: true,
+        },
+      ),
     );
   }
 }

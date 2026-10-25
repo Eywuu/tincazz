@@ -1,4 +1,4 @@
-import { PermissionsBitField } from 'discord.js';
+import { PermissionFlagsBits, PermissionsBitField } from 'discord.js';
 import { vi } from 'vitest';
 import type { createClient } from '../../src/client.js';
 
@@ -19,7 +19,11 @@ export interface ChatInputOptions {
 
 /** The bot's own guild member stub. */
 export function makeMe() {
-  return { id: 'me' };
+  return {
+    id: 'me',
+    roles: { highest: { position: 8 } },
+    permissions: new PermissionsBitField(PermissionFlagsBits.ManageRoles),
+  };
 }
 
 export function makeUser(id: string, bot = false) {
