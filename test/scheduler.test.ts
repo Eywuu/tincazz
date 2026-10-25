@@ -38,6 +38,20 @@ describe('scheduler', () => {
     stop();
   });
 
+  it('logs instead of rejecting when the job_runs read fails', async () => {
+    container.db = {
+      select: () => {
+        throw new Error('db down');
+      },
+    } as unknown as typeof container.db;
+    const run = vi.fn(async () => true);
+    const stop = startJobs(client, [{ name: 'a', everyMs: day, run }]);
+    await vi.advanceTimersByTimeAsync(0);
+    expect(run).not.toHaveBeenCalled();
+    expect(warn).toHaveBeenCalledWith(expect.stringContaining('db down'));
+    stop();
+  });
+
   it('skips a job that ran within everyMs', async () => {
     container.db
       .insert(jobRuns)

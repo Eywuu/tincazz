@@ -14,11 +14,11 @@ export function startJobs(client: Client<true>, jobs: readonly Job[]): () => voi
   const running = new Set<string>();
 
   const runJob = async (job: Job, now: number): Promise<void> => {
-    const last = container.db.select().from(jobRuns).where(eq(jobRuns.name, job.name)).get();
-    if (last && now - last.lastRunAt < job.everyMs) return;
     if (running.has(job.name)) return;
     running.add(job.name);
     try {
+      const last = container.db.select().from(jobRuns).where(eq(jobRuns.name, job.name)).get();
+      if (last && now - last.lastRunAt < job.everyMs) return;
       const done = await job.run(client, now);
       if (done) {
         container.db
