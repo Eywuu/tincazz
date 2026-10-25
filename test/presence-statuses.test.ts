@@ -1,7 +1,7 @@
 import { ActivityType } from 'discord.js';
 import { describe, expect, it } from 'vitest';
 import { openDatabase } from '../src/db/index.js';
-import { pots, spins } from '../src/db/schema.js';
+import { pots, spins, wallets } from '../src/db/schema.js';
 import { pot } from '../src/features/gamba/config.js';
 import { ago, buildStatuses, readPotRow } from '../src/features/presence/index.js';
 
@@ -58,6 +58,7 @@ describe('readPotRow', () => {
 
   it("reads the pot, winner and only today's spins for the guild", () => {
     const db = openDatabase(':memory:');
+    db.insert(wallets).values({ guildId: '1', userId: '7', balance: 1, createdAt: 0 }).run();
     db.insert(pots).values({ guildId: '1', amount: 12_000, lastWinnerId: '7', lastWonAt: 5 }).run();
     const spin = { userId: '7', mode: 'wager', reels: 'a', result: 'none', bet: 1 } as const;
     const startOfDay = Date.UTC(2026, 9, 24);
@@ -74,5 +75,18 @@ describe('readPotRow', () => {
       lastWonAt: 5,
       spinsToday: 1,
     });
+  });
+});
+
+describe('readPotRow departed winner', () => {
+  it('hides a departed last winner', () => {
+    const db = openDatabase(':memory:');
+    db.insert(wallets).values({ guildId: '2', userId: '1', balance: 1, createdAt: 0 }).run();
+    db.insert(pots).values({ guildId: '2', amount: 5, lastWinnerId: '1', lastWonAt: 7 }).run();
+    expect(readPotRow(db, '2', now).lastWinnerId).toBe('1');
+    db.update(wallets).set({ departedAt: 1 }).run();
+    const row = readPotRow(db, '2', now);
+    expect(row.lastWinnerId).toBeUndefined();
+    expect(row.lastWonAt).toBeUndefined();
   });
 });

@@ -1,3 +1,4 @@
+import { eq } from 'drizzle-orm';
 import { beforeEach, describe, expect, it } from 'vitest';
 import { type Db, openDatabase } from '../src/db/index.js';
 import { playerStats, wallets } from '../src/db/schema.js';
@@ -13,11 +14,20 @@ let db: Db;
 const addWallet = (userId: string, balance: number, guildId = '2') =>
   db.insert(wallets).values({ guildId, userId, balance, createdAt: 0 }).run();
 
-const addStats = (userId: string, stats: Partial<typeof playerStats.$inferInsert>, guildId = '2') =>
-  db
-    .insert(playerStats)
+const addStats = (
+  userId: string,
+  stats: Partial<typeof playerStats.$inferInsert>,
+  guildId = '2',
+) => {
+  // Boards only list members that have a wallet.
+  db.insert(wallets)
+    .values({ guildId, userId, balance: 0, createdAt: 0 })
+    .onConflictDoNothing()
+    .run();
+  db.insert(playerStats)
     .values({ guildId, userId, ...stats })
     .run();
+};
 
 beforeEach(() => {
   db = openDatabase(':memory:');
@@ -104,5 +114,43 @@ describe('isLeaderboardCategory', () => {
     expect(isLeaderboardCategory('profit')).toBe(true);
     expect(isLeaderboardCategory('coinflip')).toBe(true);
     expect(isLeaderboardCategory('gold')).toBe(false);
+  });
+});
+
+describe('departed members', () => {
+  const categories = ['coins', 'biggest-win', 'jackpots', 'profit', 'coinflip', 'spins'] as const;
+
+  it.each(categories)('hides a departed top user in %s', (category) => {
+    for (const [userId, top] of [
+      ['1', 100],
+      ['3', 50],
+      ['4', 20],
+    ] as const) {
+      addWallet(userId, top);
+      addStats(userId, {
+        biggestWin: top,
+        jackpots: top,
+        won: top,
+        wagered: 0,
+        flipWon: top,
+        flipWagered: 0,
+        spins: top,
+      });
+    }
+    db.update(wallets).set({ departedAt: 5 }).where(eq(wallets.userId, '1')).run();
+    expect(leaderboardPage(db, '2', category, 0).rows.map((r) => [r.userId, r.rank])).toEqual([
+      ['3', 1],
+      ['4', 2],
+    ]);
+    expect(leaderboardRank(db, '2', category, '1')).toBeUndefined();
+    expect(leaderboardRank(db, '2', category, '4')?.rank).toBe(2);
+  });
+
+  it('ranks coins without departed wallets', () => {
+    addWallet('1', 100);
+    addWallet('3', 50);
+    db.update(wallets).set({ departedAt: 5 }).where(eq(wallets.userId, '1')).run();
+    expect(coinsRank(db, '2', '1')).toBeUndefined();
+    expect(coinsRank(db, '2', '3')).toBe(1);
   });
 });

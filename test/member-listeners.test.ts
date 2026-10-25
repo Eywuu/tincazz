@@ -1,8 +1,9 @@
 import { container } from '@sapphire/framework';
 import { Events } from 'discord.js';
-import { beforeAll, beforeEach, expect, it, vi } from 'vitest';
+import { beforeAll, beforeEach, describe, expect, it, vi } from 'vitest';
 import { createClient } from '../src/client.js';
 import { openDatabase } from '../src/db/index.js';
+import { wallets } from '../src/db/schema.js';
 import { addAutoRole, autoRoles, setLogChannel } from '../src/features/settings/store.js';
 import { testEnv } from './support/env.js';
 
@@ -72,4 +73,48 @@ it('removes a deleted role from both lists and logs once', async () => {
   expect(autoRoles(container.db, '2', 'member')).toEqual(['10']);
   expect(autoRoles(container.db, '2', 'bot')).toEqual([]);
   expect(send).toHaveBeenCalledTimes(1);
+});
+
+describe('leave and rejoin', () => {
+  const addWallet = () =>
+    container.db
+      .insert(wallets)
+      .values({ guildId: '2', userId: '7', balance: 40, createdAt: 0 })
+      .run();
+  const wallet = () => container.db.select().from(wallets).get();
+
+  it('marks a leaver departed and logs it', async () => {
+    addWallet();
+    setLogChannel(container.db, '2', 'economy', '50', 1);
+    client.emit(Events.GuildMemberRemove, member(false));
+    await settle();
+    expect(wallet()?.departedAt).not.toBeNull();
+    expect(send).toHaveBeenCalledTimes(1);
+  });
+
+  it('posts nothing when the leaver has no wallet', async () => {
+    setLogChannel(container.db, '2', 'economy', '50', 1);
+    client.emit(Events.GuildMemberRemove, member(false));
+    await settle();
+    expect(send).not.toHaveBeenCalled();
+  });
+
+  it('restores on rejoin and logs it', async () => {
+    addWallet();
+    container.db.update(wallets).set({ departedAt: 5 }).run();
+    setLogChannel(container.db, '2', 'economy', '50', 1);
+    client.emit(Events.GuildMemberAdd, member(false));
+    await settle();
+    expect(wallet()?.departedAt).toBeNull();
+    expect(send).toHaveBeenCalledTimes(1);
+  });
+
+  it('restores a pending rejoiner without assigning roles', async () => {
+    addWallet();
+    container.db.update(wallets).set({ departedAt: 5 }).run();
+    client.emit(Events.GuildMemberAdd, member(true));
+    await settle();
+    expect(wallet()?.departedAt).toBeNull();
+    expect(add).not.toHaveBeenCalled();
+  });
 });

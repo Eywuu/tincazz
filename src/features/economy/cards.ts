@@ -7,6 +7,8 @@ import { AlreadyClaimedError, CooldownError, NotEligibleError } from './errors.j
 
 export const botsHaveNoWallets = "Bots don't have wallets.";
 
+export const ecoNotAMember = (id: string) => `<@${id}> is not in this server.`;
+
 export const ecoNeedsManageServer = 'You need the Manage Server permission to use `/eco`.';
 
 export const ecoNeedsReason = 'Give a reason for the adjustment.';

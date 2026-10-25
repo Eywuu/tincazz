@@ -1,4 +1,4 @@
-import { and, asc, desc, eq, gt, or, type SQL, sql } from 'drizzle-orm';
+import { and, asc, desc, eq, gt, isNull, or, type SQL, sql } from 'drizzle-orm';
 import type { SQLiteColumn, SQLiteTable } from 'drizzle-orm/sqlite-core';
 import type { DbOrTx } from '../../db/index.js';
 import { playerStats, wallets } from '../../db/schema.js';
@@ -22,44 +22,58 @@ interface Source {
   guildId: SQLiteColumn;
   userId: SQLiteColumn;
   value: SQL<number>;
+  /** Extra conditions on the source's table: departed members never rank. */
+  present?: SQL;
 }
 
 function source(category: LeaderboardCategory): Source {
   switch (category) {
     case 'coins':
-      return { table: wallets, ...columns(wallets), value: sql<number>`${wallets.balance}` };
+      return {
+        table: wallets,
+        ...columns(wallets),
+        value: sql<number>`${wallets.balance}`,
+        present: isNull(wallets.departedAt),
+      };
     case 'biggest-win':
       return {
         table: playerStats,
         ...columns(playerStats),
+        present: playerPresent,
         value: sql<number>`${playerStats.biggestWin}`,
       };
     case 'jackpots':
       return {
         table: playerStats,
         ...columns(playerStats),
+        present: playerPresent,
         value: sql<number>`${playerStats.jackpots}`,
       };
     case 'profit':
       return {
         table: playerStats,
         ...columns(playerStats),
+        present: playerPresent,
         value: sql<number>`(${playerStats.won} - ${playerStats.wagered})`,
       };
     case 'coinflip':
       return {
         table: playerStats,
         ...columns(playerStats),
+        present: playerPresent,
         value: sql<number>`(${playerStats.flipWon} - ${playerStats.flipWagered})`,
       };
     case 'spins':
       return {
         table: playerStats,
         ...columns(playerStats),
+        present: playerPresent,
         value: sql<number>`${playerStats.spins}`,
       };
   }
 }
+
+const playerPresent = sql`exists (select 1 from ${wallets} where ${wallets.guildId} = ${playerStats.guildId} and ${wallets.userId} = ${playerStats.userId} and ${wallets.departedAt} is null)`;
 
 function columns(table: typeof wallets | typeof playerStats) {
   return { guildId: table.guildId, userId: table.userId };
@@ -71,8 +85,8 @@ export function leaderboardPage(
   category: LeaderboardCategory,
   page: number,
 ): LeaderboardPage {
-  const { table, guildId: guildColumn, userId, value } = source(category);
-  const qualifying = and(eq(guildColumn, guildId), gt(value, 0));
+  const { table, guildId: guildColumn, userId, value, present } = source(category);
+  const qualifying = and(eq(guildColumn, guildId), gt(value, 0), present);
   const total =
     db.select({ count: sql<number>`count(*)` }).from(table).where(qualifying).get()?.count ?? 0;
   const pageCount = Math.max(1, Math.ceil(total / leaderboardPageSize));
@@ -102,11 +116,11 @@ export function leaderboardRank(
   category: LeaderboardCategory,
   userId: string,
 ): { rank: number; value: number } | undefined {
-  const { table, guildId: guildColumn, userId: userColumn, value } = source(category);
+  const { table, guildId: guildColumn, userId: userColumn, value, present } = source(category);
   const own = db
     .select({ value })
     .from(table)
-    .where(and(eq(guildColumn, guildId), eq(userColumn, userId)))
+    .where(and(eq(guildColumn, guildId), eq(userColumn, userId), present))
     .get() as { value: number } | undefined;
   if (!own || own.value <= 0) {
     return undefined;
@@ -117,6 +131,7 @@ export function leaderboardRank(
     .where(
       and(
         eq(guildColumn, guildId),
+        present,
         or(
           gt(value, own.value),
           and(

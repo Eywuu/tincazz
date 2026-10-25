@@ -7,6 +7,7 @@ import {
   botsHaveNoWallets,
   ecoNeedsManageServer,
   ecoNeedsReason,
+  ecoNotAMember,
 } from '../src/features/economy/cards.js';
 import { adminAdjust, findWallet } from '../src/features/economy/index.js';
 import { testEnv } from './support/env.js';
@@ -23,13 +24,19 @@ beforeEach(() => {
   container.db = openDatabase(':memory:');
 });
 
-async function run(subcommand: string, options: Record<string, unknown>, permissions?: bigint) {
+async function run(
+  subcommand: string,
+  options: Record<string, unknown>,
+  permissions?: bigint,
+  absentMembers?: string[],
+) {
   const interaction = makeChatInput(client, {
     commandName: 'eco',
     userId: '9',
     subcommand,
     options,
     permissions,
+    absentMembers,
   });
   client.emit(Events.InteractionCreate, interaction as never);
   await new Promise((resolve) => setTimeout(resolve, 100));
@@ -38,6 +45,14 @@ async function run(subcommand: string, options: Record<string, unknown>, permiss
 }
 
 describe('/eco', () => {
+  it('refuses a member who left', async () => {
+    const result = await run('give', { user: makeUser('1'), amount: 5, reason: 'x' }, undefined, [
+      '1',
+    ]);
+    expect(result.text).toContain(ecoNotAMember('1'));
+    expect(findWallet(container.db, '2', '1')).toBeUndefined();
+  });
+
   it('gives coins with an ephemeral card', async () => {
     const result = await run('give', { user: makeUser('1'), amount: 500, reason: 'event' });
     expect(result.text).toContain('Gave **500** coins to <@1>. New balance: 1,500.');
