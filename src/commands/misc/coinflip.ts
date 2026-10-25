@@ -19,6 +19,8 @@ import {
 } from '../../features/coinflip/index.js';
 import { getOrCreateWallet } from '../../features/economy/index.js';
 import { parseBet, wager } from '../../features/gamba/index.js';
+import { botFlipLogEvent } from '../../features/logs/economy.js';
+import { logEconomy } from '../../features/logs/send.js';
 import { cardReply, errorReply } from '../../features/ui/index.js';
 
 export class CoinflipCommand extends Command {
@@ -95,7 +97,10 @@ export class CoinflipCommand extends Command {
       { guildId: interaction.guildId as string, userId, bet, side },
       Date.now(),
     );
-    return interaction.reply(cardReply(botFlipCard(userId, flip)));
+    const replied = await interaction.reply(cardReply(botFlipCard(userId, flip)));
+    const event = botFlipLogEvent(userId, flip);
+    if (event) void logEconomy(interaction.guildId as string, event);
+    return replied;
   }
 
   private async challenge(

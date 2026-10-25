@@ -1,4 +1,4 @@
-import { PermissionsBitField } from 'discord.js';
+import { PermissionFlagsBits, PermissionsBitField } from 'discord.js';
 import { vi } from 'vitest';
 import type { createClient } from '../../src/client.js';
 
@@ -10,6 +10,20 @@ export interface ChatInputOptions {
   subcommand?: string;
   /** The invoking member's permission bits in the channel (default: all). */
   permissions?: bigint;
+  subcommandGroup?: string;
+  /** User option IDs that are not guild members (`getMember` returns null for them). */
+  absentMembers?: string[];
+  /** The guild stub (default: an empty guild with a `me` member). */
+  guild?: unknown;
+}
+
+/** The bot's own guild member stub. */
+export function makeMe() {
+  return {
+    id: 'me',
+    roles: { highest: { position: 8 } },
+    permissions: new PermissionsBitField(PermissionFlagsBits.ManageRoles),
+  };
 }
 
 export function makeUser(id: string, bot = false) {
@@ -31,6 +45,15 @@ export function makeChatInput(
     options = {},
     subcommand,
     permissions = PermissionsBitField.All,
+    subcommandGroup,
+    absentMembers = [],
+    guild = {
+      id: guildId,
+      ownerId: '0',
+      channels: { cache: new Map() },
+      roles: { cache: new Map() },
+      members: { me: makeMe() },
+    },
   }: ChatInputOptions,
 ) {
   const announce = vi.fn(async () => ({}));
@@ -59,7 +82,16 @@ export function makeChatInput(
       getInteger: (name: string) => (options[name] as number | undefined) ?? null,
       getString: (name: string) => (options[name] as string | undefined) ?? null,
       getSubcommand: () => subcommand ?? null,
+      getSubcommandGroup: () => subcommandGroup ?? null,
+      getChannel: (name: string) => (options[name] as never) ?? null,
+      getRole: (name: string) => (options[name] as never) ?? null,
+      getMember: (name: string) => {
+        const user = options[name] as { id: string } | undefined;
+        if (!user || absentMembers.includes(user.id)) return null;
+        return { id: user.id } as never;
+      },
     },
+    guild,
     inCachedGuild: () => true,
     member: { roles: { add: vi.fn(async () => undefined) } },
     reply: vi.fn(async () => ({ resource: { message: { id: 'card-1', reply: announce } } })),

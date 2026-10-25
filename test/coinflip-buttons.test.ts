@@ -15,12 +15,14 @@ import {
   scheduleExpiry,
 } from '../src/features/coinflip/index.js';
 import {
+  adminAdjust,
   debit,
   findWallet,
   getOrCreateWallet,
   startingBalance,
 } from '../src/features/economy/index.js';
 import { pot } from '../src/features/gamba/config.js';
+import { setLogChannel } from '../src/features/settings/store.js';
 import { testEnv } from './support/env.js';
 import { makeButton } from './support/interaction.js';
 
@@ -93,6 +95,50 @@ describe('coinflip buttons', () => {
       now: 2,
     });
   };
+
+  describe('economy log', () => {
+    it('logs an accepted 5,000 challenge once and a small one never', async () => {
+      const send = vi.fn(async () => ({}));
+      client.channels.cache.set('50', { id: '50', isSendable: () => true, send } as never);
+      setLogChannel(container.db, '2', 'economy', '50', 1);
+      for (const userId of ['1', '3']) {
+        adminAdjust(container.db, {
+          guildId: '2',
+          userId,
+          actorId: '9',
+          action: 'give',
+          amount: 5_000,
+          reason: 'setup',
+          now: 1,
+        });
+      }
+      mockRandomInt(1);
+      await click(challengeId('accept', { bet: 5_000 }), '3');
+      await vi.waitFor(() => expect(send).toHaveBeenCalledTimes(1));
+
+      await click(challengeId('accept', { bet: 100 }), '3', 'm2');
+      await wait(50);
+      expect(send).toHaveBeenCalledTimes(1);
+    });
+
+    it('logs a 5,000 flip again once', async () => {
+      const send = vi.fn(async () => ({}));
+      client.channels.cache.set('50', { id: '50', isSendable: () => true, send } as never);
+      setLogChannel(container.db, '2', 'economy', '50', 1);
+      adminAdjust(container.db, {
+        guildId: '2',
+        userId: '1',
+        actorId: '9',
+        action: 'give',
+        amount: 5_000,
+        reason: 'setup',
+        now: 1,
+      });
+      mockRandomInt(0);
+      await click(encodeFlipAgainId({ userId: '1', bet: 5_000, side: 'heads' }), '1');
+      await vi.waitFor(() => expect(send).toHaveBeenCalledTimes(1));
+    });
+  });
 
   describe('flip again', () => {
     const again = encodeFlipAgainId({ userId: '1', bet: 100, side: 'heads' });

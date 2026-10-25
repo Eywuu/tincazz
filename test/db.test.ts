@@ -34,6 +34,9 @@ describe('database', () => {
 
     expect((tables as string[]).sort()).toEqual([
       'flips',
+      'guild_auto_roles',
+      'guild_settings',
+      'job_runs',
       'ledger',
       'player_stats',
       'pots',
@@ -52,6 +55,7 @@ describe('database', () => {
       lastDailyAt: null,
       lastBailoutAt: null,
       lastChatRewardAt: null,
+      departedAt: null,
       createdAt: 1,
     };
     const entry = {
@@ -160,7 +164,7 @@ describe('database', () => {
       { guildId: 'g', amount: 7, lastWinnerId: null, lastWonAt: null },
     ]);
     expect(second.$client.prepare('select count(*) from __drizzle_migrations').pluck().get()).toBe(
-      3,
+      4,
     );
     closeDatabase(second);
   });
@@ -196,5 +200,18 @@ describe('database', () => {
       flipWagered: 0,
       flipWon: 0,
     });
+  });
+
+  it('creates the settings, auto-role and job tables and wallets.departed_at', () => {
+    const db = openDatabase(':memory:');
+    const names = db.$client
+      .prepare("select name from sqlite_master where type = 'table'")
+      .pluck()
+      .all();
+    expect(names).toEqual(
+      expect.arrayContaining(['guild_settings', 'guild_auto_roles', 'job_runs']),
+    );
+    const columns = db.$client.prepare('pragma table_info(wallets)').all() as { name: string }[];
+    expect(columns.map((c) => c.name)).toContain('departed_at');
   });
 });

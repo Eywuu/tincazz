@@ -11,7 +11,8 @@ import {
   cannotChallengeSelf,
   clearChallenges,
 } from '../src/features/coinflip/index.js';
-import { findWallet, startingBalance } from '../src/features/economy/index.js';
+import { adminAdjust, findWallet, startingBalance } from '../src/features/economy/index.js';
+import { setLogChannel } from '../src/features/settings/store.js';
 import { testEnv } from './support/env.js';
 import { makeChatInput, makeUser } from './support/interaction.js';
 
@@ -97,6 +98,28 @@ describe('/coinflip', () => {
       expect(json(options)).toContain("isn't a bet");
       expect(options.flags & MessageFlags.Ephemeral).toBeTruthy();
       expect(flipCount()).toBe(0);
+    });
+  });
+
+  describe('economy log', () => {
+    it('logs a 5,000 bot flip once', async () => {
+      const send = vi.fn(async () => ({}));
+      client.channels.cache.set('50', { id: '50', isSendable: () => true, send } as never);
+      setLogChannel(container.db, '2', 'economy', '50', 1);
+      adminAdjust(container.db, {
+        guildId: '2',
+        userId: '1',
+        actorId: '9',
+        action: 'give',
+        amount: 5_000,
+        reason: 'setup',
+        now: 1,
+      });
+      mockRandomInt(0);
+      await run('bot', { bet: '5000', side: 'heads' });
+
+      await vi.waitFor(() => expect(send).toHaveBeenCalledTimes(1));
+      expect(json(send.mock.calls[0])).toContain('<@1>');
     });
   });
 

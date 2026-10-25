@@ -1,4 +1,5 @@
 import { ApplicationCommandRegistries, RegisterBehavior } from '@sapphire/framework';
+import { GatewayIntentBits, Partials } from 'discord.js';
 import { describe, expect, it } from 'vitest';
 import { createClient } from '../src/client.js';
 import { testEnv } from './support/env.js';
@@ -28,6 +29,13 @@ describe('createClient', () => {
 
     // Without loadMessageCommandListeners, Sapphire never turns messages into command runs.
     expect([...client.stores.get('listeners').keys()]).toContain('CoreMessageCreate');
+  });
+
+  it('requests the Server Members intent', () => {
+    const client = createClient(testEnv);
+
+    expect(client.options.intents.has(GatewayIntentBits.GuildMembers)).toBe(true);
+    expect(client.options.partials).toContain(Partials.GuildMember);
   });
 
   it('does not ping anyone by default', () => {

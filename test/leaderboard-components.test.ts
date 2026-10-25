@@ -3,7 +3,7 @@ import { Events, MessageFlags } from 'discord.js';
 import { beforeAll, beforeEach, describe, expect, it } from 'vitest';
 import { createClient } from '../src/client.js';
 import { openDatabase } from '../src/db/index.js';
-import { playerStats } from '../src/db/schema.js';
+import { playerStats, wallets } from '../src/db/schema.js';
 import { notYourLeaderboard } from '../src/features/stats/index.js';
 import { testEnv } from './support/env.js';
 import { makeButton, makeSelect } from './support/interaction.js';
@@ -17,6 +17,17 @@ beforeAll(async () => {
 
 beforeEach(() => {
   container.db = openDatabase(':memory:');
+  container.db
+    .insert(wallets)
+    .values(
+      Array.from({ length: 25 }, (_, i) => ({
+        guildId: '2',
+        userId: String(101 + i),
+        balance: 0,
+        createdAt: 0,
+      })),
+    )
+    .run();
   container.db
     .insert(playerStats)
     .values(

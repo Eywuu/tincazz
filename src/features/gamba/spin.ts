@@ -1,6 +1,8 @@
 import type { ContainerBuilder } from 'discord.js';
 import type { Db } from '../../db/index.js';
 import { getOrCreateWallet } from '../economy/wallets.js';
+import { spinLogEvent } from '../logs/economy.js';
+import { logEconomy } from '../logs/send.js';
 import { parseBet } from './bet.js';
 import { announcementCard, wagerCard } from './cards.js';
 import { wager } from './config.js';
@@ -67,6 +69,9 @@ export async function spin(
 ): Promise<SpinMessages> {
   const { played, roleAssigned } = await settleSpin(db, request, now, options);
   const { userId } = request;
+  // Fire and forget, after the commit: a slow or broken log channel never delays or fails a spin.
+  const event = spinLogEvent(userId, played, roleAssigned);
+  if (event) void logEconomy(request.guildId, event);
   const { result } = played.evaluation;
   const card = wagerCard(userId, played);
   const announced = result === 'triple' || result === 'jackpot';

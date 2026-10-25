@@ -39,6 +39,7 @@ src/
   config/env.ts   zod schema for environment variables
   db/             SQLite schema (Drizzle) and `openDatabase`, exposed as `container.db`
   commands/       one file per command, grouped in folders by category
+    admin/        `/settings` (log channels and join auto-roles; Manage Server)
     economy/      slash commands for coins (/balance, /daily, /bailout, /eco)
     stats/        slash commands for profiles and boards (/stats, /leaderboard)
   features/       plain feature logic, one folder per feature (not auto-loaded)
@@ -47,13 +48,21 @@ src/
     economy/      wallets and ledger; the only code that changes balances
     gamba/        spin logic, odds and payouts, the pot, bet parsing, result cards and the
                   shared `spin()` flow used by commands and buttons (every spin is a wager, default 10)
+    logs/         log channels: event types and cards, fire-and-forget `sendLog`, economy
+                  events (admin adjustments, jackpots, big wins above `logThresholds`)
+    members/      departed-member tracking: hidden from boards and ranks, daily reconcile
+                  against the guild and purge after a 30 day grace period
     presence/     the bot's rotating status (live pot, last jackpot, spins today), started from
                   the ready listener
+    scheduler/    the hourly tick that runs periodic jobs (started from the ready listener)
+    settings/     per-guild settings store: log channels, auto-roles, their cards and role
+                  assignment
     stats/        read-only profile and leaderboard queries, `lb:*` custom IDs and cards
     ui/           shared Components V2 card helpers
   interaction-handlers/  one file per component handler (gamba and coinflip buttons,
                   leaderboard paging and category select)
-  listeners/      one file per Discord/Sapphire event listener
+  listeners/      one file per Discord/Sapphire event listener (member join, leave and
+                  screening, channel and role delete cleanup, chat rewards, ready)
 drizzle/          generated SQL migrations, committed and shipped in the image
 test/             Vitest tests
 .github/          CI, image publishing and Dependabot configuration
@@ -85,6 +94,15 @@ ID (see `features/gamba/custom-ids.ts`), so handlers must ignore IDs they cannot
   take up to an hour). Each command implements `registerApplicationCommands` and `chatInputRun`.
 - **Gamba jackpots assign a role** (`?gamba`, `/gamba` and the Spin again/Double buttons), so the
   bot needs the **Manage Roles** permission and its highest role must sit above the jackpot role.
+- **Server Members is a privileged intent** (`GuildMembers`): enable it in the Developer Portal
+  (Bot -> Server Members Intent). It drives joins, leaves and member fetches. `src/client.ts`
+  always requests it, so with the toggle off Discord closes the gateway (4014, disallowed
+  intents), `client.login` rejects and the bot exits at startup: it fails to log in.
+  Known limitation: a member who joined before a restart and passes Rules Screening after it may
+  not get auto-roles, because the guild-member partial's old `pending` is unknown
+  (`src/listeners/member-screening.ts`).
+- **Auto-roles** (`/settings autorole`) need **Manage Roles**, with the bot's highest role above
+  every auto-role.
 - Prefix commands rely on the privileged **Message Content** intent. Prefer slash commands
   (`chatInputRun`) for new user-facing features, and add a gateway intent only when a feature needs
   it.
@@ -97,6 +115,8 @@ ID (see `features/gamba/custom-ids.ts`), so handlers must ignore IDs they cannot
 - Feature logic goes in `src/features/<name>/` with an `index.ts` public surface; commands and
   listeners stay thin and call into it. Game/feature config (emojis, odds, role IDs) lives in the
   feature folder.
+- A new way to move coins with user impact should consider an economy log event. Logging is
+  fire-and-forget after the transaction commits: it must never block or fail the action.
 - Log through `this.container.logger` / `client.logger`, not `console`.
 - Keep logic that can be tested without Discord in plain functions and cover it with Vitest.
 - Anything that parses user input (bet strings, custom IDs, option strings) also gets
@@ -136,6 +156,8 @@ ID (see `features/gamba/custom-ids.ts`), so handlers must ignore IDs they cannot
   server-side command instead, not the workflow.
 - CI does not update `docker-compose.yml` or `.env` on the server. Changes to either are a manual
   step on the VPS. Deploys do not roll back on their own.
+- Enable the **Server Members Intent** in the Developer Portal **before** merging or deploying to
+  `main`. Deploys are automatic and the bot cannot log in without it.
 - Set `VPS_SSH_KEY` from the key file so formatting survives, never by pasting into the web UI:
   `gh secret set VPS_SSH_KEY --env production < <path-to-private-key>`.
 - Troubleshooting a failed deploy job (`gh run view <id> --log-failed`):

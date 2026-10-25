@@ -1,6 +1,6 @@
-import { and, count, eq, gte } from 'drizzle-orm';
+import { and, count, eq, gte, isNull } from 'drizzle-orm';
 import type { Db } from '../../db/index.js';
-import { pots, spins } from '../../db/schema.js';
+import { pots, spins, wallets } from '../../db/schema.js';
 import { pot } from '../gamba/config.js';
 
 const dayMs = 86_400_000;
@@ -21,10 +21,24 @@ export function readPotRow(db: Db, guildId: string, now: number): PotRow {
     .from(spins)
     .where(and(eq(spins.guildId, guildId), gte(spins.createdAt, startOfDay)))
     .get();
+  // A winner who left the server is not shown.
+  const winner = row?.lastWinnerId
+    ? db
+        .select({ userId: wallets.userId })
+        .from(wallets)
+        .where(
+          and(
+            eq(wallets.guildId, guildId),
+            eq(wallets.userId, row.lastWinnerId),
+            isNull(wallets.departedAt),
+          ),
+        )
+        .get()
+    : undefined;
   return {
     pot: row?.amount ?? pot.seed,
-    lastWinnerId: row?.lastWinnerId ?? undefined,
-    lastWonAt: row?.lastWonAt ?? undefined,
+    lastWinnerId: winner ? (row?.lastWinnerId ?? undefined) : undefined,
+    lastWonAt: winner ? (row?.lastWonAt ?? undefined) : undefined,
     spinsToday: today?.total ?? 0,
   };
 }

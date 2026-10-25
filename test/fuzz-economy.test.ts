@@ -13,12 +13,14 @@ import {
   EconomyError,
   findWallet,
   getOrCreateWallet,
+  purgeWallet,
   rewardChat,
   startingBalance,
   utcDay,
 } from '../src/features/economy/index.js';
 import { pot } from '../src/features/gamba/config.js';
 import { InvalidBetError, settleSpin } from '../src/features/gamba/index.js';
+import { markDeparted, markPresent, members } from '../src/features/members/index.js';
 import { leaderboardPage, leaderboardRank } from '../src/features/stats/index.js';
 import { expectLedgerConsistent } from './support/ledger.js';
 
@@ -94,11 +96,14 @@ const op = fc.oneof(
     amount: adminAmount,
     reason,
   }),
+  fc.record({ kind: fc.constant('leave' as const), who }),
+  fc.record({ kind: fc.constant('rejoin' as const), who }),
+  fc.record({ kind: fc.constant('purge' as const) }),
   fc.record({
     kind: fc.constant('wait' as const),
     ms: fc.oneof(
       fc.nat({ max: 120_000 }),
-      fc.constantFrom(chatReward.cooldownMs, bailout.cooldownMs, 86_400_000),
+      fc.constantFrom(chatReward.cooldownMs, bailout.cooldownMs, 86_400_000, members.graceMs),
       fc.nat({ max: 3 * 86_400_000 }),
     ),
   }),
@@ -111,16 +116,34 @@ function draws(values: readonly number[]) {
   return () => values[index++ % values.length] as number;
 }
 
-async function apply(db: Db, step: Op, now: number): Promise<void> {
-  if (step.kind === 'wait') return;
+/** Applies one op and returns the coins a purge removed (0 for every other op). */
+async function apply(db: Db, step: Op, now: number): Promise<number> {
+  if (step.kind === 'wait') return 0;
+  if (step.kind === 'purge') {
+    // As reconcileGuild would: every wallet departed for at least the grace period, in one transaction.
+    return db.transaction((tx) =>
+      tx
+        .select()
+        .from(wallets)
+        .all()
+        .filter((w) => w.departedAt !== null && now - w.departedAt >= members.graceMs)
+        .reduce((sum, w) => sum + purgeWallet(tx, w.guildId, w.userId, now), 0),
+    );
+  }
   const { guildId, userId } = step.who;
   switch (step.kind) {
+    case 'leave':
+      markDeparted(db, guildId, userId, now);
+      return 0;
+    case 'rejoin':
+      markPresent(db, guildId, userId);
+      return 0;
     case 'wager':
       await settleSpin(db, { guildId, userId, bet: step.bet }, now, {
         assignJackpotRole: async () => true,
         randomInt: draws(step.reels),
       });
-      return;
+      return 0;
     case 'flipBot':
       settleBotFlip(
         db,
@@ -128,7 +151,7 @@ async function apply(db: Db, step: Op, now: number): Promise<void> {
         now,
         draws([step.draw]),
       );
-      return;
+      return 0;
     case 'flipChallenge':
       settleChallenge(
         db,
@@ -146,19 +169,19 @@ async function apply(db: Db, step: Op, now: number): Promise<void> {
         now,
         draws([step.draw]),
       );
-      return;
+      return 0;
     case 'daily':
       claimDaily(db, guildId, userId, now);
-      return;
+      return 0;
     case 'bailout':
       claimBailout(db, guildId, userId, now);
-      return;
+      return 0;
     case 'chat':
       rewardChat(db, guildId, userId, now);
-      return;
+      return 0;
     case 'admin':
       adminAdjust(db, { guildId, userId, actorId: '9', ...step, now });
-      return;
+      return 0;
   }
 }
 
@@ -183,8 +206,27 @@ function isExpectedFailure(step: Op, error: unknown): boolean {
   return step.kind === 'admin' && error instanceof RangeError;
 }
 
-function expectInvariants(db: Db): void {
+function expectInvariants(db: Db, removed: number): void {
   expectLedgerConsistent(db);
+  const allWallets = db.select().from(wallets).all();
+  const allLedger = db.select().from(ledger).all();
+  const total = (list: number[]) => list.reduce((sum, n) => sum + n, 0);
+  expect(total(allWallets.map((w) => w.balance)), 'wallets sum to the ledger sum').toBe(
+    total(allLedger.map((row) => row.delta)),
+  );
+  expect(
+    total(allLedger.filter((row) => row.reason === 'pruned').map((row) => row.delta)),
+    'pruned deltas equal minus the coins removed',
+  ).toBe(removed === 0 ? 0 : -removed);
+  for (const wallet of allWallets.filter((w) => w.departedAt !== null)) {
+    const { guildId, userId } = wallet;
+    expect(
+      leaderboardPage(db, guildId, 'coins', 0).rows.some((row) => row.userId === userId),
+      'a departed wallet is off the board',
+    ).toBe(false);
+    expect(leaderboardRank(db, guildId, 'coins', userId)).toBeUndefined();
+    expect(coinsRank(db, guildId, userId)).toBeUndefined();
+  }
   for (const wallet of db.select().from(wallets).all()) {
     expect(Number.isSafeInteger(wallet.balance)).toBe(true);
     expect(wallet.balance).toBeGreaterThanOrEqual(0);
@@ -250,15 +292,21 @@ describe('economy fuzz', () => {
         async (start, steps) => {
           const db = openDatabase(':memory:');
           let now = start;
+          let removed = 0;
           for (const step of steps) {
             if (step.kind === 'wait') {
               now += step.ms;
               continue;
             }
+            if (step.kind === 'purge') {
+              removed += await apply(db, step, now);
+              expectInvariants(db, removed);
+              continue;
+            }
             const before = snapshot(db);
             const existed = findWallet(db, step.who.guildId, step.who.userId) !== undefined;
             try {
-              await apply(db, step, now);
+              removed += await apply(db, step, now);
             } catch (error) {
               if (!isExpectedFailure(step, error)) throw error;
               const after = snapshot(db);
@@ -273,7 +321,7 @@ describe('economy fuzz', () => {
               }
               expect(after, `a failed ${step.kind} changed nothing`).toEqual(before);
             }
-            expectInvariants(db);
+            expectInvariants(db, removed);
           }
           expectCooldownsHeld(db);
         },

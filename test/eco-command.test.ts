@@ -1,14 +1,16 @@
 import { container } from '@sapphire/framework';
 import { Events, MessageFlags, PermissionFlagsBits, SlashCommandBuilder } from 'discord.js';
-import { beforeAll, beforeEach, describe, expect, it } from 'vitest';
+import { beforeAll, beforeEach, describe, expect, it, vi } from 'vitest';
 import { createClient } from '../src/client.js';
 import { openDatabase } from '../src/db/index.js';
 import {
   botsHaveNoWallets,
   ecoNeedsManageServer,
   ecoNeedsReason,
+  ecoNotAMember,
 } from '../src/features/economy/cards.js';
 import { adminAdjust, findWallet } from '../src/features/economy/index.js';
+import { setLogChannel } from '../src/features/settings/store.js';
 import { testEnv } from './support/env.js';
 import { makeChatInput, makeUser } from './support/interaction.js';
 
@@ -23,13 +25,19 @@ beforeEach(() => {
   container.db = openDatabase(':memory:');
 });
 
-async function run(subcommand: string, options: Record<string, unknown>, permissions?: bigint) {
+async function run(
+  subcommand: string,
+  options: Record<string, unknown>,
+  permissions?: bigint,
+  absentMembers?: string[],
+) {
   const interaction = makeChatInput(client, {
     commandName: 'eco',
     userId: '9',
     subcommand,
     options,
     permissions,
+    absentMembers,
   });
   client.emit(Events.InteractionCreate, interaction as never);
   await new Promise((resolve) => setTimeout(resolve, 100));
@@ -38,11 +46,33 @@ async function run(subcommand: string, options: Record<string, unknown>, permiss
 }
 
 describe('/eco', () => {
+  it('refuses a member who left', async () => {
+    const result = await run('give', { user: makeUser('1'), amount: 5, reason: 'x' }, undefined, [
+      '1',
+    ]);
+    expect(result.text).toContain(ecoNotAMember('1'));
+    expect(findWallet(container.db, '2', '1')).toBeUndefined();
+  });
+
   it('gives coins with an ephemeral card', async () => {
     const result = await run('give', { user: makeUser('1'), amount: 500, reason: 'event' });
     expect(result.text).toContain('Gave **500** coins to <@1>. New balance: 1,500.');
     expect(result.text).toContain('Reason: event');
     expect(result.flags & MessageFlags.Ephemeral).toBeTruthy();
+  });
+
+  it('posts an admin_adjust card to the economy log channel', async () => {
+    const send = vi.fn(async () => ({}));
+    client.channels.cache.set('50', { id: '50', isSendable: () => true, send } as never);
+    setLogChannel(container.db, '2', 'economy', '50', 1);
+
+    await run('give', { user: makeUser('1'), amount: 500, reason: 'event' });
+
+    await vi.waitFor(() => expect(send).toHaveBeenCalledTimes(1));
+    const text = JSON.stringify(send.mock.calls[0]);
+    expect(text).toContain('<@1>');
+    expect(text).toContain('500');
+    expect(text).toContain('event');
   });
 
   it('explains insufficient funds', async () => {

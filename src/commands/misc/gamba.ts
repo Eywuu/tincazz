@@ -15,6 +15,8 @@ import {
   spin,
   spinErrorText,
 } from '../../features/gamba/index.js';
+import { spinLogEvent } from '../../features/logs/economy.js';
+import { logEconomy } from '../../features/logs/send.js';
 import { cardReply, errorReply } from '../../features/ui/index.js';
 
 export class GambaCommand extends Command {
@@ -54,6 +56,8 @@ export class GambaCommand extends Command {
         content: formatGambaReply(played),
         allowedMentions: { repliedUser: true },
       });
+      const event = spinLogEvent(userId, played, roleAssigned);
+      if (event) void logEconomy(message.guildId as string, event);
       const followUp = formatGambaFollowUp(message.author.toString(), played, roleAssigned);
       await this.announce(userId, followUp !== undefined, () =>
         sent.reply({ content: followUp, allowedMentions: { users: [userId] } }),

@@ -13,8 +13,10 @@ import {
   botsHaveNoWallets,
   ecoNeedsManageServer,
   ecoNeedsReason,
+  ecoNotAMember,
   InsufficientFundsError,
 } from '../../features/economy/index.js';
+import { logEconomy } from '../../features/logs/send.js';
 import { cardReply, coins, errorReply } from '../../features/ui/index.js';
 
 export class EcoCommand extends Command {
@@ -67,6 +69,9 @@ export class EcoCommand extends Command {
     if (user.bot) {
       return interaction.reply(errorReply(botsHaveNoWallets));
     }
+    if (interaction.options.getMember('user') === null) {
+      return interaction.reply(errorReply(ecoNotAMember(user.id)));
+    }
     // Discord accepts a reason of only spaces; adminAdjust would reject it with a RangeError.
     if (reason.trim() === '') {
       return interaction.reply(errorReply(ecoNeedsReason));
@@ -82,9 +87,19 @@ export class EcoCommand extends Command {
         reason,
         now: Date.now(),
       });
-      return await interaction.reply(
+      const replied = await interaction.reply(
         cardReply(adminCard(action, user.id, result, reason.trim()), { ephemeral: true }),
       );
+      void logEconomy(interaction.guildId as string, {
+        type: 'admin_adjust',
+        actorId: interaction.user.id,
+        userId: user.id,
+        action,
+        amount,
+        reason: reason.trim(),
+        balance: result.balance,
+      });
+      return replied;
     } catch (error) {
       if (error instanceof InsufficientFundsError) {
         return interaction.reply(

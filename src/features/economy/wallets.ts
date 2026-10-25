@@ -1,4 +1,4 @@
-import { and, eq, gt, or, sql } from 'drizzle-orm';
+import { and, eq, gt, isNull, or, sql } from 'drizzle-orm';
 import type { DbOrTx } from '../../db/index.js';
 import { wallets } from '../../db/schema.js';
 import { startingBalance } from './config.js';
@@ -35,7 +35,7 @@ export function getOrCreateWallet(
 /** 1 + wallets with a higher balance, or an equal balance and a smaller numeric user id. */
 export function coinsRank(db: DbOrTx, guildId: string, userId: string): number | undefined {
   const wallet = findWallet(db, guildId, userId);
-  if (!wallet) {
+  if (!wallet || wallet.departedAt !== null) {
     return undefined;
   }
   const ahead = db
@@ -44,6 +44,7 @@ export function coinsRank(db: DbOrTx, guildId: string, userId: string): number |
     .where(
       and(
         eq(wallets.guildId, guildId),
+        isNull(wallets.departedAt),
         or(
           gt(wallets.balance, wallet.balance),
           and(
