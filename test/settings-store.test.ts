@@ -1,8 +1,12 @@
 import { beforeEach, describe, expect, it } from 'vitest';
 import { type Db, openDatabase } from '../src/db/index.js';
 import {
+  addAutoRole,
+  autoRoles,
   clearChannelEverywhere,
   logChannelId,
+  removeAutoRole,
+  removeRoleEverywhere,
   setLogChannel,
 } from '../src/features/settings/store.js';
 
@@ -55,5 +59,48 @@ describe('settings store: log channels', () => {
     expect(logChannelId(db, '2', 'economy')).toBe('60');
     expect(logChannelId(db, '1', 'mod')).toBeUndefined();
     expect(clearChannelEverywhere(db, '50', 6)).toEqual([]);
+  });
+});
+
+describe('settings store: auto-roles', () => {
+  let db: Db;
+
+  beforeEach(() => {
+    db = openDatabase(':memory:');
+  });
+
+  it('adds once, then reports exists', () => {
+    expect(addAutoRole(db, '1', '10', 'member', 1)).toBe('added');
+    expect(addAutoRole(db, '1', '10', 'member', 2)).toBe('exists');
+    expect(autoRoles(db, '1', 'member')).toEqual(['10']);
+  });
+
+  it('caps a target at ten roles', () => {
+    for (let i = 0; i < 10; i++)
+      expect(addAutoRole(db, '1', `${100 + i}`, 'member', i)).toBe('added');
+    expect(addAutoRole(db, '1', '999', 'member', 50)).toBe('full');
+    expect(addAutoRole(db, '1', '999', 'bot', 50)).toBe('added');
+  });
+
+  it('orders by creation time then role id', () => {
+    addAutoRole(db, '1', '30', 'member', 2);
+    addAutoRole(db, '1', '20', 'member', 2);
+    addAutoRole(db, '1', '40', 'member', 1);
+    expect(autoRoles(db, '1', 'member')).toEqual(['40', '20', '30']);
+  });
+
+  it('removes a role from one target', () => {
+    addAutoRole(db, '1', '10', 'member', 1);
+    expect(removeAutoRole(db, '1', '10', 'bot')).toBe(false);
+    expect(removeAutoRole(db, '1', '10', 'member')).toBe(true);
+    expect(autoRoles(db, '1', 'member')).toEqual([]);
+  });
+
+  it('allows the same role in both lists and removes it from both', () => {
+    addAutoRole(db, '1', '5', 'member', 1);
+    addAutoRole(db, '1', '5', 'bot', 1);
+    expect(removeRoleEverywhere(db, '1', '5').sort()).toEqual(['bot', 'member']);
+    expect(autoRoles(db, '1', 'member')).toEqual([]);
+    expect(autoRoles(db, '1', 'bot')).toEqual([]);
   });
 });
