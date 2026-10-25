@@ -95,8 +95,12 @@ ID (see `features/gamba/custom-ids.ts`), so handlers must ignore IDs they cannot
 - **Gamba jackpots assign a role** (`?gamba`, `/gamba` and the Spin again/Double buttons), so the
   bot needs the **Manage Roles** permission and its highest role must sit above the jackpot role.
 - **Server Members is a privileged intent** (`GuildMembers`): enable it in the Developer Portal
-  (Bot -> Server Members Intent). It drives joins, leaves and member fetches. Without it the daily
-  member reconcile always skips and auto-roles never fire.
+  (Bot -> Server Members Intent). It drives joins, leaves and member fetches. `src/client.ts`
+  always requests it, so with the toggle off Discord closes the gateway (4014, disallowed
+  intents), `client.login` rejects and the bot exits at startup: it fails to log in.
+  Known limitation: a member who joined before a restart and passes Rules Screening after it may
+  not get auto-roles, because the guild-member partial's old `pending` is unknown
+  (`src/listeners/member-screening.ts`).
 - **Auto-roles** (`/settings autorole`) need **Manage Roles**, with the bot's highest role above
   every auto-role.
 - Prefix commands rely on the privileged **Message Content** intent. Prefer slash commands
@@ -152,6 +156,8 @@ ID (see `features/gamba/custom-ids.ts`), so handlers must ignore IDs they cannot
   server-side command instead, not the workflow.
 - CI does not update `docker-compose.yml` or `.env` on the server. Changes to either are a manual
   step on the VPS. Deploys do not roll back on their own.
+- Enable the **Server Members Intent** in the Developer Portal **before** merging or deploying to
+  `main`. Deploys are automatic and the bot cannot log in without it.
 - Set `VPS_SSH_KEY` from the key file so formatting survives, never by pasting into the web UI:
   `gh secret set VPS_SSH_KEY --env production < <path-to-private-key>`.
 - Troubleshooting a failed deploy job (`gh run view <id> --log-failed`):

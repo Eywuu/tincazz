@@ -51,8 +51,9 @@ most your balance after the spin. Only the player can use the buttons.
    application.
 2. **Bot** tab: reset/copy the token, and enable the **Message Content Intent** (required for
    `?` prefix commands).
-3. Also enable the **Server Members Intent** (privileged). Without it joins and leaves are not
-   seen, auto-roles never fire and the daily member reconcile always skips.
+3. Also enable the **Server Members Intent** (privileged). The bot always requests it, so without
+   it the bot fails to log in (Discord rejects the connection) and exits. Enable it **before**
+   merging or deploying to `main`: deploys are automatic and do not roll back.
 4. **OAuth2 -> URL Generator**: scopes `bot`, permissions as needed, then open the URL to invite
    the bot to your server. Give it **Manage Roles** (for gamba jackpot roles and auto-roles) and
    keep its highest role above those roles.
@@ -61,8 +62,10 @@ most your balance after the spin. Only the player can use the buttons.
 
 Run these as someone with Manage Server:
 - `/settings logs set type:<economy|mod> channel:<channel>`: where economy and moderation logs go
-  (`/settings logs clear` stops a log)
-- `/settings autorole add role:<role>`: roles given to new joiners (`remove` to stop)
+  (`/settings logs clear` stops a log). The bot needs View Channel and Send Messages in log
+  channels.
+- `/settings autorole add role:<role> target:<members|bots>`: roles given to new joiners or new
+  bots (`target` defaults to members; `remove` to stop)
 - `/settings show`: review the current settings
 
 ## Local development
