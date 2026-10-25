@@ -63,7 +63,7 @@ export async function reconcileGuild(
     container.logger.warn(`reconcile: could not fetch members of ${guild.id}`, error);
     return undefined;
   }
-  if (roster.size < members.minFetchRatio * guild.memberCount) {
+  if (guild.memberCount <= 0 || roster.size < members.minFetchRatio * guild.memberCount) {
     container.logger.warn(
       `reconcile: member fetch for ${guild.id} looks incomplete (${roster.size}/${guild.memberCount})`,
     );

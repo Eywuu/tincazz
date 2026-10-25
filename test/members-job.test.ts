@@ -85,6 +85,13 @@ it('does nothing when the fetch looks incomplete', async () => {
   expect(departedAtOf('1')).toBeNull();
 });
 
+it('does nothing when the guild reports no members', async () => {
+  seed('1', 10, null);
+  expect(await reconcileGuild(container.db, guild([], 0), now)).toBeUndefined();
+  expect(departedAtOf('1')).toBeNull();
+  expect(container.logger.warn).toHaveBeenCalled();
+});
+
 it('sends no log when there is nothing to do', async () => {
   seed('1', 10, null);
   const result = await reconcileGuild(container.db, guild(['1']), now);
@@ -103,7 +110,7 @@ it('reconciles the second guild when the first fails, and resolves false', async
     memberCount: 1,
     members: { fetch: async () => Promise.reject(new Error('x')) },
   };
-  const good = guild([], 0, '8');
+  const good = guild(['99'], 1, '8');
   const client = {
     guilds: {
       cache: new Map([
@@ -126,7 +133,7 @@ it('reconciles the second guild when the first fails, and resolves false', async
 
 it('resolves true when every guild reconciles, honouring a single guild id (uncached guild retries)', async () => {
   const client = {
-    guilds: { cache: new Map([['8', guild([], 0, '8')]]) },
+    guilds: { cache: new Map([['8', guild(['99'], 1, '8')]]) },
   } as unknown as Client<true>;
   expect(await createMemberReconcileJob().run(client, now)).toBe(true);
   expect(await createMemberReconcileJob('8').run(client, now)).toBe(true);
