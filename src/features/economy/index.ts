@@ -6,4 +6,5 @@ export * from './config.js';
 export * from './daily.js';
 export * from './errors.js';
 export * from './ledger.js';
+export * from './prune.js';
 export * from './wallets.js';
