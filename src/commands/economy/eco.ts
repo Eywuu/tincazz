@@ -16,6 +16,7 @@ import {
   ecoNotAMember,
   InsufficientFundsError,
 } from '../../features/economy/index.js';
+import { logEconomy } from '../../features/logs/send.js';
 import { cardReply, coins, errorReply } from '../../features/ui/index.js';
 
 export class EcoCommand extends Command {
@@ -86,9 +87,19 @@ export class EcoCommand extends Command {
         reason,
         now: Date.now(),
       });
-      return await interaction.reply(
+      const replied = await interaction.reply(
         cardReply(adminCard(action, user.id, result, reason.trim()), { ephemeral: true }),
       );
+      void logEconomy(interaction.guildId as string, {
+        type: 'admin_adjust',
+        actorId: interaction.user.id,
+        userId: user.id,
+        action,
+        amount,
+        reason: reason.trim(),
+        balance: result.balance,
+      });
+      return replied;
     } catch (error) {
       if (error instanceof InsufficientFundsError) {
         return interaction.reply(

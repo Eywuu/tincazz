@@ -3,6 +3,7 @@ import type { ButtonInteraction } from 'discord.js';
 import {
   botFlipCard,
   type ChallengeId,
+  type ChallengeRequest,
   ChallengeTakenError,
   type ChallengeView,
   type CoinflipId,
@@ -21,6 +22,8 @@ import {
   settleChallenge,
   tryClose,
 } from '../features/coinflip/index.js';
+import { botFlipLogEvent, challengeLogEvent } from '../features/logs/economy.js';
+import { logEconomy } from '../features/logs/send.js';
 import { cardReply, errorReply } from '../features/ui/index.js';
 
 export class CoinflipButtonsHandler extends InteractionHandler {
@@ -61,7 +64,10 @@ export class CoinflipButtonsHandler extends InteractionHandler {
       { guildId: interaction.guildId as string, userId, bet: String(id.bet), side: id.side },
       Date.now(),
     );
-    return this.updateCard(interaction, cardReply(botFlipCard(userId, flip)));
+    const updated = await this.updateCard(interaction, cardReply(botFlipCard(userId, flip)));
+    const event = botFlipLogEvent(userId, flip);
+    if (event) void logEconomy(interaction.guildId as string, event);
+    return updated;
   }
 
   /**
@@ -126,21 +132,18 @@ export class CoinflipButtonsHandler extends InteractionHandler {
       return interaction.update(cardReply(challengeClosedCard(view, 'expired')));
     }
 
+    const request: ChallengeRequest = {
+      guildId: interaction.guildId as string,
+      messageId,
+      mode: id.opponentId === undefined ? 'open' : 'challenge',
+      challengerId: id.challengerId,
+      acceptorId: interaction.user.id,
+      bet: id.bet,
+      challengerSide: id.side,
+    };
     let settled: ReturnType<typeof settleChallenge>;
     try {
-      settled = settleChallenge(
-        this.container.db,
-        {
-          guildId: interaction.guildId as string,
-          messageId,
-          mode: id.opponentId === undefined ? 'open' : 'challenge',
-          challengerId: id.challengerId,
-          acceptorId: interaction.user.id,
-          bet: id.bet,
-          challengerSide: id.side,
-        },
-        Date.now(),
-      );
+      settled = settleChallenge(this.container.db, request, Date.now());
     } catch (error) {
       if (error instanceof ShortStakeError && error.who === 'challenger') {
         return interaction.update(cardReply(challengeClosedCard(view, 'challenger-short')));
@@ -153,6 +156,12 @@ export class CoinflipButtonsHandler extends InteractionHandler {
       reopen(messageId, Math.max(0, id.expiresAt - Date.now()));
       throw error;
     }
-    return this.updateCard(interaction, cardReply(challengeResultCard(view, settled)));
+    const updated = await this.updateCard(
+      interaction,
+      cardReply(challengeResultCard(view, settled)),
+    );
+    const event = challengeLogEvent(request, settled);
+    if (event) void logEconomy(request.guildId, event);
+    return updated;
   }
 }

@@ -1,6 +1,6 @@
 import { container } from '@sapphire/framework';
 import { Events, MessageFlags, PermissionFlagsBits, SlashCommandBuilder } from 'discord.js';
-import { beforeAll, beforeEach, describe, expect, it } from 'vitest';
+import { beforeAll, beforeEach, describe, expect, it, vi } from 'vitest';
 import { createClient } from '../src/client.js';
 import { openDatabase } from '../src/db/index.js';
 import {
@@ -10,6 +10,7 @@ import {
   ecoNotAMember,
 } from '../src/features/economy/cards.js';
 import { adminAdjust, findWallet } from '../src/features/economy/index.js';
+import { setLogChannel } from '../src/features/settings/store.js';
 import { testEnv } from './support/env.js';
 import { makeChatInput, makeUser } from './support/interaction.js';
 
@@ -58,6 +59,20 @@ describe('/eco', () => {
     expect(result.text).toContain('Gave **500** coins to <@1>. New balance: 1,500.');
     expect(result.text).toContain('Reason: event');
     expect(result.flags & MessageFlags.Ephemeral).toBeTruthy();
+  });
+
+  it('posts an admin_adjust card to the economy log channel', async () => {
+    const send = vi.fn(async () => ({}));
+    client.channels.cache.set('50', { id: '50', isSendable: () => true, send } as never);
+    setLogChannel(container.db, '2', 'economy', '50', 1);
+
+    await run('give', { user: makeUser('1'), amount: 500, reason: 'event' });
+
+    await vi.waitFor(() => expect(send).toHaveBeenCalledTimes(1));
+    const text = JSON.stringify(send.mock.calls[0]);
+    expect(text).toContain('<@1>');
+    expect(text).toContain('500');
+    expect(text).toContain('event');
   });
 
   it('explains insufficient funds', async () => {
