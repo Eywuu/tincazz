@@ -32,7 +32,20 @@ function member(pending: boolean) {
     user: { id: '7', bot: false },
     guild: {
       id: '2',
-      roles: { cache: new Map([['10', { id: '10', position: 2, managed: false }]]) },
+      roles: {
+        cache: new Map([
+          [
+            '10',
+            {
+              id: '10',
+              guild: { id: '2' },
+              position: 2,
+              managed: false,
+              permissions: { bitfield: 0n },
+            },
+          ],
+        ]),
+      },
       members: { me: { roles: { highest: { position: 10 } }, permissions: { has: () => true } } },
     },
     roles: { add },

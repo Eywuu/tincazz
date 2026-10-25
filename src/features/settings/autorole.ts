@@ -38,6 +38,11 @@ export function validateAutoRole(
   if (!invoker.isOwner && role.position >= invoker.highest) {
     return 'That role is at or above your highest role.';
   }
+  return moderatorPermissionProblem(role);
+}
+
+/** Set when the role has (or has since gained) a moderator permission, so it can't be an auto-role. */
+export function moderatorPermissionProblem(role: RoleFacts): string | undefined {
   if ((role.permissions & dangerousPermissions) !== 0n) {
     return "That role has moderator permissions, so it can't be an auto-role.";
   }

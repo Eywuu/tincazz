@@ -264,6 +264,19 @@ describe('/settings autorole', () => {
     expect(result.text).toContain('<@&6> ⚠️ That role is at or above my highest role.');
   });
 
+  it('flags an auto-role that gained moderator permissions in show', async () => {
+    addAutoRole(container.db, '2', '5', 'member', 1);
+    const guild = guildWithBot(4);
+    guild.roles.cache.set(
+      '5',
+      fakeRole('5', 2, { permissions: { bitfield: PermissionFlagsBits.Administrator } }) as never,
+    );
+    const result = await run(undefined, 'show', {}, { guild });
+    expect(result.text).toContain(
+      "<@&5> ⚠️ That role has moderator permissions, so it can't be an auto-role.",
+    );
+  });
+
   it('flags a deleted auto-role in show', async () => {
     addAutoRole(container.db, '2', '7', 'member', 1);
     const result = await run(undefined, 'show', {}, { guild: guildWithBot() });

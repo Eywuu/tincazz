@@ -1,7 +1,7 @@
 import { container } from '@sapphire/framework';
 import type { GuildMember } from 'discord.js';
 import { logMod } from '../logs/send.js';
-import { botCannotAssign, botFacts } from './autorole.js';
+import { botCannotAssign, botFacts, moderatorPermissionProblem, roleFacts } from './autorole.js';
 import { autoRoles } from './store.js';
 
 /** Gives a new (or just-screened) member the configured auto-roles. Never throws. */
@@ -20,18 +20,17 @@ export async function assignAutoRoles(member: GuildMember): Promise<void> {
         failures.push({ roleId, reason: 'role no longer exists' });
         continue;
       }
-      const reason = botCannotAssign(
-        {
-          id: role.id,
-          guildId: guild.id,
-          position: role.position,
-          managed: role.managed,
-          permissions: 0n,
-        },
-        bot,
-      );
-      if (reason) failures.push({ roleId, reason });
-      else assignable.push(roleId);
+      const facts = roleFacts(role);
+      const reason = botCannotAssign(facts, bot);
+      if (reason) {
+        failures.push({ roleId, reason });
+        continue;
+      }
+      if (moderatorPermissionProblem(facts)) {
+        failures.push({ roleId, reason: 'role has moderator permissions' });
+        continue;
+      }
+      assignable.push(roleId);
     }
 
     if (assignable.length > 0) {

@@ -15,6 +15,7 @@ import {
   botFacts,
   logChannelAlreadySet,
   logChannelProblem,
+  moderatorPermissionProblem,
   roleFacts,
   type SettingsView,
   settingsCard,
@@ -267,7 +268,9 @@ export class SettingsCommand extends Command {
         const role = guild?.roles.cache.get(roleId);
         return {
           roleId,
-          problem: role ? botCannotAssign(roleFacts(role), bot) : 'role no longer exists',
+          problem: role
+            ? (botCannotAssign(roleFacts(role), bot) ?? moderatorPermissionProblem(roleFacts(role)))
+            : 'role no longer exists',
         };
       });
     return interaction.reply(
