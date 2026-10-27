@@ -4,7 +4,9 @@ import { check, index, integer, primaryKey, sqliteTable, text } from 'drizzle-or
 export const ledgerReasons = [
   'start',
   'daily',
+  'cashback',
   'bailout',
+  'collect',
   'chat',
   'free_prize', // legacy: free spins are gone, rows stay in history
   'bet',
@@ -40,6 +42,7 @@ export const wallets = sqliteTable(
     lastDailyAt: integer('last_daily_at'),
     lastBailoutAt: integer('last_bailout_at'),
     lastChatRewardAt: integer('last_chat_reward_at'),
+    lastCollectAt: integer('last_collect_at'),
     departedAt: integer('departed_at'),
     createdAt: integer('created_at').notNull(),
   },

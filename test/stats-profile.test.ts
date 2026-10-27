@@ -55,10 +55,10 @@ describe('playerProfile', () => {
     expect(playerProfile(db, '2', '1', 30)).toMatchObject({
       spins: 2,
       wins: 1,
-      biggestWin: 140,
+      biggestWin: 100,
       bestOdds: 343,
       wagered: 110,
-      won: 140,
+      won: 100,
       balance: findWallet(db, '2', '1')?.balance,
       rank: coinsRank(db, '2', '1'),
     });

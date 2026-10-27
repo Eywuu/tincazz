@@ -6,12 +6,16 @@ import { settleBotFlip, settleChallenge } from '../src/features/coinflip/index.j
 import {
   adminAdjust,
   bailout,
+  cashback,
   chatReward,
   claimBailout,
+  claimCollect,
   claimDaily,
   coinsRank,
+  collect,
   EconomyError,
   findWallet,
+  gamblingReasons,
   getOrCreateWallet,
   purgeWallet,
   rewardChat,
@@ -88,6 +92,7 @@ const op = fc.oneof(
   }),
   fc.record({ kind: fc.constant('daily' as const), who }),
   fc.record({ kind: fc.constant('bailout' as const), who }),
+  fc.record({ kind: fc.constant('collect' as const), who }),
   fc.record({ kind: fc.constant('chat' as const), who }),
   fc.record({
     kind: fc.constant('admin' as const),
@@ -103,7 +108,13 @@ const op = fc.oneof(
     kind: fc.constant('wait' as const),
     ms: fc.oneof(
       fc.nat({ max: 120_000 }),
-      fc.constantFrom(chatReward.cooldownMs, bailout.cooldownMs, 86_400_000, members.graceMs),
+      fc.constantFrom(
+        chatReward.cooldownMs,
+        bailout.cooldownMs,
+        3_600_000,
+        86_400_000,
+        members.graceMs,
+      ),
       fc.nat({ max: 3 * 86_400_000 }),
     ),
   }),
@@ -175,6 +186,9 @@ async function apply(db: Db, step: Op, now: number): Promise<number> {
       return 0;
     case 'bailout':
       claimBailout(db, guildId, userId, now);
+      return 0;
+    case 'collect':
+      claimCollect(db, guildId, userId, now);
       return 0;
     case 'chat':
       rewardChat(db, guildId, userId, now);
@@ -275,6 +289,36 @@ function expectCooldownsHeld(db: Db): void {
       const gaps = (list: number[]) => list.slice(1).map((time, i) => time - (list[i] as number));
       for (const gap of gaps(times('bailout'))) {
         expect(gap).toBeGreaterThanOrEqual(bailout.cooldownMs);
+      }
+      for (const row of mine.filter((entry) => entry.reason === 'cashback')) {
+        const day = utcDay(row.createdAt) - 1;
+        const net = mine
+          .filter(
+            (entry) =>
+              utcDay(entry.createdAt) === day &&
+              (gamblingReasons as readonly string[]).includes(entry.reason),
+          )
+          .reduce((sum, entry) => sum + entry.delta, 0);
+        expect(row.delta, "cashback matches yesterday's losses").toBe(
+          Math.min(cashback.max, Math.floor((-net * cashback.percent) / 100)),
+        );
+        expect(
+          mine.some((entry) => entry.reason === 'daily' && entry.createdAt === row.createdAt),
+          'cashback only comes with a daily',
+        ).toBe(true);
+      }
+      const collects = mine.filter((row) => row.reason === 'collect');
+      for (const row of collects) {
+        expect(row.delta % collect.perHour, 'collect pays whole hours').toBe(0);
+        expect(row.delta).toBeLessThanOrEqual(collect.perHour * collect.maxHours);
+      }
+      const collected = collects.reduce((sum, row) => sum + row.delta, 0);
+      const created = mine.find((row) => row.reason === 'start')?.createdAt;
+      const last = collects.at(-1)?.createdAt;
+      if (created !== undefined && last !== undefined) {
+        expect(collected, 'collect never pays ahead of the clock').toBeLessThanOrEqual(
+          Math.floor((last - created) / 3_600_000) * collect.perHour,
+        );
       }
       for (const gap of gaps(times('chat'))) {
         expect(gap).toBeGreaterThanOrEqual(chatReward.cooldownMs);

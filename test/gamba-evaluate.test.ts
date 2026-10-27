@@ -28,7 +28,7 @@ describe('evaluate', () => {
       pythonTriple: 8,
       cppTriple: 1,
     });
-    expect(totalBps).toBe(91_740_000);
+    expect(totalBps).toBe(91_440_000);
     // About a 1% house edge: the average spin returns 98.5–99.5% of the bet, before the pot.
     const returned = totalBps / (21 ** 3 * 10_000);
     expect(returned).toBeGreaterThanOrEqual(0.985);
@@ -40,7 +40,7 @@ describe('evaluate', () => {
       result: 'jackpot',
       odds: 9261,
       tier: 'cppTriple',
-      payoutBps: 3_000_000,
+      payoutBps: 1_000_000,
     });
   });
 
@@ -49,13 +49,13 @@ describe('evaluate', () => {
       result: 'triple',
       odds: 1158,
       tier: 'pythonTriple',
-      payoutBps: 900_000,
+      payoutBps: 250_000,
     });
     expect(evaluate(['head', 'head', 'head'])).toEqual({
       result: 'triple',
       odds: 343,
       tier: 'ytTriple',
-      payoutBps: 140_000,
+      payoutBps: 100_000,
     });
   });
 
@@ -64,7 +64,7 @@ describe('evaluate', () => {
       result: 'pair',
       odds: undefined,
       tier: 'ytPair',
-      payoutBps: 15_000,
+      payoutBps: 20_000,
     });
   });
 
@@ -73,7 +73,7 @@ describe('evaluate', () => {
       tier: 'pythonPair',
       payoutBps: 40_000,
     });
-    expect(evaluate(['cpp', 'cpp', 'head'])).toMatchObject({ tier: 'cppPair', payoutBps: 100_000 });
+    expect(evaluate(['cpp', 'cpp', 'head'])).toMatchObject({ tier: 'cppPair', payoutBps: 80_000 });
     expect(evaluate(['head', 'cry', 'grr'])).toMatchObject({ tier: 'none', payoutBps: 0 });
   });
 });

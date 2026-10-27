@@ -30,6 +30,15 @@ export class NotEligibleError extends EconomyError {
   }
 }
 
+export class CollectNotReadyError extends EconomyError {
+  public readonly availableAt: number;
+
+  public constructor(availableAt: number) {
+    super(`Nothing to collect until ${availableAt}`);
+    this.availableAt = availableAt;
+  }
+}
+
 export class CooldownError extends EconomyError {
   public readonly availableAt: number;
 

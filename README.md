@@ -13,7 +13,11 @@ Currently implemented:
   10,000, default 10). The winner takes the pool minus a 3% rake (at least 1 coin) that goes into
   the gamba pot; against the bot a win nets the bet minus the rake and a loss costs the bet. The
   coin spins for about two seconds (the card is edited a few times) before the result shows
-- `/balance`, `/daily`, `/bailout`: your coins, the daily streak and a bailout when broke
+- `/balance`, `/daily`, `/collect`, `/bailout`: your coins and the ways to earn more:
+  - `/daily`: 400 coins plus 75 per streak day (up to 925 from day 7), and 10% cashback on the
+    previous UTC day's net gamba and coinflip losses (up to 1,000)
+  - `/collect`: 25 coins for every hour since the last collect, stacking up to 12 hours (300)
+  - `/bailout`: under 10 coins, 200 plus 25 per day of a live daily streak, every 30 minutes
 - `/stats [user]`: a player profile with spins, win rate, jackpots, biggest win, best odds, net
   profit and daily streak
 - `/leaderboard [category]`: the top 10 by `coins`, `biggest-win`, `jackpots`, `profit`, `spins` or `coinflip`; only
@@ -31,14 +35,16 @@ stake:
 
 | Result        | Payout |
 | ------------- | ------ |
-| yt pair       | 1.5x   |
+| yt pair       | 2x     |
 | python pair   | 4x     |
-| cpp pair      | 10x    |
-| yt triple     | 14x    |
-| python triple | 90x    |
-| cpp triple    | 300x   |
+| cpp pair      | 8x     |
+| yt triple     | 10x    |
+| python triple | 25x    |
+| cpp triple    | 100x   |
 
-On average a spin returns about 99% of the bet (a ~1% house edge), before the pot.
+On average a spin returns about 98.7% of the bet (a ~1% house edge), before the pot. Wins are
+weighted toward the common pairs, so a balance lasts: about 36% of spins pay something, and most of
+those double the stake. The cpp triple's main prize is the pot and the jackpot role.
 
 Every wagered spin adds 3% of the bet (at least 1 coin) to a shared pot. A wagered cpp triple also
 wins the pot: all of it at bets of 500 or more, a proportional share below that. The pot starts at

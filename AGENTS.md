@@ -40,7 +40,7 @@ src/
   db/             SQLite schema (Drizzle) and `openDatabase`, exposed as `container.db`
   commands/       one file per command, grouped in folders by category
     admin/        `/settings` (log channels and join auto-roles; Manage Server)
-    economy/      slash commands for coins (/balance, /daily, /bailout, /eco)
+    economy/      slash commands for coins (/balance, /daily, /collect, /bailout, /eco)
     general/      `?ping` / `/ping`
     misc/         games: `?gamba` / `/gamba` and `/coinflip`
     stats/        slash commands for profiles and boards (/stats, /leaderboard)
@@ -48,7 +48,8 @@ src/
     coinflip/     `/coinflip` rules: rake, flips, `cf:*` custom IDs, the one transactional settle
                   module, the in-memory challenge registry (exactly-once and expiry), cards and
                   the flip animation (frames shown by editing the card after the coins move)
-    economy/      wallets and ledger; the only code that changes balances
+    economy/      wallets and ledger; the only code that changes balances. Faucets: daily (with
+                  cashback on yesterday's gambling losses), hourly collect, bailout, chat
     gamba/        spin logic, odds and payouts (tuned to a ~1% house edge), the pot, bet parsing,
                   result cards and the shared `spin()` flow used by commands and buttons (every
                   spin is a wager, default 10)
@@ -123,6 +124,14 @@ ID (see `features/gamba/custom-ids.ts`), so handlers must ignore IDs they cannot
 - Gamba payouts (`payoutBps` in `src/features/gamba/config.ts`) target a ~99% return before the
   pot, a ~1% house edge. `test/gamba-evaluate.test.ts` enumerates every draw and fails outside
   98.5–99.5%: keep it in range when changing payouts, odds or reels.
+- Keep gamba low-volatility. Players went broke within a daily's worth of spins when a third of the
+  return sat in rare triples, so most of it now sits in the common pairs (yt pair 2x), and the
+  jackpot's real prize is the pot and the role. Do not move return back into rare tiers to make a
+  headline multiplier bigger.
+- Coin faucets (economy `config.ts`: daily, cashback, collect, bailout, chat) are sized so players
+  can keep playing at small bets. A new faucet gets its own ledger reason, a claim function in
+  `src/features/economy/` that writes in one transaction, an op in `test/fuzz-economy.test.ts` and a
+  cooldown or rate check in `expectCooldownsHeld`.
 - A new way to move coins with user impact should consider an economy log event. Logging is
   fire-and-forget after the transaction commits: it must never block or fail the action.
 - Log through `this.container.logger` / `client.logger`, not `console`.

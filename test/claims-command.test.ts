@@ -28,7 +28,7 @@ async function run(commandName: string) {
 describe('claim commands', () => {
   it('/daily replies with a card, a second claim is ephemeral', async () => {
     const first = await run('daily');
-    expect(first.text).toContain('+250 coins');
+    expect(first.text).toContain('+475 coins');
     expect(first.flags & MessageFlags.IsComponentsV2).toBeTruthy();
     expect(first.flags & MessageFlags.Ephemeral).toBeFalsy();
 
@@ -41,6 +41,12 @@ describe('claim commands', () => {
     await run('balance');
     const result = await run('bailout');
     expect(result.text).toContain('Bailout is only for balances under 10 coins. You have 1,000.');
+    expect(result.flags & MessageFlags.Ephemeral).toBeTruthy();
+  });
+
+  it('/collect right after the wallet opens has nothing yet', async () => {
+    const result = await run('collect');
+    expect(result.text).toContain('Nothing to collect yet. Next coins <t:');
     expect(result.flags & MessageFlags.Ephemeral).toBeTruthy();
   });
 });
