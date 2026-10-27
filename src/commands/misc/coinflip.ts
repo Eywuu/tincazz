@@ -6,7 +6,9 @@ import {
 } from 'discord.js';
 import { type FlipSide, flipSides } from '../../db/schema.js';
 import {
+  animate,
   botFlipCard,
+  botFlipFrames,
   type ChallengeView,
   cannotChallengeBot,
   cannotChallengeSelf,
@@ -97,10 +99,13 @@ export class CoinflipCommand extends Command {
       { guildId: interaction.guildId as string, userId, bet, side },
       Date.now(),
     );
-    const replied = await interaction.reply(cardReply(botFlipCard(userId, flip)));
     const event = botFlipLogEvent(userId, flip);
     if (event) void logEconomy(interaction.guildId as string, event);
-    return replied;
+    return animate(
+      { first: (reply) => interaction.reply(reply), next: (reply) => interaction.editReply(reply) },
+      botFlipFrames(userId, flip),
+      botFlipCard(userId, flip),
+    );
   }
 
   private async challenge(

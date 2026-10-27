@@ -56,7 +56,7 @@ describe('playWager', () => {
 
   it('pays a yt pair and links both ledger rows to the spin', () => {
     const result = playWager(db, 'g', 'u', 100, 10, roll(0, 0, 3));
-    expect(result).toMatchObject({ payout: 120, balance: 1_020 });
+    expect(result).toMatchObject({ payout: 150, balance: 1_050 });
     expect(reasons()).toEqual(['start', 'bet', 'payout']);
     const rows = db.select().from(ledger).all();
     expect(rows[1]?.ref).toBe(result.spinId);

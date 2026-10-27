@@ -10,9 +10,11 @@ import {
   clearChallenges,
   encodeChallengeId,
   encodeFlipAgainId,
+  flipAnimation,
   notYourChallenge,
   notYourFlip,
   scheduleExpiry,
+  setFrameDelay,
 } from '../src/features/coinflip/index.js';
 import {
   adminAdjust,
@@ -38,6 +40,14 @@ function mockRandomInt(...values: number[]) {
 const json = (value: unknown) => JSON.stringify(value);
 const wait = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms));
 
+/** The result card, shown by the last edit once the flipping frames have played. */
+async function flipResult(interaction: { editReply: { mock: { calls: unknown[][] } } }) {
+  await vi.waitFor(() =>
+    expect(interaction.editReply.mock.calls).toHaveLength(flipAnimation.frames),
+  );
+  return json(interaction.editReply.mock.calls.at(-1));
+}
+
 describe('coinflip buttons', () => {
   let client: ReturnType<typeof createClient>;
 
@@ -49,10 +59,12 @@ describe('coinflip buttons', () => {
   beforeEach(() => {
     container.db = openDatabase(':memory:');
     clearChallenges();
+    setFrameDelay(0);
   });
 
   afterEach(() => {
     clearChallenges();
+    setFrameDelay(undefined);
     vi.restoreAllMocks();
     syncBuiltinESMExports();
   });
@@ -147,7 +159,8 @@ describe('coinflip buttons', () => {
       mockRandomInt(0);
       const interaction = await click(again, '1');
 
-      expect(json(interaction.update.mock.calls[0])).toContain('+94');
+      expect(json(interaction.update.mock.calls[0])).toContain('flipping');
+      expect(await flipResult(interaction)).toContain('+94');
       expect(flipCount()).toBe(1);
     });
 
@@ -176,7 +189,8 @@ describe('coinflip buttons', () => {
       getOrCreateWallet(container.db, '2', '1', 1);
       const interaction = await click(challengeId('accept'), '3');
 
-      expect(json(interaction.update.mock.calls[0])).toContain('<@3> wins **194**');
+      expect(json(interaction.update.mock.calls[0])).toContain('<@1> vs <@3> · 100 each');
+      expect(await flipResult(interaction)).toContain('<@3> wins **194**');
       expect(balance('1')).toBe(startingBalance - 100);
       expect(balance('3')).toBe(startingBalance + 94);
       expect(potAmount()).toBe(pot.seed + 6);
@@ -242,7 +256,7 @@ describe('coinflip buttons', () => {
       expect(short.update).not.toHaveBeenCalled();
 
       const funded = await click(id, '4');
-      expect(json(funded.update.mock.calls[0])).toContain('wins');
+      expect(await flipResult(funded)).toContain('wins');
       expect(flipCount()).toBe(1);
     });
 
@@ -316,6 +330,22 @@ describe('coinflip buttons', () => {
       await vi.waitFor(() => expect(edit).toHaveBeenCalledTimes(1), { timeout: 2000 });
 
       expect(json(edit.mock.calls[0])).toContain('Heads');
+    });
+
+    it('shows the result in a message edit when the final edit fails', async () => {
+      mockRandomInt(0);
+      const interaction = makeButton(client, { customId: challengeId('accept'), userId: '3' });
+      interaction.editReply.mockImplementation(async (options: unknown) => {
+        if (!json(options).includes('flipping')) throw new Error('Unknown Webhook');
+      });
+      const edit = vi.fn(async (_options: unknown) => ({}));
+      interaction.message.edit = edit;
+      vi.spyOn(container.logger, 'error').mockImplementation(() => undefined);
+      client.emit(Events.InteractionCreate, interaction as never);
+      await vi.waitFor(() => expect(edit).toHaveBeenCalledTimes(1), { timeout: 2000 });
+
+      expect(json(edit.mock.calls[0])).toContain('wins');
+      expect(flipCount()).toBe(1);
     });
 
     it('does not let a cancel or decline overwrite a settled challenge after a restart', async () => {

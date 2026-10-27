@@ -2,6 +2,7 @@ import { ActionRowBuilder, ButtonBuilder, ButtonStyle, type ContainerBuilder } f
 import type { FlipSide } from '../../db/schema.js';
 import { spinErrorText } from '../gamba/index.js';
 import { accents, card, coins, discordTime } from '../ui/index.js';
+import { flipAnimation } from './config.js';
 import {
   type ChallengeAction,
   type ChallengeId,
@@ -41,6 +42,24 @@ export function botFlipCard(userId: string, flip: BotFlip): ContainerBuilder {
       ),
     ),
   );
+}
+
+/** One frame of a coin in the air: no buttons, alternating sides. */
+export function flippingCard(frame: number, caption: string): ContainerBuilder {
+  const side = frame % 2 === 0 ? 'heads' : 'tails';
+  return card(accents.brand, `# 🪙 ${sideLabel(side)}…`, caption, '-# flipping');
+}
+
+function flippingFrames(caption: string): ContainerBuilder[] {
+  return Array.from({ length: flipAnimation.frames }, (_, frame) => flippingCard(frame, caption));
+}
+
+export function botFlipFrames(userId: string, flip: Pick<BotFlip, 'bet' | 'side'>) {
+  return flippingFrames(`<@${userId}> called **${sideLabel(flip.side)}** · ${coins(flip.bet)}`);
+}
+
+export function challengeFlipFrames(view: ChallengeView, acceptorId: string) {
+  return flippingFrames(`<@${view.challengerId}> vs <@${acceptorId}> · ${coins(view.bet)} each`);
 }
 
 export function challengeCard(view: ChallengeView): ContainerBuilder {
