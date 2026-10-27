@@ -1,19 +1,23 @@
+export { animate, type FlipDisplay, setFrameDelay } from './animation.js';
 export {
   botFlipCard,
+  botFlipFrames,
   type ChallengeClosedReason,
   type ChallengeView,
   cannotChallengeBot,
   cannotChallengeSelf,
   challengeCard,
   challengeClosedCard,
+  challengeFlipFrames,
   challengeResultCard,
   challengeTaken,
   flipErrorText,
+  flippingCard,
   notYourChallenge,
   notYourFlip,
 } from './cards.js';
 export { clearChallenges, reopen, scheduleExpiry, tryClose } from './challenges.js';
-export { coinflip } from './config.js';
+export { coinflip, flipAnimation } from './config.js';
 export {
   type ChallengeAction,
   type ChallengeId,

@@ -44,7 +44,8 @@ src/
     stats/        slash commands for profiles and boards (/stats, /leaderboard)
   features/       plain feature logic, one folder per feature (not auto-loaded)
     coinflip/     `/coinflip` rules: rake, flips, `cf:*` custom IDs, the one transactional settle
-                  module, the in-memory challenge registry (exactly-once and expiry) and cards
+                  module, the in-memory challenge registry (exactly-once and expiry), cards and
+                  the flip animation (frames shown by editing the card after the coins move)
     economy/      wallets and ledger; the only code that changes balances
     gamba/        spin logic, odds and payouts, the pot, bet parsing, result cards and the
                   shared `spin()` flow used by commands and buttons (every spin is a wager, default 10)

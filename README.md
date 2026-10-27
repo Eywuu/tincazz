@@ -11,7 +11,8 @@ Currently implemented:
 - `/coinflip bot|challenge|open [bet] [side]`: flip a coin against the bot, challenge a member
   (60 seconds to accept) or open a flip anyone can accept (120 seconds). Bets are gamba's (10 to
   10,000, default 10). The winner takes the pool minus a 3% rake (at least 1 coin) that goes into
-  the gamba pot; against the bot a win nets the bet minus the rake and a loss costs the bet
+  the gamba pot; against the bot a win nets the bet minus the rake and a loss costs the bet. The
+  coin spins for about two seconds (the card is edited a few times) before the result shows
 - `/balance`, `/daily`, `/bailout`: your coins, the daily streak and a bailout when broke
 - `/stats [user]`: a player profile with spins, win rate, biggest win, net profit and daily streak
 - `/leaderboard [category]`: the top 10 by `coins`, `biggest-win`, `jackpots`, `profit`, `spins` or `coinflip`; only

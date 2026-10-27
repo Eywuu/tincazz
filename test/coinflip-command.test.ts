@@ -10,6 +10,8 @@ import {
   cannotChallengeBot,
   cannotChallengeSelf,
   clearChallenges,
+  flipAnimation,
+  setFrameDelay,
 } from '../src/features/coinflip/index.js';
 import { adminAdjust, findWallet, startingBalance } from '../src/features/economy/index.js';
 import { setLogChannel } from '../src/features/settings/store.js';
@@ -38,6 +40,7 @@ describe('/coinflip', () => {
   beforeEach(() => {
     container.db = openDatabase(':memory:');
     clearChallenges();
+    setFrameDelay(0);
     // The runIn precondition fetches the channel over REST, which needs a token.
     vi.spyOn(client.channels, 'fetch').mockResolvedValue({
       type: 0,
@@ -48,6 +51,7 @@ describe('/coinflip', () => {
 
   afterEach(() => {
     clearChallenges();
+    setFrameDelay(undefined);
     vi.useRealTimers();
     vi.restoreAllMocks();
     syncBuiltinESMExports();
@@ -78,8 +82,15 @@ describe('/coinflip', () => {
       mockRandomInt(0);
       const interaction = await run('bot', { bet: '100', side: 'heads' });
 
-      expect(json(interaction.reply.mock.calls[0])).toContain('Heads');
-      expect(json(interaction.reply.mock.calls[0])).toContain('+94');
+      // The reply is the first flipping frame; the rest of the frames and the result are edits.
+      expect(json(interaction.reply.mock.calls[0])).toContain('flipping');
+      await vi.waitFor(() =>
+        expect(interaction.editReply).toHaveBeenCalledTimes(flipAnimation.frames),
+      );
+      const result = json(interaction.editReply.mock.calls.at(-1));
+      expect(result).toContain('Heads');
+      expect(result).toContain('+94');
+      expect(result).toContain('Flip again');
       expect(findWallet(container.db, '2', '1')?.balance).toBe(startingBalance + 94);
       expect(flipCount()).toBe(1);
     });

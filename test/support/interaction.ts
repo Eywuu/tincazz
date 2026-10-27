@@ -136,6 +136,7 @@ export function makeButton(
     message: { id: messageId, reply: announce, edit: vi.fn(async (_options: unknown) => ({})) },
     reply: vi.fn(async (_options: unknown) => undefined),
     update: vi.fn(async (_options: unknown) => undefined),
+    editReply: vi.fn(async (_options: unknown) => undefined),
     followUp: vi.fn(async (_options: unknown) => undefined),
   };
 }

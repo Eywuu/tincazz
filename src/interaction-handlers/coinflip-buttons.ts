@@ -1,13 +1,16 @@
 import { InteractionHandler, InteractionHandlerTypes } from '@sapphire/framework';
-import type { ButtonInteraction } from 'discord.js';
+import type { ButtonInteraction, ContainerBuilder } from 'discord.js';
 import {
+  animate,
   botFlipCard,
+  botFlipFrames,
   type ChallengeId,
   type ChallengeRequest,
   ChallengeTakenError,
   type ChallengeView,
   type CoinflipId,
   challengeClosedCard,
+  challengeFlipFrames,
   challengeResultCard,
   challengeTaken,
   decodeCoinflipId,
@@ -64,26 +67,37 @@ export class CoinflipButtonsHandler extends InteractionHandler {
       { guildId: interaction.guildId as string, userId, bet: String(id.bet), side: id.side },
       Date.now(),
     );
-    const updated = await this.updateCard(interaction, cardReply(botFlipCard(userId, flip)));
     const event = botFlipLogEvent(userId, flip);
     if (event) void logEconomy(interaction.guildId as string, event);
-    return updated;
+    return this.flipOnCard(interaction, botFlipFrames(userId, flip), botFlipCard(userId, flip));
   }
 
   /**
-   * Updates the card. The coins have already moved, so if Discord rejects the update the result is
-   * put on the message by a plain edit instead of being lost behind "interaction failed".
+   * Plays the flip on the card, then shows the result. The coins have already moved, so if Discord
+   * rejects the update or an edit the result is put on the message by a plain edit instead of
+   * being lost behind "interaction failed".
    */
-  private async updateCard(interaction: ButtonInteraction, reply: ReturnType<typeof cardReply>) {
+  private async flipOnCard(
+    interaction: ButtonInteraction,
+    frames: readonly ContainerBuilder[],
+    result: ContainerBuilder,
+  ) {
     try {
-      return await interaction.update(reply);
+      return await animate(
+        {
+          first: (reply) => interaction.update(reply),
+          next: (reply) => interaction.editReply(reply),
+        },
+        frames,
+        result,
+      );
     } catch (error) {
       this.container.logger.error(
         `coinflip: could not update ${interaction.message.id}, editing instead: ${
           error instanceof Error ? error.message : String(error)
         }`,
       );
-      return interaction.message.edit(reply);
+      return interaction.message.edit(cardReply(result));
     }
   }
 
@@ -156,12 +170,12 @@ export class CoinflipButtonsHandler extends InteractionHandler {
       reopen(messageId, Math.max(0, id.expiresAt - Date.now()));
       throw error;
     }
-    const updated = await this.updateCard(
-      interaction,
-      cardReply(challengeResultCard(view, settled)),
-    );
     const event = challengeLogEvent(request, settled);
     if (event) void logEconomy(request.guildId, event);
-    return updated;
+    return this.flipOnCard(
+      interaction,
+      challengeFlipFrames(view, request.acceptorId),
+      challengeResultCard(view, settled),
+    );
   }
 }
