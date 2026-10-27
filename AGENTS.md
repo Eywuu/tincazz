@@ -40,7 +40,7 @@ src/
   db/             SQLite schema (Drizzle) and `openDatabase`, exposed as `container.db`
   commands/       one file per command, grouped in folders by category
     admin/        `/settings` (log channels and join auto-roles; Manage Server)
-    economy/      slash commands for coins (/balance, /daily, /bailout, /eco)
+    economy/      slash commands for coins (/balance, /daily, /collect, /bailout, /eco)
     general/      `?ping` / `/ping`
     misc/         games: `?gamba` / `/gamba` and `/coinflip`
     stats/        slash commands for profiles and boards (/stats, /leaderboard)
@@ -48,7 +48,8 @@ src/
     coinflip/     `/coinflip` rules: rake, flips, `cf:*` custom IDs, the one transactional settle
                   module, the in-memory challenge registry (exactly-once and expiry), cards and
                   the flip animation (frames shown by editing the card after the coins move)
-    economy/      wallets and ledger; the only code that changes balances
+    economy/      wallets and ledger; the only code that changes balances. Faucets: daily (with
+                  cashback on yesterday's gambling losses), hourly collect, bailout, chat
     gamba/        spin logic, odds and payouts (tuned to a ~1% house edge), the pot, bet parsing,
                   result cards and the shared `spin()` flow used by commands and buttons (every
                   spin is a wager, default 10)
