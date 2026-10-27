@@ -42,7 +42,9 @@ stake:
 | python triple | 25x    |
 | cpp triple    | 100x   |
 
-On average a spin returns about 99% of the bet (a ~1% house edge), before the pot.
+On average a spin returns about 98.7% of the bet (a ~1% house edge), before the pot. Wins are
+weighted toward the common pairs, so a balance lasts: about 36% of spins pay something, and most of
+those double the stake. The cpp triple's main prize is the pot and the jackpot role.
 
 Every wagered spin adds 3% of the bet (at least 1 coin) to a shared pot. A wagered cpp triple also
 wins the pot: all of it at bets of 500 or more, a proportional share below that. The pot starts at
