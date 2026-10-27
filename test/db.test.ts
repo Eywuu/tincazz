@@ -55,6 +55,7 @@ describe('database', () => {
       lastDailyAt: null,
       lastBailoutAt: null,
       lastChatRewardAt: null,
+      lastCollectAt: null,
       departedAt: null,
       createdAt: 1,
     };
@@ -164,7 +165,7 @@ describe('database', () => {
       { guildId: 'g', amount: 7, lastWinnerId: null, lastWonAt: null },
     ]);
     expect(second.$client.prepare('select count(*) from __drizzle_migrations').pluck().get()).toBe(
-      4,
+      5,
     );
     closeDatabase(second);
   });

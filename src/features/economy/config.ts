@@ -10,6 +10,9 @@ export const bailout = {
   cooldownMs: 1_800_000,
 } as const;
 
+/** Hourly bonus: coins per full hour since the last collect, stacking up to `maxHours`. */
+export const collect = { perHour: 25, maxHours: 12 } as const;
+
 export const chatReward = { amount: 5, cooldownMs: 60_000 } as const;
 
 export const admin = { maxAmount: 1_000_000, reasonMaxLength: 200 } as const;

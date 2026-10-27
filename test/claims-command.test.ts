@@ -43,4 +43,10 @@ describe('claim commands', () => {
     expect(result.text).toContain('Bailout is only for balances under 10 coins. You have 1,000.');
     expect(result.flags & MessageFlags.Ephemeral).toBeTruthy();
   });
+
+  it('/collect right after the wallet opens has nothing yet', async () => {
+    const result = await run('collect');
+    expect(result.text).toContain('Nothing to collect yet. Next coins <t:');
+    expect(result.flags & MessageFlags.Ephemeral).toBeTruthy();
+  });
 });
