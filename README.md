@@ -14,7 +14,8 @@ Currently implemented:
   the gamba pot; against the bot a win nets the bet minus the rake and a loss costs the bet. The
   coin spins for about two seconds (the card is edited a few times) before the result shows
 - `/balance`, `/daily`, `/bailout`: your coins, the daily streak and a bailout when broke
-- `/stats [user]`: a player profile with spins, win rate, biggest win, net profit and daily streak
+- `/stats [user]`: a player profile with spins, win rate, jackpots, biggest win, best odds, net
+  profit and daily streak
 - `/leaderboard [category]`: the top 10 by `coins`, `biggest-win`, `jackpots`, `profit`, `spins` or `coinflip`; only
   the person who ran it can use its category select and Previous/Next buttons
 - chat rewards: a few coins for chatting, at most once a minute
@@ -36,6 +37,8 @@ stake:
 | yt triple     | 14x    |
 | python triple | 90x    |
 | cpp triple    | 300x   |
+
+On average a spin returns about 99% of the bet (a ~1% house edge), before the pot.
 
 Every wagered spin adds 3% of the bet (at least 1 coin) to a shared pot. A wagered cpp triple also
 wins the pot: all of it at bets of 500 or more, a proportional share below that. The pot starts at

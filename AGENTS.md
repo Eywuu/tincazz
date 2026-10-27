@@ -41,14 +41,17 @@ src/
   commands/       one file per command, grouped in folders by category
     admin/        `/settings` (log channels and join auto-roles; Manage Server)
     economy/      slash commands for coins (/balance, /daily, /bailout, /eco)
+    general/      `?ping` / `/ping`
+    misc/         games: `?gamba` / `/gamba` and `/coinflip`
     stats/        slash commands for profiles and boards (/stats, /leaderboard)
   features/       plain feature logic, one folder per feature (not auto-loaded)
     coinflip/     `/coinflip` rules: rake, flips, `cf:*` custom IDs, the one transactional settle
                   module, the in-memory challenge registry (exactly-once and expiry), cards and
                   the flip animation (frames shown by editing the card after the coins move)
     economy/      wallets and ledger; the only code that changes balances
-    gamba/        spin logic, odds and payouts, the pot, bet parsing, result cards and the
-                  shared `spin()` flow used by commands and buttons (every spin is a wager, default 10)
+    gamba/        spin logic, odds and payouts (tuned to a ~1% house edge), the pot, bet parsing,
+                  result cards and the shared `spin()` flow used by commands and buttons (every
+                  spin is a wager, default 10)
     logs/         log channels: event types and cards, fire-and-forget `sendLog`, economy
                   events (admin adjustments, jackpots, big wins above `logThresholds`)
     members/      departed-member tracking: hidden from boards and ranks, daily reconcile
@@ -63,7 +66,8 @@ src/
   interaction-handlers/  one file per component handler (gamba and coinflip buttons,
                   leaderboard paging and category select)
   listeners/      one file per Discord/Sapphire event listener (member join, leave and
-                  screening, channel and role delete cleanup, chat rewards, ready)
+                  screening, channel and role delete cleanup, chat rewards, ready, and a
+                  generic ephemeral reply when a command or handler throws)
 drizzle/          generated SQL migrations, committed and shipped in the image
 test/             Vitest tests
 .github/          CI, image publishing and Dependabot configuration
@@ -116,6 +120,9 @@ ID (see `features/gamba/custom-ids.ts`), so handlers must ignore IDs they cannot
 - Feature logic goes in `src/features/<name>/` with an `index.ts` public surface; commands and
   listeners stay thin and call into it. Game/feature config (emojis, odds, role IDs) lives in the
   feature folder.
+- Gamba payouts (`payoutBps` in `src/features/gamba/config.ts`) target a ~99% return before the
+  pot, a ~1% house edge. `test/gamba-evaluate.test.ts` enumerates every draw and fails outside
+  98.5–99.5%: keep it in range when changing payouts, odds or reels.
 - A new way to move coins with user impact should consider an economy log event. Logging is
   fire-and-forget after the transaction commits: it must never block or fail the action.
 - Log through `this.container.logger` / `client.logger`, not `console`.
