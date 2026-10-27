@@ -6,6 +6,7 @@ import { settleBotFlip, settleChallenge } from '../src/features/coinflip/index.j
 import {
   adminAdjust,
   bailout,
+  cashback,
   chatReward,
   claimBailout,
   claimCollect,
@@ -14,6 +15,7 @@ import {
   collect,
   EconomyError,
   findWallet,
+  gamblingReasons,
   getOrCreateWallet,
   purgeWallet,
   rewardChat,
@@ -287,6 +289,23 @@ function expectCooldownsHeld(db: Db): void {
       const gaps = (list: number[]) => list.slice(1).map((time, i) => time - (list[i] as number));
       for (const gap of gaps(times('bailout'))) {
         expect(gap).toBeGreaterThanOrEqual(bailout.cooldownMs);
+      }
+      for (const row of mine.filter((entry) => entry.reason === 'cashback')) {
+        const day = utcDay(row.createdAt) - 1;
+        const net = mine
+          .filter(
+            (entry) =>
+              utcDay(entry.createdAt) === day &&
+              (gamblingReasons as readonly string[]).includes(entry.reason),
+          )
+          .reduce((sum, entry) => sum + entry.delta, 0);
+        expect(row.delta, "cashback matches yesterday's losses").toBe(
+          Math.min(cashback.max, Math.floor((-net * cashback.percent) / 100)),
+        );
+        expect(
+          mine.some((entry) => entry.reason === 'daily' && entry.createdAt === row.createdAt),
+          'cashback only comes with a daily',
+        ).toBe(true);
       }
       const collects = mine.filter((row) => row.reason === 'collect');
       for (const row of collects) {

@@ -37,6 +37,7 @@ export function dailyCard(result: DailyResult) {
     accents.win,
     '## Daily claimed',
     `+${coins(result.amount)} coins · streak ${result.streak} ${unit}`,
+    ...(result.cashback > 0 ? [`+${coins(result.cashback)} cashback on yesterday's losses`] : []),
     `-# Balance: ${coins(result.balance)} · next claim ${discordTime(result.nextAt)}`,
   );
 }

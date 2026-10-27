@@ -1,16 +1,12 @@
 import { and, eq } from 'drizzle-orm';
 import type { Db } from '../../db/index.js';
 import { wallets } from '../../db/schema.js';
+import { cashbackFor } from './cashback.js';
 import { daily } from './config.js';
 import { AlreadyClaimedError } from './errors.js';
 import { credit } from './ledger.js';
+import { dayMs, utcDay } from './time.js';
 import { getOrCreateWallet } from './wallets.js';
-
-const dayMs = 86_400_000;
-
-export function utcDay(now: number): number {
-  return Math.floor(now / dayMs);
-}
 
 export function dailyAmount(streak: number): number {
   return daily.base + daily.perStreakDay * Math.min(streak, daily.streakCap);
@@ -18,6 +14,8 @@ export function dailyAmount(streak: number): number {
 
 export interface DailyResult {
   amount: number;
+  /** Cashback on yesterday's gambling losses, paid as its own ledger row; 0 if none. */
+  cashback: number;
   balance: number;
   streak: number;
   nextAt: number;
@@ -34,11 +32,15 @@ export function claimDaily(db: Db, guildId: string, userId: string, now: number)
     const continues = wallet.lastDailyAt !== null && utcDay(wallet.lastDailyAt) === today - 1;
     const streak = continues ? wallet.dailyStreak + 1 : 1;
     const amount = dailyAmount(streak);
-    const balance = credit(tx, { guildId, userId, amount, reason: 'daily', now });
+    let balance = credit(tx, { guildId, userId, amount, reason: 'daily', now });
+    const cashback = cashbackFor(tx, guildId, userId, now);
+    if (cashback > 0) {
+      balance = credit(tx, { guildId, userId, amount: cashback, reason: 'cashback', now });
+    }
     tx.update(wallets)
       .set({ dailyStreak: streak, lastDailyAt: now })
       .where(and(eq(wallets.guildId, guildId), eq(wallets.userId, userId)))
       .run();
-    return { amount, balance, streak, nextAt };
+    return { amount, cashback, balance, streak, nextAt };
   });
 }

@@ -3,6 +3,9 @@ export const startingBalance = 1_000;
 export const daily = { base: 400, perStreakDay: 75, streakCap: 7 } as const;
 
 /** A floor for broke players: the base plus a bonus while the daily streak is alive. */
+/** Paid with /daily: a share of the previous UTC day's net gamba and coinflip losses. */
+export const cashback = { percent: 10, max: 1_000 } as const;
+
 export const bailout = {
   base: 200,
   perStreakDay: 25,

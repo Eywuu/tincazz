@@ -2,9 +2,9 @@ import { and, eq } from 'drizzle-orm';
 import type { Db } from '../../db/index.js';
 import { wallets } from '../../db/schema.js';
 import { bailout, daily } from './config.js';
-import { utcDay } from './daily.js';
 import { CooldownError, NotEligibleError } from './errors.js';
 import { credit } from './ledger.js';
+import { utcDay } from './time.js';
 import { getOrCreateWallet } from './wallets.js';
 
 export function bailoutAmount(streak: number): number {

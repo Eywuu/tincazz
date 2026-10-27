@@ -4,6 +4,7 @@ import { check, index, integer, primaryKey, sqliteTable, text } from 'drizzle-or
 export const ledgerReasons = [
   'start',
   'daily',
+  'cashback',
   'bailout',
   'collect',
   'chat',
