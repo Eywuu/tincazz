@@ -25,12 +25,12 @@ beforeEach(() => {
 });
 
 describe('claimDaily', () => {
-  it('pays 250 on day 1 and grows with the streak up to day 7', () => {
+  it('pays 475 on day 1 and grows with the streak up to day 7', () => {
     const paid: number[] = [];
     for (let day = 100; day < 109; day++) {
       paid.push(claimDaily(db, g, u, day * DAY + 5).amount);
     }
-    expect(paid).toEqual([250, 300, 350, 400, 450, 500, 550, 550, 550]);
+    expect(paid).toEqual([475, 550, 625, 700, 775, 850, 925, 925, 925]);
     expect(findWallet(db, g, u)?.dailyStreak).toBe(9);
     expectLedgerConsistent(db);
   });
@@ -39,7 +39,7 @@ describe('claimDaily', () => {
     claimDaily(db, g, u, 100 * DAY);
     claimDaily(db, g, u, 101 * DAY);
     const result = claimDaily(db, g, u, 103 * DAY);
-    expect(result).toMatchObject({ amount: 250, streak: 1 });
+    expect(result).toMatchObject({ amount: 475, streak: 1 });
     expectLedgerConsistent(db);
   });
 
@@ -67,7 +67,7 @@ describe('claimDaily', () => {
 
   it('creates the wallet on first interaction and credits on top', () => {
     const result = claimDaily(db, g, u, 100 * DAY);
-    expect(result.balance).toBe(1_250);
+    expect(result.balance).toBe(1_475);
     expect(
       db
         .select()
@@ -94,7 +94,7 @@ describe('claimBailout', () => {
     expectLedgerConsistent(db);
   });
 
-  it('pays 200 below 10 coins, then enforces an hour cooldown', () => {
+  it('pays 200 below 10 coins, then enforces a 30 minute cooldown', () => {
     getOrCreateWallet(db, g, u, 0);
     debit(db, { guildId: g, userId: u, amount: 995, reason: 'bet', now: 1 });
     expect(claimBailout(db, g, u, 1_000)).toEqual({ amount: 200, balance: 205 });
@@ -102,15 +102,15 @@ describe('claimBailout', () => {
     debit(db, { guildId: g, userId: u, amount: 200, reason: 'bet', now: 2 });
     const error = (() => {
       try {
-        claimBailout(db, g, u, 1_000 + HOUR - 1);
+        claimBailout(db, g, u, 1_000 + HOUR / 2 - 1);
       } catch (e) {
         return e;
       }
     })();
     expect(error).toBeInstanceOf(CooldownError);
-    expect((error as CooldownError).availableAt).toBe(1_000 + HOUR);
+    expect((error as CooldownError).availableAt).toBe(1_000 + HOUR / 2);
 
-    expect(claimBailout(db, g, u, 1_000 + HOUR).amount).toBe(200);
+    expect(claimBailout(db, g, u, 1_000 + HOUR / 2).amount).toBe(200);
     expectLedgerConsistent(db);
   });
 
@@ -120,5 +120,28 @@ describe('claimBailout', () => {
     claimBailout(db, g, u, 1_000);
     credit(db, { guildId: g, userId: u, amount: 500, reason: 'daily', now: 2 });
     expect(() => claimBailout(db, g, u, 1_001)).toThrow(NotEligibleError);
+  });
+
+  const drain = (now: number) => {
+    const balance = findWallet(db, g, u)?.balance ?? 0;
+    debit(db, { guildId: g, userId: u, amount: balance - 5, reason: 'bet', now });
+  };
+
+  it('adds 25 per day of a live daily streak, capped at 7 days', () => {
+    for (let day = 100; day < 103; day++) claimDaily(db, g, u, day * DAY);
+    drain(102 * DAY + 1);
+    expect(claimBailout(db, g, u, 102 * DAY + 2).amount).toBe(275);
+
+    for (let day = 103; day < 112; day++) claimDaily(db, g, u, day * DAY);
+    drain(111 * DAY + 1);
+    // The day after the last claim the streak is still alive.
+    expect(claimBailout(db, g, u, 112 * DAY + 5).amount).toBe(375);
+    expectLedgerConsistent(db);
+  });
+
+  it('drops the streak bonus once the streak has lapsed', () => {
+    for (let day = 100; day < 103; day++) claimDaily(db, g, u, day * DAY);
+    drain(102 * DAY + 1);
+    expect(claimBailout(db, g, u, 104 * DAY).amount).toBe(200);
   });
 });

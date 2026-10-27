@@ -28,7 +28,7 @@ async function run(commandName: string) {
 describe('claim commands', () => {
   it('/daily replies with a card, a second claim is ephemeral', async () => {
     const first = await run('daily');
-    expect(first.text).toContain('+250 coins');
+    expect(first.text).toContain('+475 coins');
     expect(first.flags & MessageFlags.IsComponentsV2).toBeTruthy();
     expect(first.flags & MessageFlags.Ephemeral).toBeFalsy();
 
