@@ -29,10 +29,10 @@ stake:
 
 | Result        | Payout |
 | ------------- | ------ |
-| yt pair       | 1.2x   |
+| yt pair       | 1.5x   |
 | python pair   | 4x     |
 | cpp pair      | 10x    |
-| yt triple     | 15x    |
+| yt triple     | 14x    |
 | python triple | 100x   |
 | cpp triple    | 300x   |
 

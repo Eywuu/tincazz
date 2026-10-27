@@ -28,7 +28,11 @@ describe('evaluate', () => {
       pythonTriple: 8,
       cppTriple: 1,
     });
-    expect(totalBps).toBe(85_412_000);
+    expect(totalBps).toBe(92_540_000);
+    // A fair game: the average spin returns the bet, before the pot.
+    const returned = totalBps / (21 ** 3 * 10_000);
+    expect(returned).toBeGreaterThanOrEqual(0.995);
+    expect(returned).toBeLessThanOrEqual(1);
   });
 
   it('pays the jackpot for three cpp', () => {
@@ -51,7 +55,7 @@ describe('evaluate', () => {
       result: 'triple',
       odds: 343,
       tier: 'ytTriple',
-      payoutBps: 150_000,
+      payoutBps: 140_000,
     });
   });
 
@@ -60,7 +64,7 @@ describe('evaluate', () => {
       result: 'pair',
       odds: undefined,
       tier: 'ytPair',
-      payoutBps: 12_000,
+      payoutBps: 15_000,
     });
   });
 

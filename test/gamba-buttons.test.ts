@@ -73,7 +73,7 @@ describe('gamba buttons', () => {
     mockRandomInt(0);
     const interaction = await click('gamba:again:1:100');
 
-    expect(json(interaction.update.mock.calls[0])).toContain('Bet 100 → 1,500');
+    expect(json(interaction.update.mock.calls[0])).toContain('Bet 100 → 1,400');
     await vi.waitFor(() => expect(interaction.announce).toHaveBeenCalledTimes(1), {
       timeout: 2000,
     });

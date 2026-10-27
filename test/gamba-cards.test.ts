@@ -37,8 +37,8 @@ describe('wagerCard', () => {
     const c = wagerCard('1', wagerSpin(['head', 'head', 'cry'], 100, { balance: 1_020 }));
     const text = json(c);
     expect(accent(c)).toBe(accents.win);
-    expect(text).toContain('**Pair** · 1.2x');
-    expect(text).toContain('Bet 100 → 120 (+20)');
+    expect(text).toContain('**Pair** · 1.5x');
+    expect(text).toContain('Bet 100 → 150 (+50)');
     expect(text).toContain('balance 1,020 · pot 10,003');
     expect(text).toContain('gamba:again:1:100');
     expect(text).toContain('gamba:double:1:200');
