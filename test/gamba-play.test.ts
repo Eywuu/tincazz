@@ -56,7 +56,7 @@ describe('playWager', () => {
 
   it('pays a yt pair and links both ledger rows to the spin', () => {
     const result = playWager(db, 'g', 'u', 100, 10, roll(0, 0, 3));
-    expect(result).toMatchObject({ payout: 150, balance: 1_050 });
+    expect(result).toMatchObject({ payout: 200, balance: 1_100 });
     expect(reasons()).toEqual(['start', 'bet', 'payout']);
     const rows = db.select().from(ledger).all();
     expect(rows[1]?.ref).toBe(result.spinId);
@@ -67,18 +67,18 @@ describe('playWager', () => {
   it('pays the payout and the pot on a jackpot', () => {
     const result = playWager(db, 'g', 'u', 500, 10, roll(20, 20, 20));
     expect(result).toMatchObject({
-      payout: 150_000,
+      payout: 50_000,
       potWon: 10_015,
       pot: 10_000,
-      balance: 160_515,
+      balance: 60_515,
     });
     expect(reasons()).toEqual(['start', 'bet', 'payout', 'pot_win']);
     expect(db.select().from(playerStats).get()).toMatchObject({
       jackpots: 1,
       wins: 1,
       wagered: 500,
-      won: 160_015,
-      biggestWin: 160_015,
+      won: 60_015,
+      biggestWin: 60_015,
       bestOdds: 9_261,
     });
     expectLedgerConsistent(db);

@@ -60,7 +60,7 @@ describe('spin', () => {
       randomInt: draws(0, 0, 3),
     });
 
-    expect(json(result.card)).toContain('Bet 100 → 150');
+    expect(json(result.card)).toContain('Bet 100 → 200');
     expect(result.announcement).toBeUndefined();
   });
 

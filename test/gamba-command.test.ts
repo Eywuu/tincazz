@@ -106,7 +106,7 @@ describe('gamba', () => {
       });
 
       expect(message.spinReply.mock.calls[0]?.[0]).toMatchObject({
-        content: expect.stringContaining('<@1> won! +140 coins'),
+        content: expect.stringContaining('<@1> won! +100 coins'),
         allowedMentions: { users: ['1'] },
       });
       expect(message.reply.mock.invocationCallOrder[0]).toBeLessThan(
@@ -223,7 +223,7 @@ describe('gamba', () => {
       await vi.waitFor(() => expect(error).toHaveBeenCalled(), { timeout: 2000 });
 
       expect(message.reply).toHaveBeenCalledTimes(1);
-      expect(findWallet(container.db, '2', '1')?.balance).toBe(1_130);
+      expect(findWallet(container.db, '2', '1')?.balance).toBe(1_090);
     });
   });
 

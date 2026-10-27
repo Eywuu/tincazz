@@ -37,8 +37,8 @@ describe('wagerCard', () => {
     const c = wagerCard('1', wagerSpin(['head', 'head', 'cry'], 100, { balance: 1_020 }));
     const text = json(c);
     expect(accent(c)).toBe(accents.win);
-    expect(text).toContain('**Pair** · 1.5x');
-    expect(text).toContain('Bet 100 → 150 (+50)');
+    expect(text).toContain('**Pair** · 2x');
+    expect(text).toContain('Bet 100 → 200 (+100)');
     expect(text).toContain('balance 1,020 · pot 10,003');
     expect(text).toContain('gamba:again:1:100');
     expect(text).toContain('gamba:double:1:200');
@@ -64,7 +64,7 @@ describe('wagerCard', () => {
   it('is gold with the pot line on a jackpot', () => {
     const c = wagerCard('1', wagerSpin(['cpp', 'cpp', 'cpp'], 100, { potWon: 10_015 }));
     expect(accent(c)).toBe(accents.gold);
-    expect(json(c)).toContain('300x');
+    expect(json(c)).toContain('100x');
     expect(json(c)).toContain('+10,015 from the pot');
   });
 });
@@ -74,7 +74,7 @@ describe('announcementCard', () => {
     const c = announcementCard('1', wagerSpin(['python', 'python', 'python'], 100));
     const text = json(c);
     expect(accent(c)).toBe(accents.gold);
-    expect(text).toContain('Won 9,000 on a 100 bet');
+    expect(text).toContain('Won 2,500 on a 100 bet');
     expect(text).toContain('Odds: 1 in 1,158');
     expect(text).not.toContain('You are a pro');
   });
@@ -82,7 +82,7 @@ describe('announcementCard', () => {
   it('announces a wagered jackpot', () => {
     const spin = wagerSpin(['cpp', 'cpp', 'cpp'], 500, { potWon: 10_015 });
     const text = json(announcementCard('1', spin, true));
-    expect(text).toContain('Won 150,000 on a 500 bet');
+    expect(text).toContain('Won 50,000 on a 500 bet');
     expect(text).toContain('+10,015 from the pot');
     expect(text).toContain(`You are a pro! You just won <@&${gambaJackpotRoleId}>`);
     expect(text).not.toContain("couldn't assign");

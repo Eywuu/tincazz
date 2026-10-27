@@ -31,12 +31,12 @@ stake:
 
 | Result        | Payout |
 | ------------- | ------ |
-| yt pair       | 1.5x   |
+| yt pair       | 2x     |
 | python pair   | 4x     |
-| cpp pair      | 10x    |
-| yt triple     | 14x    |
-| python triple | 90x    |
-| cpp triple    | 300x   |
+| cpp pair      | 8x     |
+| yt triple     | 10x    |
+| python triple | 25x    |
+| cpp triple    | 100x   |
 
 On average a spin returns about 99% of the bet (a ~1% house edge), before the pot.
 
