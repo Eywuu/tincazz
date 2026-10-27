@@ -74,7 +74,7 @@ describe('announcementCard', () => {
     const c = announcementCard('1', wagerSpin(['python', 'python', 'python'], 100));
     const text = json(c);
     expect(accent(c)).toBe(accents.gold);
-    expect(text).toContain('Won 10,000 on a 100 bet');
+    expect(text).toContain('Won 9,000 on a 100 bet');
     expect(text).toContain('Odds: 1 in 1,158');
     expect(text).not.toContain('You are a pro');
   });

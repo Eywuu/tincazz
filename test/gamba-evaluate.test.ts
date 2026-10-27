@@ -28,11 +28,11 @@ describe('evaluate', () => {
       pythonTriple: 8,
       cppTriple: 1,
     });
-    expect(totalBps).toBe(92_540_000);
-    // A fair game: the average spin returns the bet, before the pot.
+    expect(totalBps).toBe(91_740_000);
+    // About a 1% house edge: the average spin returns 98.5–99.5% of the bet, before the pot.
     const returned = totalBps / (21 ** 3 * 10_000);
-    expect(returned).toBeGreaterThanOrEqual(0.995);
-    expect(returned).toBeLessThanOrEqual(1);
+    expect(returned).toBeGreaterThanOrEqual(0.985);
+    expect(returned).toBeLessThanOrEqual(0.995);
   });
 
   it('pays the jackpot for three cpp', () => {
@@ -49,7 +49,7 @@ describe('evaluate', () => {
       result: 'triple',
       odds: 1158,
       tier: 'pythonTriple',
-      payoutBps: 1_000_000,
+      payoutBps: 900_000,
     });
     expect(evaluate(['head', 'head', 'head'])).toEqual({
       result: 'triple',

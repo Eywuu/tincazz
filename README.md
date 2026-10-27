@@ -34,7 +34,7 @@ stake:
 | python pair   | 4x     |
 | cpp pair      | 10x    |
 | yt triple     | 14x    |
-| python triple | 100x   |
+| python triple | 90x    |
 | cpp triple    | 300x   |
 
 Every wagered spin adds 3% of the bet (at least 1 coin) to a shared pot. A wagered cpp triple also

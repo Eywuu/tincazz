@@ -16,8 +16,9 @@ export type PayoutTier = (typeof payoutTiers)[number];
 /**
  * Payout per tier in basis points of the bet (10,000 bps = the bet returned).
  *
- * Tuned for a fair game: over all 21^3 equally weighted draws these pay 92,540,000 bps, a 99.92%
- * return before the pot (which is a bonus on top). `test/gamba-evaluate.test.ts` guards the range.
+ * Tuned for a near-fair game with a ~1% house edge: over all 21^3 equally weighted draws these pay
+ * 91,740,000 bps, a 99.06% return before the pot (which is a bonus on top).
+ * `test/gamba-evaluate.test.ts` guards the range.
  */
 export const payoutBps = {
   none: 0,
@@ -25,7 +26,7 @@ export const payoutBps = {
   pythonPair: 40_000,
   cppPair: 100_000,
   ytTriple: 140_000,
-  pythonTriple: 1_000_000,
+  pythonTriple: 900_000,
   cppTriple: 3_000_000,
 } as const satisfies Record<PayoutTier, number>;
 
