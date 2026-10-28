@@ -21,12 +21,14 @@ import {
   rollFrames,
 } from '../src/features/dice/index.js';
 import {
+  adminAdjust,
   debit,
   findWallet,
   getOrCreateWallet,
   InsufficientFundsError,
   startingBalance,
 } from '../src/features/economy/index.js';
+import { setLogChannel } from '../src/features/settings/store.js';
 import { testEnv } from './support/env.js';
 import { makeButton } from './support/interaction.js';
 
@@ -99,6 +101,26 @@ describe('dice buttons', () => {
     expect(result).toContain(again);
     expect(balance('1')).toBe(startingBalance - 50 + 1_782);
     await vi.waitFor(() => expect(tryBegin('1')).toBe(true));
+  });
+
+  it('logs a 5,000 Roll again once', async () => {
+    const send = vi.fn(async () => ({}));
+    client.channels.cache.set('50', { id: '50', isSendable: () => true, send } as never);
+    setLogChannel(container.db, '2', 'economy', '50', 1);
+    adminAdjust(container.db, {
+      guildId: '2',
+      userId: '1',
+      actorId: '9',
+      action: 'give',
+      amount: 5_000,
+      reason: 'setup',
+      now: 1,
+    });
+    mockRandomInt(0);
+    await click(encodeRollAgainId({ userId: '1', bet: 5_000, call: { kind: 'low' } }), '1');
+
+    await vi.waitFor(() => expect(send).toHaveBeenCalledTimes(1));
+    expect(json(send.mock.calls[0])).toContain('<@1> bet 5,000 on Low, rolled 2');
   });
 
   it('tells another user it is not their roll', async () => {

@@ -22,6 +22,16 @@ export type EconomyEvent =
     }
   | { type: 'big_spin'; userId: string; bet: number; result: SpinResult; payout: number }
   | {
+      type: 'big_roll';
+      userId: string;
+      bet: number;
+      /** The call's label, e.g. `Exact 12`. */
+      call: string;
+      total: number;
+      won: boolean;
+      payout: number;
+    }
+  | {
       type: 'big_flip';
       mode: FlipMode;
       playerIds: string[];

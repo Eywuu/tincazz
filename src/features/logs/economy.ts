@@ -1,4 +1,6 @@
 import type { BotFlip, ChallengeRequest, SettledChallenge } from '../coinflip/play.js';
+import { callLabel } from '../dice/calls.js';
+import type { Roll } from '../dice/play.js';
 import type { WagerSpin } from '../gamba/play.js';
 import { logThresholds } from './config.js';
 import type { EconomyEvent } from './events.js';
@@ -24,6 +26,20 @@ export function spinLogEvent(
     return { type: 'big_spin', userId, bet: played.bet, result, payout: played.payout };
   }
   return undefined;
+}
+
+/** The economy log line a settled dice roll deserves, if any: a big bet or payout. */
+export function rollLogEvent(userId: string, roll: Roll): EconomyEvent | undefined {
+  if (roll.bet < logThresholds.bigRoll && roll.payout < logThresholds.bigRoll) return undefined;
+  return {
+    type: 'big_roll',
+    userId,
+    bet: roll.bet,
+    call: callLabel(roll.call),
+    total: roll.total,
+    won: roll.won,
+    payout: roll.payout,
+  };
 }
 
 export function botFlipLogEvent(userId: string, flip: BotFlip): EconomyEvent | undefined {

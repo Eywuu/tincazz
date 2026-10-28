@@ -24,6 +24,7 @@ import {
   rollFrames,
 } from '../src/features/dice/index.js';
 import {
+  adminAdjust,
   debit,
   findWallet,
   getOrCreateWallet,
@@ -31,6 +32,7 @@ import {
   startingBalance,
 } from '../src/features/economy/index.js';
 import { pot } from '../src/features/gamba/config.js';
+import { setLogChannel } from '../src/features/settings/store.js';
 import { cardReply } from '../src/features/ui/index.js';
 import { testEnv } from './support/env.js';
 import { makeChatInput } from './support/interaction.js';
@@ -260,6 +262,62 @@ describe('/dice and ?dice', () => {
       const interaction = await run();
       await vi.waitFor(() => expect(interaction.editReply).toHaveBeenCalledTimes(editCount));
       await vi.waitFor(() => expect(tryBegin('1')).toBe(true));
+    });
+  });
+
+  describe('economy log', () => {
+    let send: ReturnType<typeof vi.fn>;
+
+    beforeEach(() => {
+      send = vi.fn(async () => ({}));
+      client.channels.cache.set('50', { id: '50', isSendable: () => true, send } as never);
+      setLogChannel(container.db, '2', 'economy', '50', 1);
+      adminAdjust(container.db, {
+        guildId: '2',
+        userId: '1',
+        actorId: '9',
+        action: 'give',
+        amount: 5_000,
+        reason: 'setup',
+        now: 1,
+      });
+    });
+
+    async function run(options: Record<string, unknown>) {
+      const interaction = makeChatInput(client, { commandName: 'dice', userId: '1', options });
+      client.emit(Events.InteractionCreate, interaction as never);
+      await vi.waitFor(() => expect(interaction.editReply).toHaveBeenCalledTimes(editCount), {
+        timeout: 2000,
+      });
+      return interaction;
+    }
+
+    it('logs a 5,000 roll once', async () => {
+      mockRandomInt(0);
+      await run({ bet: '5000', on: 'h' });
+
+      await vi.waitFor(() => expect(send).toHaveBeenCalledTimes(1));
+      const out = json(send.mock.calls[0]);
+      expect(out).toContain('Big dice roll');
+      expect(out).toContain('<@1> bet 5,000 on High, rolled 2');
+    });
+
+    it('does not log a small roll', async () => {
+      mockRandomInt(0);
+      await run({ bet: '100' });
+
+      await new Promise((resolve) => setTimeout(resolve, 50));
+      expect(send).not.toHaveBeenCalled();
+    });
+
+    it('still lands the roll when the log channel fails', async () => {
+      send.mockRejectedValue(new Error('missing access'));
+      mockRandomInt(5);
+      const interaction = await run({ bet: '5000', on: 'h' });
+
+      expect(json(interaction.editReply.mock.calls.at(-1))).toContain('Roll again');
+      expect(rollRows()).toMatchObject([{ bet: 5_000, won: 1 }]);
+      await vi.waitFor(() => expect(send).toHaveBeenCalledTimes(1));
     });
   });
 
