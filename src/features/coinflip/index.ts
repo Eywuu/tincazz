@@ -1,4 +1,3 @@
-export { animate, type FlipDisplay, setFrameDelay } from './animation.js';
 export {
   botFlipCard,
   botFlipFrames,
