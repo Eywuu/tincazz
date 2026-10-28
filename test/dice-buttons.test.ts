@@ -103,7 +103,7 @@ describe('dice buttons', () => {
     await vi.waitFor(() => expect(tryBegin('1')).toBe(true));
   });
 
-  it('logs a 5,000 Roll again once', async () => {
+  it('keeps a 5,000 Roll again out of the economy log', async () => {
     const send = vi.fn(async () => ({}));
     client.channels.cache.set('50', { id: '50', isSendable: () => true, send } as never);
     setLogChannel(container.db, '2', 'economy', '50', 1);
@@ -119,8 +119,8 @@ describe('dice buttons', () => {
     mockRandomInt(0);
     await click(encodeRollAgainId({ userId: '1', bet: 5_000, call: { kind: 'low' } }), '1');
 
-    await vi.waitFor(() => expect(send).toHaveBeenCalledTimes(1));
-    expect(json(send.mock.calls[0])).toContain('<@1> bet 5,000 on Low, rolled 2');
+    await new Promise((resolve) => setTimeout(resolve, 50));
+    expect(send).not.toHaveBeenCalled();
   });
 
   it('tells another user it is not their roll', async () => {

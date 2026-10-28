@@ -20,8 +20,6 @@ import {
   rollFrames,
   settleRoll,
 } from '../../features/dice/index.js';
-import { rollLogEvent } from '../../features/logs/economy.js';
-import { logEconomy } from '../../features/logs/send.js';
 import { errorReply } from '../../features/ui/index.js';
 
 /** Where a roll came from: a slash interaction or a prefix message. Both run the same body. */
@@ -118,9 +116,6 @@ export class DiceCommand extends Command {
     }
     try {
       const roll = settleRoll(this.container.db, { guildId, userId, bet, call }, Date.now());
-      // Fire and forget, after the commit: a slow or broken log channel never delays or fails a roll.
-      const event = rollLogEvent(userId, roll);
-      if (event) void logEconomy(guildId, event);
       return await play(surface.display, rollFrames(userId, roll), rollCard(userId, roll), {
         channelId: surface.channelId,
       });

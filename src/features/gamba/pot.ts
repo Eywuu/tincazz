@@ -1,11 +1,12 @@
 import { eq } from 'drizzle-orm';
 import type { DbOrTx } from '../../db/index.js';
 import { pots } from '../../db/schema.js';
-import { pot } from './config.js';
+import { type PayoutTier, pot } from './config.js';
 
-/** Coins a wager adds to the pot: a percentage of the bet, at least one. */
+/** Coins a wager adds to the pot: a percentage of the bet, and nothing for bets of 100 or less. */
 export function potContribution(bet: number): number {
-  return Math.max(1, Math.floor((bet * pot.contributionPercent) / 100));
+  if (bet <= pot.contributionAbove) return 0;
+  return Math.floor((bet * pot.contributionPercent) / 100);
 }
 
 /** The part of the pot a jackpot pays: all of it from the full-share bet, scaled below. */
@@ -14,15 +15,28 @@ export function potShare(amount: number, bet: number): number {
   return Math.floor((amount * bet) / pot.fullShareBet);
 }
 
+/** The share of the pot's excess over the seed a tier wins, in basis points; 0 for none. */
+function tierShareBps(tier: PayoutTier): number {
+  const shares: Partial<Record<PayoutTier, number>> = pot.shareBps;
+  return shares[tier] ?? 0;
+}
+
+/** What a rare (non-jackpot) win takes from the pot: a share of its excess, scaled by the bet. */
+export function rareWinShare(amount: number, bet: number, tier: PayoutTier): number {
+  const excess = Math.max(0, amount - pot.seed);
+  return potShare(Math.floor((excess * tierShareBps(tier)) / 10_000), bet);
+}
+
 /**
- * Adds the bet's contribution to the guild pot (creating it at the seed) and, on a jackpot,
- * pays out the share. The remainder is topped up to the seed. Does not touch wallets.
+ * Adds the bet's contribution to the guild pot (creating it at the seed) and pays out what the
+ * tier wins: the share on a jackpot, topping the remainder up to the seed, or a share of the
+ * excess on a rarer win. Does not touch wallets.
  */
 export function settlePot(
   tx: DbOrTx,
   guildId: string,
   bet: number,
-  jackpot: boolean,
+  tier: PayoutTier,
   userId: string,
   now: number,
 ): { potWon: number; pot: number } {
@@ -30,9 +44,12 @@ export function settlePot(
   const current = tx.select().from(pots).where(eq(pots.guildId, guildId)).get();
   const afterContribution = (current?.amount ?? pot.seed) + potContribution(bet);
 
-  if (!jackpot) {
-    tx.update(pots).set({ amount: afterContribution }).where(eq(pots.guildId, guildId)).run();
-    return { potWon: 0, pot: afterContribution };
+  if (tier !== 'cppTriple') {
+    // Not a jackpot, so the last winner (shown as the last jackpot) stays as it is.
+    const potWon = rareWinShare(afterContribution, bet, tier);
+    const remaining = afterContribution - potWon;
+    tx.update(pots).set({ amount: remaining }).where(eq(pots.guildId, guildId)).run();
+    return { potWon, pot: remaining };
   }
 
   const potWon = potShare(afterContribution, bet);

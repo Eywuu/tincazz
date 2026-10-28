@@ -122,7 +122,7 @@ describe('coinflip buttons', () => {
   };
 
   describe('economy log', () => {
-    it('logs an accepted 5,000 challenge once and a small one never', async () => {
+    it('keeps an accepted 5,000 challenge out of the log', async () => {
       const send = vi.fn(async () => ({}));
       client.channels.cache.set('50', { id: '50', isSendable: () => true, send } as never);
       setLogChannel(container.db, '2', 'economy', '50', 1);
@@ -139,14 +139,11 @@ describe('coinflip buttons', () => {
       }
       mockRandomInt(1);
       await click(challengeId('accept', { bet: 5_000 }), '3');
-      await vi.waitFor(() => expect(send).toHaveBeenCalledTimes(1));
-
-      await click(challengeId('accept', { bet: 100 }), '3', 'm2');
       await wait(50);
-      expect(send).toHaveBeenCalledTimes(1);
+      expect(send).not.toHaveBeenCalled();
     });
 
-    it('logs a 5,000 flip again once', async () => {
+    it('keeps a 5,000 flip again out of the log', async () => {
       const send = vi.fn(async () => ({}));
       client.channels.cache.set('50', { id: '50', isSendable: () => true, send } as never);
       setLogChannel(container.db, '2', 'economy', '50', 1);
@@ -161,7 +158,8 @@ describe('coinflip buttons', () => {
       });
       mockRandomInt(0);
       await click(encodeFlipAgainId({ userId: '1', bet: 5_000, side: 'heads' }), '1');
-      await vi.waitFor(() => expect(send).toHaveBeenCalledTimes(1));
+      await wait(50);
+      expect(send).not.toHaveBeenCalled();
     });
   });
 

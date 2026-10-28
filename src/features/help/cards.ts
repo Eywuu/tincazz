@@ -1,7 +1,14 @@
 import type { ContainerBuilder } from 'discord.js';
+import { wager as flipWager } from '../coinflip/config.js';
+import { wager as diceWager } from '../dice/config.js';
 import { bailout, cashback, chatReward, collect, daily } from '../economy/config.js';
+import type { BetLimits } from '../gamba/bet.js';
 import { wager } from '../gamba/config.js';
 import { accents, card, coins } from '../ui/index.js';
+
+function betRange({ minBet, maxBet, defaultBet }: BetLimits): string {
+  return `${coins(minBet)} to ${coins(maxBet)}, ${coins(defaultBet)} when you leave the bet out`;
+}
 
 /**
  * The `/help` card. Every number comes from the feature configs so it cannot drift from the
@@ -28,8 +35,10 @@ export function helpCard(prefix: string): ContainerBuilder {
     ].join('\n'),
     [
       '## Bets',
-      `${coins(wager.minBet)} to ${coins(wager.maxBet)}, all, half, 2.5k`,
-      `Leave the bet out to wager ${coins(wager.defaultBet)}`,
+      `Gamba: ${betRange(wager)}`,
+      `Coinflip: ${betRange(flipWager)}`,
+      `Dice: ${betRange(diceWager)}`,
+      'Bets can be a number, all, half or 2.5k',
     ].join('\n'),
   );
 }

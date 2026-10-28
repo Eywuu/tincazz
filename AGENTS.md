@@ -58,11 +58,10 @@ src/
                   cashback on yesterday's gambling losses), hourly collect, bailout, chat
     gamba/        spin logic, odds and payouts (tuned to a ~1% house edge), the pot, bet parsing,
                   result cards and the shared `spin()` flow used by commands and buttons (every
-                  spin is a wager, default 10)
+                  spin is a wager, default 1)
     help/         the help card, built from the economy and wager config so it cannot drift
     logs/         log channels: event types and cards, fire-and-forget `sendLog`, economy
-                  events (admin adjustments, jackpots, big spins, flips and dice rolls above
-                  `logThresholds`)
+                  events (admin adjustments, jackpots and member events)
     members/      departed-member tracking: hidden from boards and ranks, daily reconcile
                   against the guild and purge after a 30 day grace period
     presence/     the bot's rotating status (live pot, last jackpot, spins today), started from

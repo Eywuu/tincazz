@@ -31,8 +31,6 @@ import {
   settleChallenge,
   tryClose,
 } from '../features/coinflip/index.js';
-import { botFlipLogEvent, challengeLogEvent } from '../features/logs/economy.js';
-import { logEconomy } from '../features/logs/send.js';
 import { cardReply, errorReply, withoutActionRows } from '../features/ui/index.js';
 
 export class CoinflipButtonsHandler extends InteractionHandler {
@@ -81,8 +79,6 @@ export class CoinflipButtonsHandler extends InteractionHandler {
         { guildId: interaction.guildId as string, userId, bet: String(id.bet), side: id.side },
         Date.now(),
       );
-      const event = botFlipLogEvent(userId, flip);
-      if (event) void logEconomy(interaction.guildId as string, event);
       return await play(
         updateDisplay(interaction),
         botFlipFrames(userId, flip),
@@ -228,8 +224,6 @@ export class CoinflipButtonsHandler extends InteractionHandler {
       reopen(messageId, Math.max(0, id.expiresAt - Date.now()));
       throw error;
     }
-    const event = challengeLogEvent(request, settled);
-    if (event) void logEconomy(request.guildId, event);
     return play(
       updateDisplay(interaction),
       challengeFlipFrames(view, request.acceptorId, settled.result),

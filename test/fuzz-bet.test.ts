@@ -62,7 +62,7 @@ type Outcome = number | 'format' | 'range' | 'funds';
 
 function outcome(input: string, balance: number): Outcome {
   try {
-    return parseBet(input, balance);
+    return parseBet(input, balance, wager);
   } catch (error) {
     if (error instanceof InvalidBetError) return error.kind;
     if (error instanceof InsufficientFundsError) return 'funds';
@@ -149,7 +149,7 @@ describe('bad bet echo fuzz', () => {
   it('keeps the reply to its own code spans', () => {
     fc.assert(
       fc.property(fc.string({ unit: 'binary', maxLength: 200 }), (input) => {
-        const text = spinErrorText(new InvalidBetError('format', input)) as string;
+        const text = spinErrorText(new InvalidBetError('format', input, wager)) as string;
         const shown = echoBetInput(input);
         // `all`, `half` and `2.5k` in the hint, plus the echoed span when there is anything to show.
         expect(text.split('`').length - 1).toBe(shown === '' ? 6 : 8);

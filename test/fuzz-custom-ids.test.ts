@@ -1,11 +1,13 @@
 import fc from 'fast-check';
 import { describe, expect, it } from 'vitest';
 import { flipSides } from '../src/db/schema.js';
+import { wager as flipWager } from '../src/features/coinflip/config.js';
 import {
   decodeCoinflipId,
   encodeRematchId,
   type RematchId,
 } from '../src/features/coinflip/index.js';
+import { wager as diceWager } from '../src/features/dice/config.js';
 import {
   type DiceCall,
   decodeDiceId,
@@ -24,6 +26,8 @@ import {
 
 const snowflake = fc.stringMatching(/^[0-9]{1,20}$/);
 const validBet = fc.integer({ min: wager.minBet, max: wager.maxBet });
+const validFlipBet = fc.integer({ min: flipWager.minBet, max: flipWager.maxBet });
+const validDiceBet = fc.integer({ min: diceWager.minBet, max: diceWager.maxBet });
 
 const spinId: fc.Arbitrary<SpinButtonId> = fc.oneof(
   fc.record({
@@ -187,7 +191,7 @@ describe('coinflip rematch id fuzz', () => {
     fc.tuple(ids, ids).filter(([challengerId, acceptorId]) => challengerId !== acceptorId);
   const rematch = (ids: fc.Arbitrary<string>): fc.Arbitrary<Omit<RematchId, 'kind'>> =>
     fc
-      .tuple(players(ids), validBet, fc.constantFrom(...flipSides))
+      .tuple(players(ids), validFlipBet, fc.constantFrom(...flipSides))
       .map(([[challengerId, acceptorId], bet, challengerSide]) => ({
         challengerId,
         acceptorId,
@@ -217,8 +221,8 @@ describe('coinflip rematch id fuzz', () => {
         expect(id.challengerId).toMatch(/^[0-9]{1,20}$/);
         expect(id.acceptorId).toMatch(/^[0-9]{1,20}$/);
         expect(id.challengerId).not.toBe(id.acceptorId);
-        expect(id.bet).toBeGreaterThanOrEqual(wager.minBet);
-        expect(id.bet).toBeLessThanOrEqual(wager.maxBet);
+        expect(id.bet).toBeGreaterThanOrEqual(flipWager.minBet);
+        expect(id.bet).toBeLessThanOrEqual(flipWager.maxBet);
         expect(flipSides).toContain(id.challengerSide);
         const { kind: _kind, ...rest } = id;
         expect(decodeCoinflipId(encodeRematchId(rest))).toEqual(id);
@@ -242,7 +246,7 @@ describe('dice roll again id fuzz', () => {
       .map((target): DiceCall => ({ kind: 'exact', target })),
   );
   const rollAgain = (ids: fc.Arbitrary<string>): fc.Arbitrary<Omit<RollAgainId, 'kind'>> =>
-    fc.record({ userId: ids, bet: validBet, call });
+    fc.record({ userId: ids, bet: validDiceBet, call });
 
   it('round trips every valid id, within 100 characters even with 20-digit snowflakes', () => {
     fc.assert(
@@ -257,7 +261,7 @@ describe('dice roll again id fuzz', () => {
   it('stays within 100 characters for the longest user ID, bet and call code', () => {
     const encoded = encodeRollAgainId({
       userId: '9'.repeat(20),
-      bet: wager.maxBet,
+      bet: diceWager.maxBet,
       call: { kind: 'exact', target: 12 },
     });
     expect(encoded.length).toBeLessThanOrEqual(100);
@@ -274,8 +278,8 @@ describe('dice roll again id fuzz', () => {
         if (id === undefined) return;
         expect(id.userId).toMatch(/^[0-9]{1,20}$/);
         expect(Number.isSafeInteger(id.bet)).toBe(true);
-        expect(id.bet).toBeGreaterThanOrEqual(wager.minBet);
-        expect(id.bet).toBeLessThanOrEqual(wager.maxBet);
+        expect(id.bet).toBeGreaterThanOrEqual(diceWager.minBet);
+        expect(id.bet).toBeLessThanOrEqual(diceWager.maxBet);
         const { kind: _kind, ...rest } = id;
         expect(decodeDiceId(encodeRollAgainId(rest))).toEqual(id);
       }),

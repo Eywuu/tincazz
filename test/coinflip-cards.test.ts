@@ -20,6 +20,8 @@ import { InsufficientFundsError } from '../src/features/economy/errors.js';
 import { InvalidBetError, spinErrorText } from '../src/features/gamba/index.js';
 import { accents } from '../src/features/ui/index.js';
 
+const limits = { minBet: 10, maxBet: 10_000, defaultBet: 10 };
+
 const json = (c: { toJSON(): unknown }) => JSON.stringify(c.toJSON());
 const accent = (c: { toJSON(): { accent_color?: number | null } }) => c.toJSON().accent_color;
 const buttonIds = (c: { toJSON(): unknown }) =>
@@ -199,7 +201,7 @@ describe('flipErrorText', () => {
   });
 
   it('falls back to the gamba texts', () => {
-    const invalid = new InvalidBetError('range', '5');
+    const invalid = new InvalidBetError('range', '5', limits);
     expect(flipErrorText(invalid)).toBe(spinErrorText(invalid));
     const poor = new InsufficientFundsError(5, 10);
     expect(flipErrorText(poor)).toBe(spinErrorText(poor));

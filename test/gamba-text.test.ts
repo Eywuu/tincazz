@@ -26,6 +26,12 @@ describe('formatGambaReply', () => {
       '\nbet 100 → 0 · balance 900',
     );
   });
+
+  it('shows what a rare win took from the pot', () => {
+    expect(formatGambaReply(wager(['python', 'python', 'cry'], 400, 1_250))).toContain(
+      '\nbet 100 → 400 + 1,250 from the pot · balance',
+    );
+  });
 });
 
 describe('formatGambaFollowUp', () => {

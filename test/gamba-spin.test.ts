@@ -4,6 +4,7 @@ import { createClient } from '../src/client.js';
 import { type Db, openDatabase } from '../src/db/index.js';
 import { pots, spins } from '../src/db/schema.js';
 import {
+  adminAdjust,
   debit,
   findWallet,
   getOrCreateWallet,
@@ -35,19 +36,19 @@ describe('spin', () => {
     db = openDatabase(':memory:');
   });
 
-  it('plays a 10-coin wager when no bet is given', async () => {
+  it('plays a 1-coin wager when no bet is given', async () => {
     const { played } = await settleSpin(db, request, 1000, {
       assignJackpotRole: async () => true,
       randomInt: draws(0, 3, 6),
     });
 
-    expect(played.bet).toBe(10);
-    expect(findWallet(db, '2', '1')?.balance).toBe(startingBalance - 10);
+    expect(played.bet).toBe(1);
+    expect(findWallet(db, '2', '1')?.balance).toBe(startingBalance - 1);
   });
 
-  it('rejects a no-bet spin under 10 coins with a funds error', async () => {
+  it('rejects a no-bet spin with no coins with a funds error', async () => {
     getOrCreateWallet(db, '2', '1', 1000);
-    debit(db, { guildId: '2', userId: '1', amount: startingBalance - 9, reason: 'bet', now: 1000 });
+    debit(db, { guildId: '2', userId: '1', amount: startingBalance, reason: 'bet', now: 1000 });
 
     await expect(
       settleSpin(db, request, 1000, { assignJackpotRole: async () => true }),
@@ -134,7 +135,25 @@ describe('spin economy log', () => {
     await vi.waitFor(() => expect(send).toHaveBeenCalledTimes(1));
   });
 
-  it('does not log a 10-coin spin', async () => {
+  it('keeps a max-bet spin with a big payout out of the log', async () => {
+    adminAdjust(container.db, {
+      guildId: '2',
+      userId: '1',
+      actorId: '9',
+      action: 'give',
+      amount: 10_000,
+      reason: 'setup',
+      now: 1,
+    });
+    await spin(container.db, { guildId: '2', userId: '1', bet: '10000' }, 1000, {
+      assignJackpotRole: async () => true,
+      randomInt: draws(18, 18, 18),
+    });
+    await new Promise((resolve) => setTimeout(resolve, 50));
+    expect(send).not.toHaveBeenCalled();
+  });
+
+  it('does not log a default spin', async () => {
     await spin(container.db, { guildId: '2', userId: '1' }, 1000, {
       assignJackpotRole: async () => true,
       randomInt: draws(0, 3, 6),

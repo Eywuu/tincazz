@@ -84,7 +84,7 @@ describe('gamba', () => {
   }
 
   describe('?gamba', () => {
-    it('treats a bare ?gamba as a 10-coin bet with no follow-up on a loss', async () => {
+    it('treats a bare ?gamba as a 1-coin bet with no follow-up on a loss', async () => {
       mockRandomInt(0, 3, 6);
       const message = await run('?gamba');
       await new Promise((resolve) => setTimeout(resolve, 100));
@@ -93,14 +93,14 @@ describe('gamba', () => {
         { content: string; flags?: number },
       ];
       expect(options.flags).toBeUndefined();
-      expect(options.content).toMatch(/^(<:\w+:\d+> ){2}<:\w+:\d+>\nbet 10 → 0 · balance 990$/);
+      expect(options.content).toMatch(/^(<:\w+:\d+> ){2}<:\w+:\d+>\nbet 1 → 0 · balance 999$/);
       expect(options).toMatchObject({ allowedMentions: { repliedUser: true } });
       expect(message.spinReply).not.toHaveBeenCalled();
     });
 
     it('sends a follow-up after the roll on a triple and pings only the winner', async () => {
       mockRandomInt(0);
-      const message = await run('?gamba');
+      const message = await run('?gamba 10');
       await vi.waitFor(() => expect(message.spinReply).toHaveBeenCalledTimes(1), {
         timeout: 2000,
       });
@@ -146,7 +146,7 @@ describe('gamba', () => {
       );
     });
 
-    it('points to /bailout when the balance is under the minimum bet', async () => {
+    it('points to /bailout when the balance is under the bailout threshold', async () => {
       mockRandomInt(0, 3, 6);
       await run('?gamba');
       container.db.$client.prepare('update wallets set balance = 5').run();
@@ -215,7 +215,7 @@ describe('gamba', () => {
       mockRandomInt(0);
       const error = vi.spyOn(container.logger, 'error').mockImplementation(() => undefined);
       const spinReply = vi.fn(async () => Promise.reject(new Error('Unknown Message')));
-      const message = makeMessage(client, '?gamba');
+      const message = makeMessage(client, '?gamba 10');
       message.reply = vi.fn(async () => ({ reply: spinReply })) as never;
 
       client.emit(Events.MessageCreate, message as never);

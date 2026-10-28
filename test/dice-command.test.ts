@@ -292,14 +292,12 @@ describe('/dice and ?dice', () => {
       return interaction;
     }
 
-    it('logs a 5,000 roll once', async () => {
+    it('keeps a 5,000 roll out of the log', async () => {
       mockRandomInt(0);
       await run({ bet: '5000', on: 'h' });
 
-      await vi.waitFor(() => expect(send).toHaveBeenCalledTimes(1));
-      const out = json(send.mock.calls[0]);
-      expect(out).toContain('Big dice roll');
-      expect(out).toContain('<@1> bet 5,000 on High, rolled 2');
+      await new Promise((resolve) => setTimeout(resolve, 50));
+      expect(send).not.toHaveBeenCalled();
     });
 
     it('does not log a small roll', async () => {
@@ -308,16 +306,6 @@ describe('/dice and ?dice', () => {
 
       await new Promise((resolve) => setTimeout(resolve, 50));
       expect(send).not.toHaveBeenCalled();
-    });
-
-    it('still lands the roll when the log channel fails', async () => {
-      send.mockRejectedValue(new Error('missing access'));
-      mockRandomInt(5);
-      const interaction = await run({ bet: '5000', on: 'h' });
-
-      expect(json(interaction.editReply.mock.calls.at(-1))).toContain('Roll again');
-      expect(rollRows()).toMatchObject([{ bet: 5_000, won: 1 }]);
-      await vi.waitFor(() => expect(send).toHaveBeenCalledTimes(1));
     });
   });
 

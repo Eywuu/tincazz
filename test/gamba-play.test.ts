@@ -27,20 +27,20 @@ const reasons = () =>
 
 describe('playWager', () => {
   it('takes the bet, feeds the pot and records a loss', () => {
-    const result = playWager(db, 'g', 'u', 100, 10, roll(0, 3, 6));
+    const result = playWager(db, 'g', 'u', 200, 10, roll(0, 3, 6));
     expect(result).toMatchObject({
       mode: 'wager',
-      bet: 100,
+      bet: 200,
       payout: 0,
       potWon: 0,
-      balance: 900,
-      pot: 10_003,
+      balance: 800,
+      pot: 10_006,
     });
     expect(reasons()).toEqual(['start', 'bet']);
     expect(db.select().from(ledger).all().at(-1)?.ref).toBe(result.spinId);
     expect(db.select().from(spins).get()).toMatchObject({
       mode: 'wager',
-      bet: 100,
+      bet: 200,
       payout: 0,
       potWon: 0,
       result: 'none',
@@ -48,7 +48,7 @@ describe('playWager', () => {
     expect(db.select().from(playerStats).get()).toMatchObject({
       spins: 1,
       wins: 0,
-      wagered: 100,
+      wagered: 200,
       won: 0,
     });
     expectLedgerConsistent(db);
@@ -81,6 +81,17 @@ describe('playWager', () => {
       biggestWin: 60_015,
       bestOdds: 9_261,
     });
+    expectLedgerConsistent(db);
+  });
+
+  it('pays a python pair its share of the pot', () => {
+    db.insert(pots).values({ guildId: 'g', amount: 100_000 }).run();
+    const result = playWager(db, 'g', 'u', 500, 10, roll(18, 18, 0));
+    // 100,015 after the contribution: 0.25% of the 90,015 excess.
+    expect(result).toMatchObject({ payout: 2_000, potWon: 225, pot: 99_790, balance: 2_725 });
+    expect(reasons()).toEqual(['start', 'bet', 'payout', 'pot_win']);
+    expect(db.select().from(pots).get()).toMatchObject({ lastWinnerId: null });
+    expect(db.select().from(playerStats).get()).toMatchObject({ jackpots: 0, won: 2_225 });
     expectLedgerConsistent(db);
   });
 

@@ -31,11 +31,10 @@ import {
   parseFlipArgs,
   scheduleExpiry,
   settleBotFlip,
+  wager,
 } from '../../features/coinflip/index.js';
 import { getOrCreateWallet } from '../../features/economy/index.js';
-import { parseBet, wager } from '../../features/gamba/index.js';
-import { botFlipLogEvent } from '../../features/logs/economy.js';
-import { logEconomy } from '../../features/logs/send.js';
+import { parseBet } from '../../features/gamba/index.js';
 import { cardReply, errorReply } from '../../features/ui/index.js';
 
 /** Where a flip came from: a slash interaction or a prefix message. Both run the same bodies. */
@@ -214,8 +213,6 @@ export class CoinflipCommand extends Command {
     }
     try {
       const flip = settleBotFlip(this.container.db, { guildId, userId, bet, side }, Date.now());
-      const event = botFlipLogEvent(userId, flip);
-      if (event) void logEconomy(guildId, event);
       return await play(surface.display, botFlipFrames(userId, flip), botFlipCard(userId, flip), {
         channelId: surface.channelId,
       });
@@ -242,7 +239,7 @@ export class CoinflipCommand extends Command {
     // Nothing is escrowed: the stake is only checked here and debited when someone accepts.
     const now = Date.now();
     const wallet = getOrCreateWallet(this.container.db, surface.guildId, challengerId, now);
-    const amount = parseBet(bet?.trim() || String(wager.defaultBet), wallet.balance);
+    const amount = parseBet(bet?.trim() || String(wager.defaultBet), wallet.balance, wager);
     const view: ChallengeView = {
       challengerId,
       opponentId: opponent?.id,

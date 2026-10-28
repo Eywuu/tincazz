@@ -1,3 +1,8 @@
+import type { BetLimits } from '../gamba/bet.js';
+
+/** Bet limits for a flip, in coins; `defaultBet` is what a flip without a bet costs. */
+export const wager = { minBet: 10, maxBet: 10_000, defaultBet: 10 } as const satisfies BetLimits;
+
 /** Coinflip rules: the share of the pool raked into the gamba pot, and how long challenges live. */
 export const coinflip = {
   rakePercent: 3,

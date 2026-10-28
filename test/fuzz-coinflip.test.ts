@@ -1,6 +1,7 @@
 import fc from 'fast-check';
 import { describe, expect, it } from 'vitest';
 import { flipSides } from '../src/db/schema.js';
+import { wager } from '../src/features/coinflip/config.js';
 import {
   type ChallengeId,
   decodeCoinflipId,
@@ -10,7 +11,6 @@ import {
   type FlipAgainId,
   flipRake,
 } from '../src/features/coinflip/index.js';
-import { wager } from '../src/features/gamba/config.js';
 
 const snowflake = fc.stringMatching(/^[0-9]{1,20}$/);
 const bet = fc.integer({ min: wager.minBet, max: wager.maxBet });

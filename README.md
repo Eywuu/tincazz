@@ -10,8 +10,8 @@ Currently implemented:
   `?gamba` is the classic plain-text reply, `/gamba` the polished card with buttons; both share the
   same economy
 - `/coinflip bot|challenge|open [bet] [side]`: flip a coin against the bot, challenge a member
-  (60 seconds to accept) or open a flip anyone can accept (120 seconds). Bets are gamba's (10 to
-  10,000, default 10). The winner takes the pool minus a 3% rake (at least 1 coin) that goes into
+  (60 seconds to accept) or open a flip anyone can accept (120 seconds). Bets range from 10 to
+  10,000 coins (default 10). The winner takes the pool minus a 3% rake (at least 1 coin) that goes into
   the gamba pot; against the bot a win nets the bet minus the rake and a loss costs the bet. The
   coin spins for about three seconds (the card is edited a few times) before the result shows. A
   finished challenge has a Rematch button: either player can press it; the first press challenges
@@ -20,7 +20,7 @@ Currently implemented:
   (aliases `?cf`, `?flip`): the same coinflip from a message, arguments in any order (`?cf 100 t`).
   A challenge pings only the member it names, who must be in the server
 - `/dice [bet] [on]`: roll two dice against the bot, calling `high` (8-12, the default), `low`
-  (2-6), `seven`, `doubles` or an exact total. Bets are gamba's (10 to 10,000, default 10). A win
+  (2-6), `seven`, `doubles` or an exact total. Bets range from 10 to 10,000 coins (default 10). A win
   pays 99% of fair odds (2.376x on high or low, 5.94x on seven or doubles, 7.128x to 35.64x on an
   exact total), and 1% of the bet (at least 1 coin) goes into the gamba pot. The dice tumble for a
   moment before the result shows; Roll again repeats the same bet and call
@@ -42,7 +42,7 @@ Currently implemented:
 
 ## Gamba
 
-Every spin costs a stake: `100`, `2.5k`, `all` or `half` (10 to 10,000 coins), or 10 coins when
+Every spin costs a stake: `1`, `100`, `2.5k`, `all` or `half` (1 to 10,000 coins), or 1 coin when
 you give no bet. There are no free spins. A spin pays a multiple of the stake. Payouts include the
 stake:
 
@@ -59,9 +59,22 @@ On average a spin returns about 98.7% of the bet (a ~1% house edge), before the 
 weighted toward the common pairs, so a balance lasts: about 36% of spins pay something, and most of
 those double the stake. The cpp triple's main prize is the pot and the jackpot role.
 
-Every wagered spin adds 3% of the bet (at least 1 coin) to a shared pot. A wagered cpp triple also
-wins the pot: all of it at bets of 500 or more, a proportional share below that. The pot starts at
-10,000 coins and never resets below that.
+Bets of 100 or less add nothing to the shared pot. Bets over 100 add 3% of the whole bet,
+rounded down to whole coins. The pot starts at 10,000 coins and never drops below that seed.
+
+Rarer wins also pay a share of the pot above the seed, on top of the stake multiplier:
+
+| Result        | Share of the pot above 10,000 |
+| ------------- | ----------------------------- |
+| python pair   | 0.25%                         |
+| cpp pair      | 1%                            |
+| yt triple     | 1%                            |
+| python triple | 10%                           |
+
+These shares are full-sized at bets of 500 or more and scale by `bet / 500` below that, rounded
+down to whole coins. For example, with a 300,000-coin pot, a 500-coin python triple wins about
+29,000 coins from the pot in addition to its 25x payout. A cpp triple wins the whole pot at bets of
+500 or more, or a proportional share below that; the remainder is topped up to the seed if needed.
 
 `?gamba` replies to you with the reels (plus a follow-up on a win), with no buttons. Every `/gamba`
 result card has a **Spin again** button (same bet).
@@ -86,7 +99,8 @@ most your balance after the spin. Only the player can use the buttons.
 Run these as someone with Manage Server:
 - `/settings logs set type:<economy|mod> channel:<channel>`: where economy and moderation logs go
   (`/settings logs clear` stops a log). The bot needs View Channel and Send Messages in log
-  channels.
+  channels. The economy log records admin give/take, jackpots and member events; big spins,
+  rolls and flips do not get log entries.
 - `/settings autorole add role:<role> target:<members|bots>`: roles given to new joiners or new
   bots (`target` defaults to members; `remove` to stop)
 - `/settings show`: review the current settings

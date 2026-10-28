@@ -33,37 +33,6 @@ export function economyLogCard(event: EconomyEvent, now: number): ContainerBuild
         ],
         now,
       );
-    case 'big_spin':
-      return build(
-        event.payout > event.bet ? accents.win : accents.brand,
-        'Big spin',
-        [
-          `${mention(event.userId)} bet ${coins(event.bet)} and got ${event.result}`,
-          `Payout: ${coins(event.payout)}`,
-        ],
-        now,
-      );
-    case 'big_roll':
-      return build(
-        event.won ? accents.win : accents.brand,
-        'Big dice roll',
-        [
-          `${mention(event.userId)} bet ${coins(event.bet)} on ${event.call}, rolled ${event.total}`,
-          `Payout: ${coins(event.payout)}`,
-        ],
-        now,
-      );
-    case 'big_flip':
-      return build(
-        event.winnerId ? accents.win : accents.brand,
-        'Big coinflip',
-        [
-          `${event.mode} for ${coins(event.bet)}: ${event.playerIds.map(mention).join(' vs ')}`,
-          event.winnerId ? `Winner: ${mention(event.winnerId)}` : 'The bot won',
-          `Rake: ${coins(event.rake)}`,
-        ],
-        now,
-      );
     case 'member_departed':
       return build(
         accents.loss,

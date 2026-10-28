@@ -3,7 +3,7 @@ import type { WagerSpin } from './play.js';
 import { type RandomInt, rollOutcome } from './roll.js';
 
 export { clearActiveCards, isActiveCard, setActiveCard } from './active-card.js';
-export { InvalidBetError, parseBet } from './bet.js';
+export { type BetLimits, InvalidBetError, parseBet } from './bet.js';
 export {
   announcementCard,
   expiredSpin,

@@ -1,5 +1,7 @@
+import type { BetLimits } from './bet.js';
+
 /** Bet limits for a wagered spin, in coins; `defaultBet` is what a spin without a bet costs. */
-export const wager = { minBet: 10, maxBet: 10_000, defaultBet: 10 } as const;
+export const wager = { minBet: 1, maxBet: 10_000, defaultBet: 1 } as const satisfies BetLimits;
 
 export const payoutTiers = [
   'none',
@@ -31,5 +33,20 @@ export const payoutBps = {
   cppTriple: 1_000_000,
 } as const satisfies Record<PayoutTier, number>;
 
-/** Progressive pot: seed, share of each bet added to it, and the bet that earns a full share. */
-export const pot = { seed: 10_000, contributionPercent: 3, fullShareBet: 500 } as const;
+/**
+ * Progressive pot: seed, share of each bet added to it (only for bets over `contributionAbove`),
+ * and the bet that earns a full share.
+ *
+ * `shareBps` is what the rarer wins take from the pot's excess over the seed, in basis points (the
+ * jackpot takes the whole pot). Taken from the excess, a share never mints coins or pulls the pot
+ * under the seed, and each win takes at most a tenth of it, so the pot pays out steadily instead of
+ * sitting until a 1 in 9,261 jackpot. A full-share spin pays out about 0.05% of the excess on
+ * average, about three and a half times what the jackpot alone does.
+ */
+export const pot = {
+  seed: 10_000,
+  contributionPercent: 3,
+  contributionAbove: 100,
+  fullShareBet: 500,
+  shareBps: { pythonPair: 25, cppPair: 100, ytTriple: 100, pythonTriple: 1_000 },
+} as const;

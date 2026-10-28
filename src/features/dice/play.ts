@@ -3,10 +3,10 @@ import { rolls } from '../../db/schema.js';
 import { credit, debit } from '../economy/ledger.js';
 import { getOrCreateWallet } from '../economy/wallets.js';
 import { parseBet } from '../gamba/bet.js';
-import { wager } from '../gamba/config.js';
 import { addToPot } from '../gamba/pot.js';
 import type { RandomInt } from '../gamba/roll.js';
 import type { DiceCall } from './calls.js';
+import { wager } from './config.js';
 import { diceEdge, payoutFor, rollDice, wins } from './rules.js';
 import { recordRollStats } from './stats.js';
 
@@ -41,7 +41,7 @@ export interface Roll {
 export function settleRoll(db: Db, request: RollRequest, now: number, randomInt?: RandomInt): Roll {
   const { guildId, userId, call } = request;
   const wallet = getOrCreateWallet(db, guildId, userId, now);
-  const bet = parseBet(request.bet?.trim() || String(wager.defaultBet), wallet.balance);
+  const bet = parseBet(request.bet?.trim() || String(wager.defaultBet), wallet.balance, wager);
 
   return db.transaction((tx) => {
     const [die1, die2] = rollDice(randomInt);

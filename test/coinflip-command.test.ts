@@ -134,7 +134,7 @@ describe('/coinflip', () => {
   });
 
   describe('economy log', () => {
-    it('logs a 5,000 bot flip once', async () => {
+    it('keeps a 5,000 bot flip out of the log', async () => {
       const send = vi.fn(async () => ({}));
       client.channels.cache.set('50', { id: '50', isSendable: () => true, send } as never);
       setLogChannel(container.db, '2', 'economy', '50', 1);
@@ -150,8 +150,8 @@ describe('/coinflip', () => {
       mockRandomInt(0);
       await run('bot', { bet: '5000', side: 'heads' });
 
-      await vi.waitFor(() => expect(send).toHaveBeenCalledTimes(1));
-      expect(json(send.mock.calls[0])).toContain('<@1>');
+      await new Promise((resolve) => setTimeout(resolve, 50));
+      expect(send).not.toHaveBeenCalled();
     });
   });
 

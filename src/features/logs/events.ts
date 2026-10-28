@@ -1,4 +1,4 @@
-import type { AutoRoleTarget, FlipMode, SpinResult } from '../../db/schema.js';
+import type { AutoRoleTarget } from '../../db/schema.js';
 import type { AdminAction } from '../economy/admin.js';
 import type { LogKind } from './config.js';
 
@@ -20,25 +20,6 @@ export type EconomyEvent =
       potWon: number;
       roleAssigned: boolean;
     }
-  | { type: 'big_spin'; userId: string; bet: number; result: SpinResult; payout: number }
-  | {
-      type: 'big_roll';
-      userId: string;
-      bet: number;
-      /** The call's label, e.g. `Exact 12`. */
-      call: string;
-      total: number;
-      won: boolean;
-      payout: number;
-    }
-  | {
-      type: 'big_flip';
-      mode: FlipMode;
-      playerIds: string[];
-      bet: number;
-      winnerId?: string;
-      rake: number;
-    } // winnerId undefined: the bot won
   | { type: 'member_departed'; userId: string; balance: number; purgeAt: number }
   | { type: 'member_restored'; userId: string; balance: number }
   | {
