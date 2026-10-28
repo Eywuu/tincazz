@@ -18,9 +18,16 @@ Currently implemented:
 - `?coinflip [bet] [heads|tails]`, `?coinflip @member [bet] [side]`, `?coinflip open [bet] [side]`
   (aliases `?cf`, `?flip`): the same coinflip from a message, arguments in any order (`?cf 100 t`).
   A challenge pings only the member it names, who must be in the server
+- `/dice [bet] [on]`: roll two dice against the bot, calling `high` (8-12, the default), `low`
+  (2-6), `seven`, `doubles` or an exact total. Bets are gamba's (10 to 10,000, default 10). A win
+  pays 99% of fair odds (2.376x on high or low, 5.94x on seven or doubles, 7.128x to 35.64x on an
+  exact total), and 1% of the bet (at least 1 coin) goes into the gamba pot. The dice tumble for a
+  moment before the result shows; Roll again repeats the same bet and call
+- `?dice [bet] [high|low|seven|doubles|=2…12]` (alias `?roll`): the same dice from a message,
+  arguments in any order (`?dice =12 50`)
 - `/balance`, `/daily`, `/collect`, `/bailout`: your coins and the ways to earn more:
   - `/daily`: 400 coins plus 75 per streak day (up to 925 from day 7), and 10% cashback on the
-    previous UTC day's net gamba and coinflip losses (up to 1,000)
+    previous UTC day's net gamba, coinflip and dice losses (up to 1,000)
   - `/collect`: 25 coins for every hour since the last collect, stacking up to 12 hours (300)
   - `/bailout`: under 10 coins, 200 plus 25 per day of a live daily streak, every 30 minutes
 - `/stats [user]`: a player profile with spins, win rate, jackpots, biggest win, best odds, net

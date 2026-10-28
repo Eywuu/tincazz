@@ -82,6 +82,8 @@ The economy is balanced deliberately. Changes here get extra review:
   98.5–99.5%.
 - Gamba stays low-volatility: most of the return sits in the common pairs. Do not move it into rare
   tiers to make a headline multiplier bigger.
+- Dice payouts (`returnBps` in `src/features/dice/config.ts`) return 99%.
+  `test/dice-evaluate.test.ts` fails if the return leaves 98.5–99.5%.
 - A new coin faucet needs its own ledger reason, a claim function in `src/features/economy/` that
   writes in one transaction, and coverage in `test/fuzz-economy.test.ts`.
 

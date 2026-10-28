@@ -42,7 +42,8 @@ src/
     admin/        `/settings` (log channels and join auto-roles; Manage Server)
     economy/      slash commands for coins (/balance, /daily, /collect, /bailout, /eco)
     general/      `?ping` / `/ping`
-    misc/         games: `?gamba` / `/gamba`, `?coinflip` / `/coinflip` (aliases `?cf`, `?flip`)
+    misc/         games: `?gamba` / `/gamba`, `?coinflip` / `/coinflip` (aliases `?cf`, `?flip`),
+                  `?dice` / `/dice` (alias `?roll`)
     stats/        slash commands for profiles and boards (/stats, /leaderboard)
   features/       plain feature logic, one folder per feature (not auto-loaded)
     animation/    shared frame playback: per-channel frame budget, per-user busy lock, display
@@ -50,13 +51,17 @@ src/
     coinflip/     `/coinflip` rules: rake, flips, `cf:*` custom IDs, the one transactional settle
                   module, the in-memory challenge registry (exactly-once and expiry), cards
                   (challenge results carry a single-use Rematch button) and flip frames
+    dice/         `/dice` rules: 2d6 calls and payouts (tuned to a 99% return), the edge into the
+                  pot, the single-transaction settle, `dc:*` custom IDs, the prefix parser, cards
+                  and roll frames
     economy/      wallets and ledger; the only code that changes balances. Faucets: daily (with
                   cashback on yesterday's gambling losses), hourly collect, bailout, chat
     gamba/        spin logic, odds and payouts (tuned to a ~1% house edge), the pot, bet parsing,
                   result cards and the shared `spin()` flow used by commands and buttons (every
                   spin is a wager, default 10)
     logs/         log channels: event types and cards, fire-and-forget `sendLog`, economy
-                  events (admin adjustments, jackpots, big wins above `logThresholds`)
+                  events (admin adjustments, jackpots, big spins, flips and dice rolls above
+                  `logThresholds`)
     members/      departed-member tracking: hidden from boards and ranks, daily reconcile
                   against the guild and purge after a 30 day grace period
     presence/     the bot's rotating status (live pot, last jackpot, spins today), started from
@@ -66,7 +71,7 @@ src/
                   assignment
     stats/        read-only profile and leaderboard queries, `lb:*` custom IDs and cards
     ui/           shared Components V2 card helpers
-  interaction-handlers/  one file per component handler (gamba and coinflip buttons,
+  interaction-handlers/  one file per component handler (gamba, coinflip and dice buttons,
                   leaderboard paging and category select)
   listeners/      one file per Discord/Sapphire event listener (member join, leave and
                   screening, channel and role delete cleanup, chat rewards, ready, and a
@@ -132,6 +137,8 @@ ID (see `features/gamba/custom-ids.ts`), so handlers must ignore IDs they cannot
   return sat in rare triples, so most of it now sits in the common pairs (yt pair 2x), and the
   jackpot's real prize is the pot and the role. Do not move return back into rare tiers to make a
   headline multiplier bigger.
+- Dice payouts (`returnBps` in `src/features/dice/config.ts`) return 99%;
+  `test/dice-evaluate.test.ts` fails outside 98.5–99.5%.
 - Coin faucets (economy `config.ts`: daily, cashback, collect, bailout, chat) are sized so players
   can keep playing at small bets. A new faucet gets its own ledger reason, a claim function in
   `src/features/economy/` that writes in one transaction, an op in `test/fuzz-economy.test.ts` and a
