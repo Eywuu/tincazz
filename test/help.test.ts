@@ -48,7 +48,12 @@ describe('helpCard', () => {
     expect(card).toContain(`${n(daily.base)}`);
     expect(card).toContain(`${n(collect.perHour)} coins per hour`);
     expect(card).toContain(`up to ${collect.maxHours} hours`);
-    expect(card).toContain(`every ${bailout.cooldownMs / 60_000} minutes`);
+    expect(card).toContain(
+      `\`/daily\`: ${n(daily.base)} coins plus ${n(daily.perStreakDay)} per streak day (up to ${daily.streakCap} days)`,
+    );
+    expect(card).toContain(
+      `\`/bailout\`: ${n(bailout.base)} coins plus ${n(bailout.perStreakDay)} per daily streak day when you hold under ${n(bailout.belowBalance)} coins, every ${bailout.cooldownMs / 60_000} minutes`,
+    );
     expect(card).toContain(`${n(chatReward.amount)} coins`);
     expect(card).toContain(`${cashback.percent}%`);
     expect(card).toContain(`up to ${n(cashback.max)}`);

@@ -20,9 +20,9 @@ export function helpCard(prefix: string): ContainerBuilder {
     ].join('\n'),
     [
       '## Coins',
-      `\`/daily\`: ${coins(daily.base)} coins plus a streak bonus, and ${cashback.percent}% cashback on yesterday's losses (up to ${coins(cashback.max)})`,
+      `\`/daily\`: ${coins(daily.base)} coins plus ${coins(daily.perStreakDay)} per streak day (up to ${daily.streakCap} days), and ${cashback.percent}% cashback on yesterday's losses (up to ${coins(cashback.max)})`,
       `\`/collect\`: ${coins(collect.perHour)} coins per hour, stacking for up to ${collect.maxHours} hours`,
-      `\`/bailout\`: a lifeline when you are almost broke, every ${bailoutMinutes} minutes`,
+      `\`/bailout\`: ${coins(bailout.base)} coins plus ${coins(bailout.perStreakDay)} per daily streak day when you hold under ${coins(bailout.belowBalance)} coins, every ${bailoutMinutes} minutes`,
       `Chatting earns ${coins(chatReward.amount)} coins per message, at most once every ${chatReward.cooldownMs / 1000} seconds`,
       '`/balance`, `/stats` and `/leaderboard` show where you stand',
     ].join('\n'),
