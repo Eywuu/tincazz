@@ -143,7 +143,7 @@ Exact is computed as `356_400 / ways`. `payout = floor(bet × bps / 10_000)` on 
 - `rolls` table: `id`, `guild_id`, `user_id`, `bet`, `call` (enum `high|low|seven|doubles|exact`),
   `target` (nullable, set only for exact), `die1`, `die2`, `won` (0/1), `payout`, `edge`,
   `created_at`; index `rolls_user_idx (guild_id, user_id, created_at)`.
-- Ledger reasons `dice_bet`, `dice_win`.
+- Ledger reasons `dice_bet`, `dice_win`, both added to `gamblingReasons` in `economy/cashback.ts` so dice losses earn daily cashback like gamba and coinflip.
 - `player_stats`: `rolls`, `roll_wins`, `roll_wagered`, `roll_won` (default 0).
 - Also in this migration (for §8): indexes `flips_challenger_idx (guild_id, challenger_id)` and
   `flips_opponent_idx (guild_id, opponent_id)`.
