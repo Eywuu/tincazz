@@ -1,5 +1,5 @@
 import { type FlipSide, flipSides } from '../../db/schema.js';
-import { wager } from '../gamba/config.js';
+import { wager } from './config.js';
 
 export type ChallengeAction = 'accept' | 'decline' | 'cancel';
 

@@ -1,20 +1,29 @@
 import { InsufficientFundsError } from '../economy/errors.js';
-import { wager } from './config.js';
+
+/** A game's bet limits, in coins; `defaultBet` is what a play without a bet costs. */
+export interface BetLimits {
+  readonly minBet: number;
+  readonly maxBet: number;
+  readonly defaultBet: number;
+}
 
 // No parameter properties: Node's strip-only TypeScript loader (used for pieces in tests) rejects them.
 export class InvalidBetError extends Error {
   public readonly kind: 'format' | 'range';
   public readonly input: string;
+  /** The limits the bet was checked against, so the error text shows the right game's range. */
+  public readonly limits: BetLimits;
 
-  public constructor(kind: 'format' | 'range', input: string) {
+  public constructor(kind: 'format' | 'range', input: string, limits: BetLimits) {
     super(`Invalid bet (${kind}): ${input}`);
     this.kind = kind;
     this.input = input;
+    this.limits = limits;
   }
 }
 
-/** Parses "100", "2.5k", "all" or "half" into a whole coin amount within the bet limits. */
-export function parseBet(input: string, balance: number): number {
+/** Parses "100", "2.5k", "all" or "half" into a whole coin amount within a game's bet limits. */
+export function parseBet(input: string, balance: number, limits: BetLimits): number {
   const text = input.trim().toLowerCase();
 
   let fixed: number | undefined;
@@ -23,28 +32,28 @@ export function parseBet(input: string, balance: number): number {
   } else if (/^\d+(\.\d+)?k$/.test(text)) {
     const [whole = '0', fraction = ''] = text.slice(0, -1).split('.');
     if (fraction.length > 3) {
-      throw new InvalidBetError('format', input);
+      throw new InvalidBetError('format', input, limits);
     }
     fixed = Number(whole) * 1000 + Number(fraction.padEnd(3, '0'));
   } else if (text !== 'all' && text !== 'half') {
-    throw new InvalidBetError('format', input);
+    throw new InvalidBetError('format', input, limits);
   }
 
-  if (balance < wager.minBet) {
-    throw new InsufficientFundsError(balance, wager.minBet);
+  if (balance < limits.minBet) {
+    throw new InsufficientFundsError(balance, limits.minBet);
   }
 
   let value: number;
   if (fixed !== undefined) {
     value = fixed;
   } else if (text === 'all') {
-    value = Math.min(balance, wager.maxBet);
+    value = Math.min(balance, limits.maxBet);
   } else {
     value = Math.floor(balance / 2);
   }
 
-  if (value < wager.minBet || value > wager.maxBet) {
-    throw new InvalidBetError('range', input);
+  if (value < limits.minBet || value > limits.maxBet) {
+    throw new InvalidBetError('range', input, limits);
   }
   if (value > balance) {
     throw new InsufficientFundsError(balance, value);

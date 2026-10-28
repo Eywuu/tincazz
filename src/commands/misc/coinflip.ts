@@ -31,9 +31,10 @@ import {
   parseFlipArgs,
   scheduleExpiry,
   settleBotFlip,
+  wager,
 } from '../../features/coinflip/index.js';
 import { getOrCreateWallet } from '../../features/economy/index.js';
-import { parseBet, wager } from '../../features/gamba/index.js';
+import { parseBet } from '../../features/gamba/index.js';
 import { botFlipLogEvent } from '../../features/logs/economy.js';
 import { logEconomy } from '../../features/logs/send.js';
 import { cardReply, errorReply } from '../../features/ui/index.js';
@@ -242,7 +243,7 @@ export class CoinflipCommand extends Command {
     // Nothing is escrowed: the stake is only checked here and debited when someone accepts.
     const now = Date.now();
     const wallet = getOrCreateWallet(this.container.db, surface.guildId, challengerId, now);
-    const amount = parseBet(bet?.trim() || String(wager.defaultBet), wallet.balance);
+    const amount = parseBet(bet?.trim() || String(wager.defaultBet), wallet.balance, wager);
     const view: ChallengeView = {
       challengerId,
       opponentId: opponent?.id,

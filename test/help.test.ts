@@ -1,6 +1,8 @@
 import { Events, MessageFlags } from 'discord.js';
 import { beforeAll, describe, expect, it, vi } from 'vitest';
 import { createClient } from '../src/client.js';
+import { wager as flipWager } from '../src/features/coinflip/config.js';
+import { wager as diceWager } from '../src/features/dice/config.js';
 import { bailout, cashback, chatReward, collect, daily } from '../src/features/economy/config.js';
 import { wager } from '../src/features/gamba/config.js';
 import { helpCard } from '../src/features/help/index.js';
@@ -59,8 +61,18 @@ describe('helpCard', () => {
     expect(card).toContain(`up to ${n(cashback.max)}`);
   });
 
-  it('builds the bets line from the wager limits', () => {
-    expect(text()).toContain(`${n(wager.minBet)} to ${n(wager.maxBet)}, all, half, 2.5k`);
+  it('builds a bets line per game from its wager limits', () => {
+    const card = text();
+    for (const [game, limits] of [
+      ['Gamba', wager],
+      ['Coinflip', flipWager],
+      ['Dice', diceWager],
+    ] as const) {
+      expect(card).toContain(
+        `${game}: ${n(limits.minBet)} to ${n(limits.maxBet)}, ${n(limits.defaultBet)} when you leave the bet out`,
+      );
+    }
+    expect(card).toContain('all, half or 2.5k');
   });
 
   it('lists every misc command, so a new game cannot skip help', () => {

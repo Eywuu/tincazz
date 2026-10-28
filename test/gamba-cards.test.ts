@@ -1,4 +1,5 @@
 import { describe, expect, it } from 'vitest';
+import { bailout } from '../src/features/economy/config.js';
 import { InsufficientFundsError } from '../src/features/economy/errors.js';
 import {
   announcementCard,
@@ -12,6 +13,8 @@ import {
 } from '../src/features/gamba/index.js';
 import { gambaJackpotRoleId } from '../src/features/gamba/outcomes.js';
 import { accents } from '../src/features/ui/index.js';
+
+const limits = { minBet: 10, maxBet: 10_000, defaultBet: 10 };
 
 const wagerSpin = (reels: Reels, bet: number, extra: Partial<WagerSpin> = {}): WagerSpin => {
   const evaluation = evaluate(reels);
@@ -94,10 +97,12 @@ describe('announcementCard', () => {
 
 describe('spinErrorText', () => {
   it('explains bad bets', () => {
-    expect(spinErrorText(new InvalidBetError('format', ' lol '))).toBe(
+    expect(spinErrorText(new InvalidBetError('format', ' lol ', limits))).toBe(
       "`lol` isn't a bet. Use a number from 10 to 10,000, `all`, `half` or `2.5k`.",
     );
-    expect(spinErrorText(new InvalidBetError('range', '5'))).toBe('Bets go from 10 to 10,000.');
+    expect(spinErrorText(new InvalidBetError('range', '5', limits))).toBe(
+      'Bets go from 10 to 10,000.',
+    );
   });
 
   it.each([
@@ -108,13 +113,13 @@ describe('spinErrorText', () => {
     ['a lone surrogate', 'x\ud800y', 'xy'],
     ['an emoji on the 20 character boundary', `${'a'.repeat(19)}😀😀`, `${'a'.repeat(19)}😀`],
   ])('echoes a bad bet with %s safely', (_case, input, shown) => {
-    expect(spinErrorText(new InvalidBetError('format', input))).toBe(
+    expect(spinErrorText(new InvalidBetError('format', input, limits))).toBe(
       `\`${shown}\` isn't a bet. Use a number from 10 to 10,000, \`all\`, \`half\` or \`2.5k\`.`,
     );
   });
 
   it('does not echo an empty code span', () => {
-    expect(spinErrorText(new InvalidBetError('format', '​​'))).toBe(
+    expect(spinErrorText(new InvalidBetError('format', '​​', limits))).toBe(
       "That isn't a bet. Use a number from 10 to 10,000, `all`, `half` or `2.5k`.",
     );
   });
@@ -126,6 +131,20 @@ describe('spinErrorText', () => {
     expect(spinErrorText(new InsufficientFundsError(5, 10))).toBe(
       'You have 5 coins. `/bailout` is available.',
     );
+  });
+
+  it('offers the bailout exactly when the balance qualifies for one', () => {
+    expect(spinErrorText(new InsufficientFundsError(bailout.belowBalance - 1, 50))).toContain(
+      '`/bailout` is available.',
+    );
+    expect(spinErrorText(new InsufficientFundsError(bailout.belowBalance, 50))).toContain(
+      'Try a smaller bet.',
+    );
+  });
+
+  it('shows the range of the limits the bet was checked against', () => {
+    const dice = { minBet: 25, maxBet: 500, defaultBet: 25 };
+    expect(spinErrorText(new InvalidBetError('range', '5', dice))).toBe('Bets go from 25 to 500.');
   });
 
   it('ignores other errors', () => {

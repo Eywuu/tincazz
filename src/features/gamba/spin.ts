@@ -50,7 +50,7 @@ export async function settleSpin(
     db,
     guildId,
     userId,
-    parseBet(bet, getOrCreateWallet(db, guildId, userId, now).balance),
+    parseBet(bet, getOrCreateWallet(db, guildId, userId, now).balance, wager),
     now,
     options.randomInt,
   );

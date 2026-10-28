@@ -1,5 +1,5 @@
-import { wager } from '../gamba/config.js';
 import { type DiceCall, decodeCall, encodeCall } from './calls.js';
+import { wager } from './config.js';
 
 /** The Roll again button: the player and terms of the roll it repeats. */
 export interface RollAgainId {

@@ -2,9 +2,11 @@ import { describe, expect, it } from 'vitest';
 import { InsufficientFundsError } from '../src/features/economy/errors.js';
 import { InvalidBetError, parseBet } from '../src/features/gamba/bet.js';
 
+const limits = { minBet: 10, maxBet: 10_000, defaultBet: 10 };
+
 function kindOf(input: string, balance: number): unknown {
   try {
-    parseBet(input, balance);
+    parseBet(input, balance, limits);
   } catch (error) {
     expect(error).toBeInstanceOf(InvalidBetError);
     return (error as InvalidBetError).kind;
@@ -14,19 +16,19 @@ function kindOf(input: string, balance: number): unknown {
 
 describe('parseBet', () => {
   it('parses plain numbers and k suffixes', () => {
-    expect(parseBet('100', 5000)).toBe(100);
-    expect(parseBet(' 250 ', 5000)).toBe(250);
-    expect(parseBet('2.5k', 5000)).toBe(2500);
-    expect(parseBet('2.5K', 5000)).toBe(2500);
-    expect(parseBet('1k', 5000)).toBe(1000);
-    expect(parseBet('10', 5000)).toBe(10);
-    expect(parseBet('10000', 20_000)).toBe(10_000);
+    expect(parseBet('100', 5000, limits)).toBe(100);
+    expect(parseBet(' 250 ', 5000, limits)).toBe(250);
+    expect(parseBet('2.5k', 5000, limits)).toBe(2500);
+    expect(parseBet('2.5K', 5000, limits)).toBe(2500);
+    expect(parseBet('1k', 5000, limits)).toBe(1000);
+    expect(parseBet('10', 5000, limits)).toBe(10);
+    expect(parseBet('10000', 20_000, limits)).toBe(10_000);
   });
 
   it('parses all and half', () => {
-    expect(parseBet('all', 5000)).toBe(5000);
-    expect(parseBet('all', 50_000)).toBe(10_000);
-    expect(parseBet('half', 5000)).toBe(2500);
+    expect(parseBet('all', 5000, limits)).toBe(5000);
+    expect(parseBet('all', 50_000, limits)).toBe(10_000);
+    expect(parseBet('half', 5000, limits)).toBe(2500);
   });
 
   it.each(['lol', '', '-5', '1.5', '1,000', '1.2345k', 'k'])('rejects %j as format', (input) => {
@@ -42,17 +44,17 @@ describe('parseBet', () => {
   });
 
   it('throws InsufficientFundsError when the balance cannot cover the bet', () => {
-    expect(() => parseBet('6000', 5000)).toThrow(InsufficientFundsError);
+    expect(() => parseBet('6000', 5000, limits)).toThrow(InsufficientFundsError);
     try {
-      parseBet('6000', 5000);
+      parseBet('6000', 5000, limits);
     } catch (error) {
       expect(error).toMatchObject({ balance: 5000, needed: 6000 });
     }
     try {
-      parseBet('all', 5);
+      parseBet('all', 5, limits);
     } catch (error) {
       expect(error).toMatchObject({ balance: 5, needed: 10 });
     }
-    expect(() => parseBet('10', 0)).toThrow(InsufficientFundsError);
+    expect(() => parseBet('10', 0, limits)).toThrow(InsufficientFundsError);
   });
 });

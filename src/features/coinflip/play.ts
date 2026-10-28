@@ -4,9 +4,9 @@ import { type FlipMode, type FlipSide, flips } from '../../db/schema.js';
 import { credit, debit } from '../economy/ledger.js';
 import { getOrCreateWallet } from '../economy/wallets.js';
 import { parseBet } from '../gamba/bet.js';
-import { wager } from '../gamba/config.js';
 import { addToPot } from '../gamba/pot.js';
 import type { RandomInt } from '../gamba/roll.js';
+import { wager } from './config.js';
 import { ChallengeTakenError, ShortStakeError } from './errors.js';
 import { flipCoin } from './flip.js';
 import { flipRake } from './rake.js';
@@ -45,7 +45,7 @@ export function settleBotFlip(
 ): BotFlip {
   const { guildId, userId, side } = request;
   const wallet = getOrCreateWallet(db, guildId, userId, now);
-  const bet = parseBet(request.bet?.trim() || String(wager.defaultBet), wallet.balance);
+  const bet = parseBet(request.bet?.trim() || String(wager.defaultBet), wallet.balance, wager);
 
   return db.transaction((tx) => {
     const result = flipCoin(randomInt);

@@ -1,4 +1,5 @@
 import { ActionRowBuilder, ButtonBuilder, ButtonStyle, type ContainerBuilder } from 'discord.js';
+import { bailout } from '../economy/config.js';
 import { InsufficientFundsError } from '../economy/errors.js';
 import { accents, card, coins } from '../ui/index.js';
 import { InvalidBetError } from './bet.js';
@@ -104,15 +105,17 @@ export function echoBetInput(input: string): string {
 
 export function spinErrorText(error: unknown): string | undefined {
   if (error instanceof InvalidBetError) {
+    const { minBet, maxBet } = error.limits;
     if (error.kind === 'range') {
-      return `Bets go from ${coins(wager.minBet)} to ${coins(wager.maxBet)}.`;
+      return `Bets go from ${coins(minBet)} to ${coins(maxBet)}.`;
     }
     const shown = echoBetInput(error.input);
     const subject = shown === '' ? 'That' : `\`${shown}\``;
-    return `${subject} isn't a bet. Use a number from ${coins(wager.minBet)} to ${coins(wager.maxBet)}, \`all\`, \`half\` or \`2.5k\`.`;
+    return `${subject} isn't a bet. Use a number from ${coins(minBet)} to ${coins(maxBet)}, \`all\`, \`half\` or \`2.5k\`.`;
   }
   if (error instanceof InsufficientFundsError) {
-    const hint = error.balance < wager.minBet ? '`/bailout` is available.' : 'Try a smaller bet.';
+    const hint =
+      error.balance < bailout.belowBalance ? '`/bailout` is available.' : 'Try a smaller bet.';
     return `You have ${coins(error.balance)} coins. ${hint}`;
   }
   return undefined;
