@@ -3,6 +3,7 @@ import { Events, MessageFlags } from 'discord.js';
 import { beforeAll, beforeEach, describe, expect, it } from 'vitest';
 import { createClient } from '../src/client.js';
 import { openDatabase } from '../src/db/index.js';
+import { settleBotFlip } from '../src/features/coinflip/index.js';
 import { botsHaveNoWallets, findWallet } from '../src/features/economy/index.js';
 import { testEnv } from './support/env.js';
 import { makeChatInput, makeUser } from './support/interaction.js';
@@ -41,6 +42,28 @@ describe('/stats', () => {
     const interaction = await run({ user: makeUser('5') });
     expect(json(interaction.reply.mock.calls[0])).toContain("<@5> hasn't played yet.");
     expect(findWallet(container.db, '2', '5')).toBeUndefined();
+  });
+
+  it('shows recent plays without allowing any mentions', async () => {
+    settleBotFlip(
+      container.db,
+      { guildId: '2', userId: '1', side: 'heads', bet: '100' },
+      1_700_000_000_000,
+      () => 1,
+    );
+    const interaction = await run();
+    const [options] = interaction.reply.mock.calls[0] as unknown as [
+      { allowedMentions?: { users?: string[] } },
+    ];
+    const reply = json(options);
+    expect(reply).toContain('### Recent');
+    expect(reply).toContain('🪙 Tails · -100 · <t:1700000000:R>');
+    expect(options.allowedMentions?.users ?? []).toEqual([]);
+  });
+
+  it('has no recent block for a player with no plays', async () => {
+    const interaction = await run();
+    expect(json(interaction.reply.mock.calls[0])).not.toContain('### Recent');
   });
 
   it('rejects a bot privately', async () => {
