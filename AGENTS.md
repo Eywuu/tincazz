@@ -42,7 +42,7 @@ src/
     admin/        `/settings` (log channels and join auto-roles; Manage Server)
     economy/      slash commands for coins (/balance, /daily, /collect, /bailout, /eco)
     general/      `?ping` / `/ping`
-    misc/         games: `?gamba` / `/gamba` and `/coinflip`
+    misc/         games: `?gamba` / `/gamba`, `?coinflip` / `/coinflip` (aliases `?cf`, `?flip`)
     stats/        slash commands for profiles and boards (/stats, /leaderboard)
   features/       plain feature logic, one folder per feature (not auto-loaded)
     animation/    shared frame playback: per-channel frame budget, per-user busy lock, display

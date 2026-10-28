@@ -13,6 +13,9 @@ Currently implemented:
   10,000, default 10). The winner takes the pool minus a 3% rake (at least 1 coin) that goes into
   the gamba pot; against the bot a win nets the bet minus the rake and a loss costs the bet. The
   coin spins for about two seconds (the card is edited a few times) before the result shows
+- `?coinflip [bet] [heads|tails]`, `?coinflip @member [bet] [side]`, `?coinflip open [bet] [side]`
+  (aliases `?cf`, `?flip`): the same coinflip from a message, arguments in any order (`?cf 100 t`).
+  A challenge pings only the member it names, who must be in the server
 - `/balance`, `/daily`, `/collect`, `/bailout`: your coins and the ways to earn more:
   - `/daily`: 400 coins plus 75 per streak day (up to 925 from day 7), and 10% cashback on the
     previous UTC day's net gamba and coinflip losses (up to 1,000)

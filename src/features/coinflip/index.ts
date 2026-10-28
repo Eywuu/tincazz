@@ -1,3 +1,4 @@
+export { type FlipArgs, flipUsage, parseFlipArgs } from './args.js';
 export {
   botFlipCard,
   botFlipFrames,
@@ -12,6 +13,7 @@ export {
   challengeTaken,
   flipErrorText,
   flipFrame,
+  memberNotFound,
   notYourChallenge,
   notYourFlip,
 } from './cards.js';
