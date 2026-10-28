@@ -32,4 +32,4 @@ export function clearBusy(): void {
 }
 
 /** Ephemeral text for a user who starts a game while their last one is still animating. */
-export const stillRolling = 'Your last game is still rolling. Give it a second.';
+export const stillRolling = 'Still rolling… wait for your last one to land.';

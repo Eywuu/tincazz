@@ -140,4 +140,25 @@ describe('play', () => {
     expect(json(fallback.mock.calls[1])).toContain('the result');
     expect(error).toHaveBeenCalledTimes(2);
   });
+
+  it('uses fallback with the result when there are no frames and first throws', async () => {
+    const error = vi.fn();
+    container.logger = { error } as unknown as typeof container.logger;
+    const fallback = vi.fn(async (_reply: unknown) => 'fell back');
+
+    const shown = await play(
+      {
+        first: async () => Promise.reject(new Error('down')),
+        next: async () => undefined,
+        fallback,
+      },
+      [],
+      result,
+      options,
+    );
+
+    expect(shown).toBe('fell back');
+    expect(json(fallback.mock.calls[0])).toContain('the result');
+    expect(error).toHaveBeenCalledTimes(1);
+  });
 });

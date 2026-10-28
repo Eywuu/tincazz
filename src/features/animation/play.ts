@@ -45,10 +45,10 @@ export async function play(
   options: { channelId: string },
 ): Promise<unknown> {
   const [opening, ...rest] = frames;
-  if (opening === undefined) {
-    return display.first(cardReply(result));
-  }
   try {
+    if (opening === undefined) {
+      return await display.first(cardReply(result));
+    }
     await display.first(cardReply(opening));
     for (const frame of rest) {
       if (!takeFrame(options.channelId)) {
