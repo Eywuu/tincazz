@@ -11,12 +11,12 @@ export {
   challengeResultCard,
   challengeTaken,
   flipErrorText,
-  flippingCard,
+  flipFrame,
   notYourChallenge,
   notYourFlip,
 } from './cards.js';
 export { clearChallenges, reopen, scheduleExpiry, tryClose } from './challenges.js';
-export { coinflip, flipAnimation } from './config.js';
+export { coinflip, type FlipStage, flipAnimation } from './config.js';
 export {
   type ChallengeAction,
   type ChallengeId,

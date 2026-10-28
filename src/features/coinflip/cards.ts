@@ -2,7 +2,7 @@ import { ActionRowBuilder, ButtonBuilder, ButtonStyle, type ContainerBuilder } f
 import type { FlipSide } from '../../db/schema.js';
 import { spinErrorText } from '../gamba/index.js';
 import { accents, card, coins, discordTime } from '../ui/index.js';
-import { flipAnimation } from './config.js';
+import { type FlipStage, flipAnimation } from './config.js';
 import {
   type ChallengeAction,
   type ChallengeId,
@@ -10,6 +10,7 @@ import {
   encodeFlipAgainId,
 } from './custom-ids.js';
 import { ChallengeTakenError, ShortStakeError } from './errors.js';
+import { otherSide } from './flip.js';
 import type { BotFlip, SettledChallenge } from './play.js';
 
 export type ChallengeView = Omit<ChallengeId, 'kind' | 'action'>;
@@ -44,22 +45,48 @@ export function botFlipCard(userId: string, flip: BotFlip): ContainerBuilder {
   );
 }
 
-/** One frame of a coin in the air: no buttons, alternating sides. */
-export function flippingCard(frame: number, caption: string): ContainerBuilder {
-  const side = frame % 2 === 0 ? 'heads' : 'tails';
-  return card(accents.brand, `# 🪙 ${sideLabel(side)}…`, caption, '-# flipping');
+const spinGlyphs = ['◐', '◓', '◑', '◒'] as const;
+
+/**
+ * One cosmetic frame of a coin in the air: no buttons. The edge frame shows the side that loses
+ * the wobble, so the result card never contradicts it, and claims nothing about the outcome.
+ */
+export function flipFrame(stage: FlipStage, caption: string, result: FlipSide): ContainerBuilder {
+  switch (stage) {
+    case 'toss':
+      return card(accents.brand, '# 🪙 ⤴', caption, '-# tossed');
+    case 'spin': {
+      const glyph = spinGlyphs[Math.floor(Math.random() * spinGlyphs.length)];
+      return card(accents.brand, `# ${glyph}`, caption, '-# spinning');
+    }
+    case 'fall':
+      return card(accents.brand, '# 🪙 ⤵', caption, '-# falling');
+    case 'edge':
+      return card(
+        accents.gold,
+        `# 🪙 ${sideLabel(otherSide(result))}…?`,
+        caption,
+        '-# teetering on its edge',
+      );
+  }
 }
 
-function flippingFrames(caption: string): ContainerBuilder[] {
-  return Array.from({ length: flipAnimation.frames }, (_, frame) => flippingCard(frame, caption));
+function flippingFrames(caption: string, result: FlipSide): ContainerBuilder[] {
+  return flipAnimation.stages.map((stage) => flipFrame(stage, caption, result));
 }
 
-export function botFlipFrames(userId: string, flip: Pick<BotFlip, 'bet' | 'side'>) {
-  return flippingFrames(`<@${userId}> called **${sideLabel(flip.side)}** · ${coins(flip.bet)}`);
+export function botFlipFrames(userId: string, flip: Pick<BotFlip, 'bet' | 'side' | 'result'>) {
+  return flippingFrames(
+    `<@${userId}> called **${sideLabel(flip.side)}** · ${coins(flip.bet)}`,
+    flip.result,
+  );
 }
 
-export function challengeFlipFrames(view: ChallengeView, acceptorId: string) {
-  return flippingFrames(`<@${view.challengerId}> vs <@${acceptorId}> · ${coins(view.bet)} each`);
+export function challengeFlipFrames(view: ChallengeView, acceptorId: string, result: FlipSide) {
+  return flippingFrames(
+    `<@${view.challengerId}> vs <@${acceptorId}> · ${coins(view.bet)} each`,
+    result,
+  );
 }
 
 export function challengeCard(view: ChallengeView): ContainerBuilder {
