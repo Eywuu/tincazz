@@ -50,6 +50,17 @@ describe('leaderboardPage', () => {
     expect(leaderboardRank(db, '2', 'coins', '3')).toBeUndefined();
   });
 
+  it('ranks dice as won minus wagered and hides zero or negative', () => {
+    addStats('1', { rollWon: 237, rollWagered: 100 });
+    addStats('2', { rollWon: 0, rollWagered: 100 });
+    addStats('3', { rollWon: 0, rollWagered: 0 });
+    expect(leaderboardPage(db, '2', 'dice', 0).rows).toEqual([
+      { userId: '1', value: 137, rank: 1 },
+    ]);
+    expect(leaderboardRank(db, '2', 'dice', '1')).toEqual({ rank: 1, value: 137 });
+    expect(leaderboardRank(db, '2', 'dice', '2')).toBeUndefined();
+  });
+
   it('breaks ties by numeric user id, not text order', () => {
     addWallet('10', 700);
     addWallet('9', 700);
@@ -113,12 +124,21 @@ describe('isLeaderboardCategory', () => {
   it('accepts categories only', () => {
     expect(isLeaderboardCategory('profit')).toBe(true);
     expect(isLeaderboardCategory('coinflip')).toBe(true);
+    expect(isLeaderboardCategory('dice')).toBe(true);
     expect(isLeaderboardCategory('gold')).toBe(false);
   });
 });
 
 describe('departed members', () => {
-  const categories = ['coins', 'biggest-win', 'jackpots', 'profit', 'coinflip', 'spins'] as const;
+  const categories = [
+    'coins',
+    'biggest-win',
+    'jackpots',
+    'profit',
+    'coinflip',
+    'dice',
+    'spins',
+  ] as const;
 
   it.each(categories)('hides a departed top user in %s', (category) => {
     for (const [userId, top] of [
@@ -134,6 +154,8 @@ describe('departed members', () => {
         wagered: 0,
         flipWon: top,
         flipWagered: 0,
+        rollWon: top,
+        rollWagered: 0,
         spins: top,
       });
     }

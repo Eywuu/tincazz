@@ -18,6 +18,10 @@ export interface PlayerProfile {
   flipWins: number;
   flipWagered: number;
   flipWon: number;
+  rolls: number;
+  rollWins: number;
+  rollWagered: number;
+  rollWon: number;
 }
 
 /** Undefined without a wallet. A missing `player_stats` row reads as zeros. */
@@ -53,5 +57,9 @@ export function playerProfile(
     flipWins: stats?.flipWins ?? 0,
     flipWagered: stats?.flipWagered ?? 0,
     flipWon: stats?.flipWon ?? 0,
+    rolls: stats?.rolls ?? 0,
+    rollWins: stats?.rollWins ?? 0,
+    rollWagered: stats?.rollWagered ?? 0,
+    rollWon: stats?.rollWon ?? 0,
   };
 }

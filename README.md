@@ -32,7 +32,7 @@ Currently implemented:
   - `/bailout`: under 10 coins, 200 plus 25 per day of a live daily streak, every 30 minutes
 - `/stats [user]`: a player profile with spins, win rate, jackpots, biggest win, best odds, net
   profit and daily streak
-- `/leaderboard [category]`: the top 10 by `coins`, `biggest-win`, `jackpots`, `profit`, `spins` or `coinflip`; only
+- `/leaderboard [category]`: the top 10 by `coins`, `biggest-win`, `jackpots`, `profit`, `spins`, `coinflip` or `dice`; only
   the person who ran it can use its category select and Previous/Next buttons
 - chat rewards: a few coins for chatting, at most once a minute
 - `/eco give|take`: moderators adjust coins (Manage Server)

@@ -23,6 +23,10 @@ const profile: PlayerProfile = {
   flipWins: 3,
   flipWagered: 400,
   flipWon: 582,
+  rolls: 6,
+  rollWins: 2,
+  rollWagered: 600,
+  rollWon: 474,
 };
 
 describe('profileCard', () => {
@@ -41,6 +45,7 @@ describe('profileCard', () => {
       'Biggest win **4,500** · best odds **1 in 343**',
       'Net profit **+1,200** · wagered 10,000 · won 11,200',
       'Coinflips **4** · won **3** · net **+182**',
+      'Dice **6** · won **2** · net **-126**',
       '-# Daily streak: 3 days',
       'https://cdn/a.png',
     ]) {
@@ -108,8 +113,8 @@ describe('leaderboardCard', () => {
     expect(text).not.toContain('Previous');
     expect(text).toContain('lb:cat:1');
     expect(
-      text.match(/"value":"(coins|biggest-win|jackpots|profit|spins|coinflip)"/g),
-    ).toHaveLength(6);
+      text.match(/"value":"(coins|biggest-win|jackpots|profit|spins|coinflip|dice)"/g),
+    ).toHaveLength(7);
     expect(text).toMatch(/"value":"coins"[^}]*"default":true|"default":true[^}]*"value":"coins"/);
   });
 
@@ -139,6 +144,19 @@ describe('leaderboardCard', () => {
       }),
     );
     expect(text).toContain('<@9> · **+94**');
+  });
+
+  it('shows signed dice net values', () => {
+    const text = json(
+      leaderboardCard({
+        ownerId: '1',
+        category: 'dice',
+        board: board([['9', 137]], 0, 1),
+        caller: undefined,
+      }),
+    );
+    expect(text).toContain('## Leaderboard · Dice net');
+    expect(text).toContain('<@9> · **+137**');
   });
 
   it('disables Previous on the first page and Next on the last', () => {

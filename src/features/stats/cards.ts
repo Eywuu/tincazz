@@ -54,6 +54,7 @@ export function profileCard(
     `Biggest win **${coins(profile.biggestWin)}** · best odds **${bestOdds}**`,
     `Net profit **${signed(profile.won - profile.wagered)}** · wagered ${coins(profile.wagered)} · won ${coins(profile.won)}`,
     `Coinflips **${coins(profile.flips)}** · won **${coins(profile.flipWins)}** · net **${signed(profile.flipWon - profile.flipWagered)}**`,
+    `Dice **${coins(profile.rolls)}** · won **${coins(profile.rollWins)}** · net **${signed(profile.rollWon - profile.rollWagered)}**`,
     `-# Daily streak: ${profile.dailyStreak} ${days}`,
   ).spliceComponents(0, 0, header);
 }
@@ -72,7 +73,9 @@ export function leaderboardCard({
   caller,
 }: LeaderboardView): ContainerBuilder {
   const format = (value: number) =>
-    category === 'profit' || category === 'coinflip' ? signed(value) : coins(value);
+    category === 'profit' || category === 'coinflip' || category === 'dice'
+      ? signed(value)
+      : coins(value);
   const lines = board.rows.map((row) => {
     const place = medals[row.rank - 1] ?? `**${row.rank}.**`;
     return `${place} <@${row.userId}> · **${format(row.value)}**`;

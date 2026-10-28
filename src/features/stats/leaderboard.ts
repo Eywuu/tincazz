@@ -63,6 +63,13 @@ function source(category: LeaderboardCategory): Source {
         present: playerPresent,
         value: sql<number>`(${playerStats.flipWon} - ${playerStats.flipWagered})`,
       };
+    case 'dice':
+      return {
+        table: playerStats,
+        ...columns(playerStats),
+        present: playerPresent,
+        value: sql<number>`(${playerStats.rollWon} - ${playerStats.rollWagered})`,
+      };
     case 'spins':
       return {
         table: playerStats,
