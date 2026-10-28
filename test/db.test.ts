@@ -4,7 +4,7 @@ import { join } from 'node:path';
 import { container } from '@sapphire/framework';
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 import { closeDatabase, openDatabase } from '../src/db/index.js';
-import { flips, ledger, playerStats, pots, spins, wallets } from '../src/db/schema.js';
+import { flips, ledger, playerStats, pots, rolls, spins, wallets } from '../src/db/schema.js';
 
 describe('database', () => {
   let dir: string;
@@ -40,6 +40,7 @@ describe('database', () => {
       'ledger',
       'player_stats',
       'pots',
+      'rolls',
       'spins',
       'wallets',
     ]);
@@ -97,6 +98,10 @@ describe('database', () => {
       flipWins: 0,
       flipWagered: 0,
       flipWon: 0,
+      rolls: 0,
+      rollWins: 0,
+      rollWagered: 0,
+      rollWon: 0,
     };
     const pot = { guildId: 'g', amount: 5, lastWinnerId: null, lastWonAt: null };
 
@@ -165,7 +170,7 @@ describe('database', () => {
       { guildId: 'g', amount: 7, lastWinnerId: null, lastWonAt: null },
     ]);
     expect(second.$client.prepare('select count(*) from __drizzle_migrations').pluck().get()).toBe(
-      5,
+      6,
     );
     closeDatabase(second);
   });
@@ -214,5 +219,38 @@ describe('database', () => {
     );
     const columns = db.$client.prepare('pragma table_info(wallets)').all() as { name: string }[];
     expect(columns.map((c) => c.name)).toContain('departed_at');
+  });
+
+  it('applies the dice migration: rolls, roll stats and the flips player indexes', () => {
+    const db = openDatabase(':memory:');
+    db.insert(playerStats).values({ guildId: '2', userId: '1' }).run();
+    expect(db.select().from(playerStats).get()).toMatchObject({
+      rolls: 0,
+      rollWins: 0,
+      rollWagered: 0,
+      rollWon: 0,
+    });
+    const row = {
+      guildId: '2',
+      userId: '1',
+      bet: 100,
+      call: 'exact' as const,
+      target: 12,
+      die1: 6,
+      die2: 6,
+      won: 1,
+      payout: 3_564,
+      edge: 1,
+      createdAt: 1,
+    };
+    db.insert(rolls).values(row).run();
+    expect(db.select().from(rolls).all()).toEqual([{ id: 1, ...row }]);
+    const indexes = db.$client
+      .prepare("select name from sqlite_master where type = 'index'")
+      .pluck()
+      .all();
+    expect(indexes).toEqual(
+      expect.arrayContaining(['rolls_user_idx', 'flips_challenger_idx', 'flips_opponent_idx']),
+    );
   });
 });
