@@ -13,6 +13,7 @@ export {
   challengeTaken,
   flipErrorText,
   flipFrame,
+  memberNotFound,
   notYourChallenge,
   notYourFlip,
 } from './cards.js';

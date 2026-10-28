@@ -20,6 +20,7 @@ export const notYourChallenge = "This challenge isn't for you.";
 export const challengeTaken = 'Someone already took this challenge.';
 export const cannotChallengeSelf = "You can't challenge yourself.";
 export const cannotChallengeBot = "Bots don't flip coins. Use `/coinflip bot`.";
+export const memberNotFound = "I can't find that member here.";
 
 const sideLabel = (side: FlipSide) => (side === 'heads' ? 'Heads' : 'Tails');
 

@@ -1,11 +1,21 @@
-import { Command } from '@sapphire/framework';
+import { type Args, Command, CommandOptionsRunTypeEnum } from '@sapphire/framework';
 import {
   type ChatInputCommandInteraction,
+  type ContainerBuilder,
   InteractionContextType,
+  type Message,
   type SlashCommandSubcommandBuilder,
 } from 'discord.js';
 import { type FlipSide, flipSides } from '../../db/schema.js';
-import { end, play, replyDisplay, stillRolling, tryBegin } from '../../features/animation/index.js';
+import {
+  type Display,
+  end,
+  messageDisplay,
+  play,
+  replyDisplay,
+  stillRolling,
+  tryBegin,
+} from '../../features/animation/index.js';
 import {
   botFlipCard,
   botFlipFrames,
@@ -16,6 +26,9 @@ import {
   challengeClosedCard,
   coinflip,
   flipErrorText,
+  flipUsage,
+  memberNotFound,
+  parseFlipArgs,
   scheduleExpiry,
   settleBotFlip,
 } from '../../features/coinflip/index.js';
@@ -25,9 +38,37 @@ import { botFlipLogEvent } from '../../features/logs/economy.js';
 import { logEconomy } from '../../features/logs/send.js';
 import { cardReply, errorReply } from '../../features/ui/index.js';
 
+/** Where a flip came from: a slash interaction or a prefix message. Both run the same bodies. */
+interface FlipSurface {
+  channelId: string;
+  userId: string;
+  guildId: string;
+  /**
+   * Posts a card. Mentions stay suppressed except for `mentions`, the only users it may ping.
+   * Resolves to the posted message when it is known.
+   */
+  reply(card: ContainerBuilder, mentions?: string[]): Promise<Message | undefined>;
+  /** Replaces the card posted by `reply`. */
+  edit(card: ContainerBuilder): Promise<unknown>;
+  /** Shows an animated game: the first card, then edits of it. */
+  display: Display;
+  /** Answers with an error: ephemeral for slash, plain text for prefix. */
+  error(text: string): Promise<unknown>;
+}
+
+type Opponent = { id: string; bot: boolean } | null;
+
+const mentionOnly = (mentions?: string[]) =>
+  mentions ? { allowedMentions: { users: mentions } } : {};
+
 export class CoinflipCommand extends Command {
   public constructor(context: Command.LoaderContext) {
-    super(context, { name: 'coinflip', description: 'Flip a coin for coins' });
+    super(context, {
+      name: 'coinflip',
+      description: 'Flip a coin for coins',
+      aliases: ['cf', 'flip'],
+      runIn: CommandOptionsRunTypeEnum.GuildAny,
+    });
   }
 
   public override registerApplicationCommands(registry: Command.Registry) {
@@ -69,76 +110,138 @@ export class CoinflipCommand extends Command {
     );
   }
 
-  public override async chatInputRun(interaction: ChatInputCommandInteraction) {
-    const bet = interaction.options.getString('bet') ?? undefined;
-    const requested = interaction.options.getString('side');
-    const side: FlipSide = flipSides.find((value) => value === requested) ?? 'heads';
+  public override async messageRun(message: Message, args: Args) {
+    const rest = (await args.restResult('string')).unwrapOr('');
+    const surface = this.messageSurface(message);
+    const parsed = parseFlipArgs(rest.split(/\s+/));
+    if (parsed === undefined) {
+      return surface.error(flipUsage);
+    }
 
     try {
-      if (interaction.options.getSubcommand() === 'bot') {
-        return await this.flipBot(interaction, bet, side);
+      if (parsed.mode === 'bot') {
+        return await this.flipBot(surface, parsed.bet, parsed.side);
       }
-      return await this.challenge(interaction, bet, side);
+      let opponent: Opponent = null;
+      if (parsed.opponentId !== undefined) {
+        // Only a member of this guild can be challenged: anyone else is never pinged.
+        const member = message.guild
+          ? await message.guild.members.fetch(parsed.opponentId).catch(() => null)
+          : null;
+        if (!member) {
+          return surface.error(memberNotFound);
+        }
+        opponent = { id: member.id, bot: member.user.bot };
+      }
+      return await this.challenge(surface, parsed.mode, opponent, parsed.bet, parsed.side);
     } catch (error) {
       const text = flipErrorText(error);
       if (text === undefined) {
         throw error;
       }
-      return interaction.reply(errorReply(text));
+      return surface.error(text);
     }
   }
 
-  private async flipBot(
-    interaction: ChatInputCommandInteraction,
-    bet: string | undefined,
-    side: FlipSide,
-  ) {
-    const userId = interaction.user.id;
+  public override async chatInputRun(interaction: ChatInputCommandInteraction) {
+    const bet = interaction.options.getString('bet') ?? undefined;
+    const requested = interaction.options.getString('side');
+    const side: FlipSide = flipSides.find((value) => value === requested) ?? 'heads';
+    const surface = this.interactionSurface(interaction);
+
+    try {
+      const subcommand = interaction.options.getSubcommand();
+      if (subcommand === 'bot') {
+        return await this.flipBot(surface, bet, side);
+      }
+      const mode = subcommand === 'open' ? 'open' : 'challenge';
+      const user = mode === 'challenge' ? interaction.options.getUser('opponent', true) : null;
+      const opponent: Opponent = user ? { id: user.id, bot: user.bot } : null;
+      return await this.challenge(surface, mode, opponent, bet, side);
+    } catch (error) {
+      const text = flipErrorText(error);
+      if (text === undefined) {
+        throw error;
+      }
+      return surface.error(text);
+    }
+  }
+
+  private interactionSurface(interaction: ChatInputCommandInteraction): FlipSurface {
+    return {
+      channelId: interaction.channelId,
+      userId: interaction.user.id,
+      guildId: interaction.guildId as string,
+      reply: async (card, mentions) => {
+        const { resource } = await interaction.reply({
+          ...cardReply(card),
+          ...mentionOnly(mentions),
+          withResponse: true,
+        });
+        return resource?.message ?? undefined;
+      },
+      edit: (card) => interaction.editReply(cardReply(card)),
+      display: replyDisplay(interaction),
+      error: (text) => interaction.reply(errorReply(text)),
+    };
+  }
+
+  private messageSurface(message: Message): FlipSurface {
+    let sent: Message | undefined;
+    return {
+      channelId: message.channel.id,
+      userId: message.author.id,
+      guildId: message.guildId as string,
+      reply: async (card, mentions) => {
+        sent = await message.reply({ ...cardReply(card), ...mentionOnly(mentions) });
+        return sent;
+      },
+      edit: async (card) => {
+        if (!sent) {
+          throw new Error('no reply to edit');
+        }
+        return sent.edit(cardReply(card));
+      },
+      display: messageDisplay(message),
+      error: (text) => message.reply(text),
+    };
+  }
+
+  private async flipBot(surface: FlipSurface, bet: string | undefined, side: FlipSide) {
+    const { userId, guildId } = surface;
     if (!tryBegin(userId)) {
-      return interaction.reply(errorReply(stillRolling));
+      return surface.error(stillRolling);
     }
     try {
-      const flip = settleBotFlip(
-        this.container.db,
-        { guildId: interaction.guildId as string, userId, bet, side },
-        Date.now(),
-      );
+      const flip = settleBotFlip(this.container.db, { guildId, userId, bet, side }, Date.now());
       const event = botFlipLogEvent(userId, flip);
-      if (event) void logEconomy(interaction.guildId as string, event);
-      return await play(
-        replyDisplay(interaction),
-        botFlipFrames(userId, flip),
-        botFlipCard(userId, flip),
-        { channelId: interaction.channelId },
-      );
+      if (event) void logEconomy(guildId, event);
+      return await play(surface.display, botFlipFrames(userId, flip), botFlipCard(userId, flip), {
+        channelId: surface.channelId,
+      });
     } finally {
       end(userId);
     }
   }
 
   private async challenge(
-    interaction: ChatInputCommandInteraction,
+    surface: FlipSurface,
+    mode: 'challenge' | 'open',
+    opponent: Opponent,
     bet: string | undefined,
     side: FlipSide,
   ) {
-    const challengerId = interaction.user.id;
-    const mode = interaction.options.getSubcommand() === 'open' ? 'open' : 'challenge';
-    const opponent = mode === 'challenge' ? interaction.options.getUser('opponent', true) : null;
+    const challengerId = surface.userId;
     if (opponent?.id === challengerId) {
-      return interaction.reply(errorReply(cannotChallengeSelf));
+      return surface.error(cannotChallengeSelf);
     }
     if (opponent?.bot) {
-      return interaction.reply(errorReply(cannotChallengeBot));
+      return surface.error(cannotChallengeBot);
     }
 
     // Nothing is escrowed: the stake is only checked here and debited when someone accepts.
     const now = Date.now();
-    const wallet = getOrCreateWallet(
-      this.container.db,
-      interaction.guildId as string,
-      challengerId,
-      now,
-    );
+    const wallet = getOrCreateWallet(this.container.db, surface.guildId, challengerId, now);
     const amount = parseBet(bet?.trim() || String(wager.defaultBet), wallet.balance);
     const view: ChallengeView = {
       challengerId,
@@ -148,15 +251,11 @@ export class CoinflipCommand extends Command {
       expiresAt: now + coinflip.expiryMs[mode],
     };
 
-    const { resource } = await interaction.reply({
-      ...cardReply(challengeCard(view)),
-      ...(opponent ? { allowedMentions: { users: [opponent.id] } } : {}),
-      withResponse: true,
-    });
-    const messageId = resource?.message?.id;
-    if (messageId) {
-      scheduleExpiry(messageId, view.expiresAt - now, () =>
-        interaction.editReply(cardReply(challengeClosedCard(view, 'expired'))),
+    // Only a named opponent is pinged; an open challenge pings nobody.
+    const sent = await surface.reply(challengeCard(view), opponent ? [opponent.id] : undefined);
+    if (sent?.id) {
+      scheduleExpiry(sent.id, view.expiresAt - now, () =>
+        surface.edit(challengeClosedCard(view, 'expired')),
       );
     }
   }
