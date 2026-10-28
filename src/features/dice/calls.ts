@@ -28,7 +28,10 @@ export function encodeCall(call: DiceCall): string {
   }
 }
 
-/** The inverse of `encodeCall`; undefined for anything else (including `e7`, which is `seven`). */
+/**
+ * The inverse of `encodeCall`; undefined for anything else, including `e7` (that is `seven`) and
+ * padded totals like `e09`, so `encodeCall(decodeCall(code)) === code` whenever it decodes.
+ */
 export function decodeCall(code: string): DiceCall | undefined {
   switch (code) {
     case 'h':
@@ -40,7 +43,7 @@ export function decodeCall(code: string): DiceCall | undefined {
     case 'd':
       return { kind: 'doubles' };
   }
-  const match = /^e(\d{1,2})$/.exec(code);
+  const match = /^e([2-9]|1[0-2])$/.exec(code);
   if (!match) return undefined;
   const target = Number(match[1]);
   if (target < 2 || target > 12 || target === 7) return undefined;

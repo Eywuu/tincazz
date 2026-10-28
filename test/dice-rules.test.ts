@@ -1,3 +1,4 @@
+import fc from 'fast-check';
 import { describe, expect, it } from 'vitest';
 import {
   callLabel,
@@ -109,6 +110,25 @@ describe('call codes', () => {
 
   it('rejects codes it cannot decode', () => {
     for (const code of ['e7', 'e1', 'e13', 'x', '']) expect(decodeCall(code)).toBeUndefined();
+  });
+
+  it('rejects non-canonical codes', () => {
+    for (const code of ['e09', 'e02', 'e012', 'e+9', 'e 9', 'e９', ' h', 'H', '07', 'e']) {
+      expect(decodeCall(code)).toBeUndefined();
+    }
+  });
+
+  it('only decodes codes that encode back to themselves', () => {
+    fc.assert(
+      fc.property(
+        fc.oneof(fc.string({ maxLength: 6 }), fc.stringMatching(/^e[0-9]{0,3}$/)),
+        (code) => {
+          const call = decodeCall(code);
+          if (call !== undefined) expect(encodeCall(call)).toBe(code);
+        },
+      ),
+      { numRuns: 2000 },
+    );
   });
 });
 
