@@ -1,3 +1,4 @@
+export { type FlipArgs, flipUsage, parseFlipArgs } from './args.js';
 export {
   botFlipCard,
   botFlipFrames,
