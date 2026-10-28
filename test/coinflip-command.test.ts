@@ -6,7 +6,13 @@ import { afterEach, beforeAll, beforeEach, describe, expect, it, vi } from 'vite
 import { createClient } from '../src/client.js';
 import { openDatabase } from '../src/db/index.js';
 import { flips, ledger } from '../src/db/schema.js';
-import { clearBudgets, setFrameDelay } from '../src/features/animation/index.js';
+import {
+  clearBudgets,
+  clearBusy,
+  setFrameDelay,
+  stillRolling,
+  tryBegin,
+} from '../src/features/animation/index.js';
 import {
   cannotChallengeBot,
   cannotChallengeSelf,
@@ -41,6 +47,7 @@ describe('/coinflip', () => {
     container.db = openDatabase(':memory:');
     clearChallenges();
     setFrameDelay(0);
+    clearBusy();
     clearBudgets();
     // The runIn precondition fetches the channel over REST, which needs a token.
     vi.spyOn(client.channels, 'fetch').mockResolvedValue({
@@ -52,6 +59,7 @@ describe('/coinflip', () => {
 
   afterEach(() => {
     clearChallenges();
+    clearBusy();
     setFrameDelay(undefined);
     vi.useRealTimers();
     vi.restoreAllMocks();
@@ -101,6 +109,18 @@ describe('/coinflip', () => {
       await run('bot');
 
       expect(findWallet(container.db, '2', '1')?.balance).toBe(startingBalance - 10);
+    });
+
+    it('a /coinflip bot while the same user is animating gets the busy text and settles nothing', async () => {
+      tryBegin('1');
+      const interaction = await run('bot', { bet: '100' });
+
+      const [options] = interaction.reply.mock.calls[0] as unknown as [{ flags: number }];
+      expect(json(options)).toContain(stillRolling);
+      expect(options.flags & MessageFlags.Ephemeral).toBeTruthy();
+      expect(interaction.editReply).not.toHaveBeenCalled();
+      expect(flipCount()).toBe(0);
+      expect(findWallet(container.db, '2', '1')).toBeUndefined();
     });
 
     it('replies ephemerally to a bad bet', async () => {

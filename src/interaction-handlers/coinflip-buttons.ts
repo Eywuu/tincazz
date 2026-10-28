@@ -1,6 +1,6 @@
 import { InteractionHandler, InteractionHandlerTypes } from '@sapphire/framework';
-import type { ButtonInteraction, ContainerBuilder } from 'discord.js';
-import { play, updateDisplay } from '../features/animation/index.js';
+import type { ButtonInteraction } from 'discord.js';
+import { end, play, stillRolling, tryBegin, updateDisplay } from '../features/animation/index.js';
 import {
   botFlipCard,
   botFlipFrames,
@@ -62,27 +62,26 @@ export class CoinflipButtonsHandler extends InteractionHandler {
     if (userId !== id.userId) {
       return interaction.reply(errorReply(notYourFlip));
     }
-    const flip = settleBotFlip(
-      this.container.db,
-      { guildId: interaction.guildId as string, userId, bet: String(id.bet), side: id.side },
-      Date.now(),
-    );
-    const event = botFlipLogEvent(userId, flip);
-    if (event) void logEconomy(interaction.guildId as string, event);
-    return this.flipOnCard(interaction, botFlipFrames(userId, flip), botFlipCard(userId, flip));
-  }
-
-  /**
-   * Plays the flip on the card, then shows the result. The coins have already moved, so if Discord
-   * rejects the update or an edit the result is put on the message by a plain edit instead of
-   * being lost behind "interaction failed".
-   */
-  private flipOnCard(
-    interaction: ButtonInteraction,
-    frames: readonly ContainerBuilder[],
-    result: ContainerBuilder,
-  ) {
-    return play(updateDisplay(interaction), frames, result, { channelId: interaction.channelId });
+    if (!tryBegin(userId)) {
+      return interaction.reply(errorReply(stillRolling));
+    }
+    try {
+      const flip = settleBotFlip(
+        this.container.db,
+        { guildId: interaction.guildId as string, userId, bet: String(id.bet), side: id.side },
+        Date.now(),
+      );
+      const event = botFlipLogEvent(userId, flip);
+      if (event) void logEconomy(interaction.guildId as string, event);
+      return await play(
+        updateDisplay(interaction),
+        botFlipFrames(userId, flip),
+        botFlipCard(userId, flip),
+        { channelId: interaction.channelId },
+      );
+    } finally {
+      end(userId);
+    }
   }
 
   private async answer(interaction: ButtonInteraction, id: ChallengeId) {
@@ -102,7 +101,15 @@ export class CoinflipButtonsHandler extends InteractionHandler {
       if (!allowed) {
         return interaction.reply(errorReply(notYourChallenge));
       }
-      return this.accept(interaction, id, view, messageId);
+      // Before the challenge is closed, so a busy acceptor leaves the card live for a later click.
+      if (!tryBegin(clickerId)) {
+        return interaction.reply(errorReply(stillRolling));
+      }
+      try {
+        return await this.accept(interaction, id, view, messageId);
+      } finally {
+        end(clickerId);
+      }
     }
 
     const owner = id.action === 'decline' ? id.opponentId : id.challengerId;
@@ -156,10 +163,11 @@ export class CoinflipButtonsHandler extends InteractionHandler {
     }
     const event = challengeLogEvent(request, settled);
     if (event) void logEconomy(request.guildId, event);
-    return this.flipOnCard(
-      interaction,
+    return play(
+      updateDisplay(interaction),
       challengeFlipFrames(view, request.acceptorId),
       challengeResultCard(view, settled),
+      { channelId: interaction.channelId },
     );
   }
 }

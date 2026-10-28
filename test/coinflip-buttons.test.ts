@@ -6,7 +6,14 @@ import { afterEach, beforeAll, beforeEach, describe, expect, it, vi } from 'vite
 import { createClient } from '../src/client.js';
 import { openDatabase } from '../src/db/index.js';
 import { flips, pots } from '../src/db/schema.js';
-import { clearBudgets, setFrameDelay } from '../src/features/animation/index.js';
+import {
+  clearBudgets,
+  clearBusy,
+  end,
+  setFrameDelay,
+  stillRolling,
+  tryBegin,
+} from '../src/features/animation/index.js';
 import {
   clearChallenges,
   encodeChallengeId,
@@ -60,11 +67,13 @@ describe('coinflip buttons', () => {
     container.db = openDatabase(':memory:');
     clearChallenges();
     setFrameDelay(0);
+    clearBusy();
     clearBudgets();
   });
 
   afterEach(() => {
     clearChallenges();
+    clearBusy();
     setFrameDelay(undefined);
     vi.restoreAllMocks();
     syncBuiltinESMExports();
@@ -172,6 +181,18 @@ describe('coinflip buttons', () => {
       expect(flipCount()).toBe(0);
     });
 
+    it('a Flip again click while the same user is animating gets the busy text and settles nothing', async () => {
+      tryBegin('1');
+      const interaction = await click(again, '1');
+
+      const [options] = interaction.reply.mock.calls[0] as unknown as [{ flags: number }];
+      expect(json(options)).toContain(stillRolling);
+      expect(options.flags & MessageFlags.Ephemeral).toBeTruthy();
+      expect(interaction.update).not.toHaveBeenCalled();
+      expect(flipCount()).toBe(0);
+      expect(balance('1')).toBeUndefined();
+    });
+
     it('refuses with a funds error when the balance fell below the bet', async () => {
       drain('1', 50);
       const interaction = await click(again, '1');
@@ -195,6 +216,28 @@ describe('coinflip buttons', () => {
       expect(balance('1')).toBe(startingBalance - 100);
       expect(balance('3')).toBe(startingBalance + 94);
       expect(potAmount()).toBe(pot.seed + 6);
+      expect(flipCount()).toBe(1);
+    });
+
+    it('keeps the challenge live when a busy acceptor clicks, and settles a later accept', async () => {
+      mockRandomInt(1);
+      getOrCreateWallet(container.db, '2', '1', 1);
+      getOrCreateWallet(container.db, '2', '3', 1);
+      tryBegin('3');
+      const busy = await click(challengeId('accept'), '3');
+
+      const [options] = busy.reply.mock.calls[0] as unknown as [{ flags: number }];
+      expect(json(options)).toContain(stillRolling);
+      expect(options.flags & MessageFlags.Ephemeral).toBeTruthy();
+      expect(busy.update).not.toHaveBeenCalled();
+      expect(flipCount()).toBe(0);
+      expect(balance('1')).toBe(startingBalance);
+      expect(balance('3')).toBe(startingBalance);
+
+      end('3');
+      const interaction = await click(challengeId('accept'), '3');
+      expect(json(interaction.update.mock.calls[0])).toContain('<@1> vs <@3> · 100 each');
+      expect(await flipResult(interaction)).toContain('<@3> wins **194**');
       expect(flipCount()).toBe(1);
     });
 

@@ -5,7 +5,7 @@ import {
   type SlashCommandSubcommandBuilder,
 } from 'discord.js';
 import { type FlipSide, flipSides } from '../../db/schema.js';
-import { play, replyDisplay } from '../../features/animation/index.js';
+import { end, play, replyDisplay, stillRolling, tryBegin } from '../../features/animation/index.js';
 import {
   botFlipCard,
   botFlipFrames,
@@ -94,16 +94,26 @@ export class CoinflipCommand extends Command {
     side: FlipSide,
   ) {
     const userId = interaction.user.id;
-    const flip = settleBotFlip(
-      this.container.db,
-      { guildId: interaction.guildId as string, userId, bet, side },
-      Date.now(),
-    );
-    const event = botFlipLogEvent(userId, flip);
-    if (event) void logEconomy(interaction.guildId as string, event);
-    return play(replyDisplay(interaction), botFlipFrames(userId, flip), botFlipCard(userId, flip), {
-      channelId: interaction.channelId,
-    });
+    if (!tryBegin(userId)) {
+      return interaction.reply(errorReply(stillRolling));
+    }
+    try {
+      const flip = settleBotFlip(
+        this.container.db,
+        { guildId: interaction.guildId as string, userId, bet, side },
+        Date.now(),
+      );
+      const event = botFlipLogEvent(userId, flip);
+      if (event) void logEconomy(interaction.guildId as string, event);
+      return await play(
+        replyDisplay(interaction),
+        botFlipFrames(userId, flip),
+        botFlipCard(userId, flip),
+        { channelId: interaction.channelId },
+      );
+    } finally {
+      end(userId);
+    }
   }
 
   private async challenge(

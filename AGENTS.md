@@ -45,9 +45,11 @@ src/
     misc/         games: `?gamba` / `/gamba` and `/coinflip`
     stats/        slash commands for profiles and boards (/stats, /leaderboard)
   features/       plain feature logic, one folder per feature (not auto-loaded)
+    animation/    shared frame playback: per-channel frame budget, per-user busy lock, display
+                  adapters for slash, button and prefix
     coinflip/     `/coinflip` rules: rake, flips, `cf:*` custom IDs, the one transactional settle
                   module, the in-memory challenge registry (exactly-once and expiry), cards and
-                  the flip animation (frames shown by editing the card after the coins move)
+                  flip frames
     economy/      wallets and ledger; the only code that changes balances. Faucets: daily (with
                   cashback on yesterday's gambling losses), hourly collect, bailout, chat
     gamba/        spin logic, odds and payouts (tuned to a ~1% house edge), the pot, bet parsing,
