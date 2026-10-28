@@ -13,9 +13,9 @@ Currently implemented:
   (60 seconds to accept) or open a flip anyone can accept (120 seconds). Bets are gamba's (10 to
   10,000, default 10). The winner takes the pool minus a 3% rake (at least 1 coin) that goes into
   the gamba pot; against the bot a win nets the bet minus the rake and a loss costs the bet. The
-  coin spins for about two seconds (the card is edited a few times) before the result shows. A
-  finished challenge has a Rematch button: either player can press it once to challenge the other
-  again for the same bet, keeping the side they had
+  coin spins for about three seconds (the card is edited a few times) before the result shows. A
+  finished challenge has a Rematch button: either player can press it; the first press challenges
+  the other for the same bet, keeping the side they had, and removes the button
 - `?coinflip [bet] [heads|tails]`, `?coinflip @member [bet] [side]`, `?coinflip open [bet] [side]`
   (aliases `?cf`, `?flip`): the same coinflip from a message, arguments in any order (`?cf 100 t`).
   A challenge pings only the member it names, who must be in the server
@@ -32,7 +32,7 @@ Currently implemented:
   - `/collect`: 25 coins for every hour since the last collect, stacking up to 12 hours (300)
   - `/bailout`: under 10 coins, 200 plus 25 per day of a live daily streak, every 30 minutes
 - `/stats [user]`: a player profile with spins, win rate, jackpots, biggest win, best odds, net
-  profit, coinflip and dice totals, their last five plays and daily streak
+  profit, coinflip and dice totals, their last five coinflips and dice rolls, and daily streak
 - `/leaderboard [category]`: the top 10 by `coins`, `biggest-win`, `jackpots`, `profit`, `spins`, `coinflip` or `dice`; only
   the person who ran it can use its category select and Previous/Next buttons
 - chat rewards: a few coins for chatting, at most once a minute

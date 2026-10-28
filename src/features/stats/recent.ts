@@ -62,7 +62,8 @@ export function recentPlays(db: DbOrTx, guildId: string, userId: string, limit =
     });
   }
 
-  // Newest first; on a tie the later row (larger id) leads, flips ahead of rolls.
+  // Newest first. Ties on `createdAt` are broken by row id, which is compared across two different
+  // tables, so the order of a flip and a roll from the same millisecond is arbitrary but stable.
   return plays
     .sort((a, b) => b.play.at - a.play.at || b.id - a.id)
     .slice(0, limit)
