@@ -10,10 +10,16 @@ function rowOf(db: ReturnType<typeof openDatabase>, guildId: string) {
 }
 
 describe('potContribution', () => {
-  it('takes 3 percent with a floor of one coin', () => {
-    expect(potContribution(10)).toBe(1);
-    expect(potContribution(33)).toBe(1);
-    expect(potContribution(100)).toBe(3);
+  it('takes nothing from bets of 100 or less', () => {
+    for (const bet of [1, 10, 33, 100]) {
+      expect(potContribution(bet)).toBe(0);
+    }
+  });
+
+  it('takes 3 percent of the whole bet above 100', () => {
+    expect(potContribution(101)).toBe(3);
+    expect(potContribution(150)).toBe(4);
+    expect(potContribution(500)).toBe(15);
     expect(potContribution(10_000)).toBe(300);
   });
 });
@@ -30,8 +36,8 @@ describe('potShare', () => {
 describe('settlePot', () => {
   it('seeds and grows the pot without a jackpot', () => {
     const db = openDatabase(':memory:');
-    expect(settlePot(db, 'g', 100, false, 'u', 1)).toEqual({ potWon: 0, pot: 10_003 });
-    expect(rowOf(db, 'g')).toMatchObject({ amount: 10_003, lastWinnerId: null });
+    expect(settlePot(db, 'g', 200, false, 'u', 1)).toEqual({ potWon: 0, pot: 10_006 });
+    expect(rowOf(db, 'g')).toMatchObject({ amount: 10_006, lastWinnerId: null });
   });
 
   it('pays the whole pot on a full-share jackpot and resets to the seed', () => {
@@ -49,14 +55,14 @@ describe('settlePot', () => {
     const db = openDatabase(':memory:');
     settlePot(db, 'g', 100, false, 'u', 1);
     db.update(pots).set({ amount: 100_000 }).where(eq(pots.guildId, 'g')).run();
-    expect(settlePot(db, 'g', 10, true, 'u', 2)).toEqual({ potWon: 2_000, pot: 98_001 });
+    expect(settlePot(db, 'g', 10, true, 'u', 2)).toEqual({ potWon: 2_000, pot: 98_000 });
   });
 
   it('keeps guilds separate', () => {
     const db = openDatabase(':memory:');
-    settlePot(db, 'a', 100, false, 'u', 1);
-    expect(settlePot(db, 'b', 10, false, 'u', 1).pot).toBe(10_001);
-    expect(rowOf(db, 'a')?.amount).toBe(10_003);
+    settlePot(db, 'a', 200, false, 'u', 1);
+    expect(settlePot(db, 'b', 200, false, 'u', 1).pot).toBe(10_006);
+    expect(rowOf(db, 'a')?.amount).toBe(10_006);
   });
 });
 

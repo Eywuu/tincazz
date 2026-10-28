@@ -33,5 +33,13 @@ export const payoutBps = {
   cppTriple: 1_000_000,
 } as const satisfies Record<PayoutTier, number>;
 
-/** Progressive pot: seed, share of each bet added to it, and the bet that earns a full share. */
-export const pot = { seed: 10_000, contributionPercent: 3, fullShareBet: 500 } as const;
+/**
+ * Progressive pot: seed, share of each bet added to it (only for bets over `contributionAbove`),
+ * and the bet that earns a full share.
+ */
+export const pot = {
+  seed: 10_000,
+  contributionPercent: 3,
+  contributionAbove: 100,
+  fullShareBet: 500,
+} as const;

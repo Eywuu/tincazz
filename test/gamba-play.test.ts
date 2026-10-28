@@ -27,20 +27,20 @@ const reasons = () =>
 
 describe('playWager', () => {
   it('takes the bet, feeds the pot and records a loss', () => {
-    const result = playWager(db, 'g', 'u', 100, 10, roll(0, 3, 6));
+    const result = playWager(db, 'g', 'u', 200, 10, roll(0, 3, 6));
     expect(result).toMatchObject({
       mode: 'wager',
-      bet: 100,
+      bet: 200,
       payout: 0,
       potWon: 0,
-      balance: 900,
-      pot: 10_003,
+      balance: 800,
+      pot: 10_006,
     });
     expect(reasons()).toEqual(['start', 'bet']);
     expect(db.select().from(ledger).all().at(-1)?.ref).toBe(result.spinId);
     expect(db.select().from(spins).get()).toMatchObject({
       mode: 'wager',
-      bet: 100,
+      bet: 200,
       payout: 0,
       potWon: 0,
       result: 'none',
@@ -48,7 +48,7 @@ describe('playWager', () => {
     expect(db.select().from(playerStats).get()).toMatchObject({
       spins: 1,
       wins: 0,
-      wagered: 100,
+      wagered: 200,
       won: 0,
     });
     expectLedgerConsistent(db);

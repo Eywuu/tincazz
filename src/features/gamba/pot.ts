@@ -3,9 +3,10 @@ import type { DbOrTx } from '../../db/index.js';
 import { pots } from '../../db/schema.js';
 import { pot } from './config.js';
 
-/** Coins a wager adds to the pot: a percentage of the bet, at least one. */
+/** Coins a wager adds to the pot: a percentage of the bet, and nothing for bets of 100 or less. */
 export function potContribution(bet: number): number {
-  return Math.max(1, Math.floor((bet * pot.contributionPercent) / 100));
+  if (bet <= pot.contributionAbove) return 0;
+  return Math.floor((bet * pot.contributionPercent) / 100);
 }
 
 /** The part of the pot a jackpot pays: all of it from the full-share bet, scaled below. */
