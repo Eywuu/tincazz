@@ -5,6 +5,7 @@ Sapphire framework.
 
 Currently implemented:
 - `?ping` / `/ping`: the bot's latency
+- `?help` / `/help`: the games, the ways to earn coins and the bet limits (built from the config)
 - `?gamba [bet]` / `/gamba bet:<bet>`: wagered spins with a progressive pot (see below).
   `?gamba` is the classic plain-text reply, `/gamba` the polished card with buttons; both share the
   same economy

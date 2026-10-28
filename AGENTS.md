@@ -41,7 +41,7 @@ src/
   commands/       one file per command, grouped in folders by category
     admin/        `/settings` (log channels and join auto-roles; Manage Server)
     economy/      slash commands for coins (/balance, /daily, /collect, /bailout, /eco)
-    general/      `?ping` / `/ping`
+    general/      `?ping` / `/ping`, `?help` / `/help`
     misc/         games: `?gamba` / `/gamba`, `?coinflip` / `/coinflip` (aliases `?cf`, `?flip`),
                   `?dice` / `/dice` (alias `?roll`)
     stats/        slash commands for profiles and boards (/stats, /leaderboard)
@@ -59,6 +59,7 @@ src/
     gamba/        spin logic, odds and payouts (tuned to a ~1% house edge), the pot, bet parsing,
                   result cards and the shared `spin()` flow used by commands and buttons (every
                   spin is a wager, default 10)
+    help/         the help card, built from the economy and wager config so it cannot drift
     logs/         log channels: event types and cards, fire-and-forget `sendLog`, economy
                   events (admin adjustments, jackpots, big spins, flips and dice rolls above
                   `logThresholds`)
