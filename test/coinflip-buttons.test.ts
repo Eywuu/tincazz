@@ -15,12 +15,15 @@ import {
   tryBegin,
 } from '../src/features/animation/index.js';
 import {
+  challengeResultCard,
   clearChallenges,
   encodeChallengeId,
   encodeFlipAgainId,
+  encodeRematchId,
   flipAnimation,
   notYourChallenge,
   notYourFlip,
+  rematchTaken,
   scheduleExpiry,
 } from '../src/features/coinflip/index.js';
 import {
@@ -441,6 +444,196 @@ describe('coinflip buttons', () => {
       expect(json(decline.reply.mock.calls[0])).toContain(notYourChallenge);
       const cancel = await click(challengeId('cancel'), '3', 'm2');
       expect(json(cancel.reply.mock.calls[0])).toContain(notYourChallenge);
+    });
+  });
+
+  describe('rematch', () => {
+    // Challenger 1 called heads and won; acceptor 3 held tails and lost.
+    const rematchId = encodeRematchId({
+      challengerId: '1',
+      acceptorId: '3',
+      bet: 100,
+      challengerSide: 'heads',
+    });
+    const resultCard = () =>
+      challengeResultCard(
+        { challengerId: '1', opponentId: '3', bet: 100, side: 'heads', expiresAt: 0 },
+        {
+          result: 'heads',
+          winnerId: '1',
+          loserId: '3',
+          rake: 6,
+          credited: 194,
+          challengerBalance: 1_094,
+          acceptorBalance: 900,
+          pot: 10_006,
+          flipId: 1,
+        },
+      );
+
+    /** Presses Rematch on result message `r1`; the reply it sends becomes message `r2`. */
+    function press(userId: string) {
+      const interaction = makeButton(client, { customId: rematchId, userId, messageId: 'r1' });
+      const sent = { id: 'r2', edit: vi.fn(async (_options: unknown) => ({})) };
+      interaction.announce.mockResolvedValue(sent);
+      Object.assign(interaction.message, { components: [resultCard()] });
+      client.emit(Events.InteractionCreate, interaction as never);
+      return { interaction, sent };
+    }
+
+    const answered = (interaction: ReturnType<typeof makeButton>) =>
+      vi.waitFor(
+        () =>
+          expect(interaction.reply.mock.calls.length + interaction.update.mock.calls.length).toBe(
+            1,
+          ),
+        { timeout: 2000 },
+      );
+
+    const ephemeral = (interaction: ReturnType<typeof makeButton>) =>
+      (interaction.reply.mock.calls[0] as unknown as [{ flags: number }])[0].flags &
+      MessageFlags.Ephemeral;
+
+    const buttonIds = (value: unknown) =>
+      [...json(value).matchAll(/"custom_id":"([^"]+)"/g)].map((match) => match[1] as string);
+
+    it('a stranger pressing Rematch gets notYourChallenge', async () => {
+      const { interaction } = press('4');
+      await answered(interaction);
+
+      expect(json(interaction.reply.mock.calls[0])).toContain(notYourChallenge);
+      expect(ephemeral(interaction)).toBeTruthy();
+      expect(interaction.update).not.toHaveBeenCalled();
+      expect(interaction.announce).not.toHaveBeenCalled();
+
+      // The stranger's press does not use the rematch up.
+      const { interaction: player } = press('3');
+      await vi.waitFor(() => expect(player.announce).toHaveBeenCalledTimes(1));
+    });
+
+    it('the loser pressing Rematch strips the button from the result and replies with a challenge from them to the winner, keeping their side, pinging only the winner', async () => {
+      const { interaction } = press('3');
+      await vi.waitFor(() => expect(interaction.announce).toHaveBeenCalledTimes(1));
+
+      const [update] = interaction.update.mock.calls[0] as unknown as [{ flags: number }];
+      expect(json(update)).toContain('<@1> wins **194**');
+      expect(buttonIds(update)).toEqual([]);
+      expect(update.flags & MessageFlags.IsComponentsV2).toBeTruthy();
+
+      const [reply] = interaction.announce.mock.calls[0] as unknown as [
+        { allowedMentions: unknown; flags: number },
+      ];
+      expect(json(reply)).toContain('<@3> bets **100** on tails');
+      expect(json(reply)).toContain('<@1> can accept.');
+      expect(reply.allowedMentions).toEqual({ users: ['1'] });
+      expect(reply.flags & MessageFlags.Ephemeral).toBeFalsy();
+      const ids = buttonIds(reply);
+      expect(ids.map((id) => id.split(':').slice(0, 6).join(':'))).toEqual([
+        'cf:accept:3:1:100:tails',
+        'cf:decline:3:1:100:tails',
+        'cf:cancel:3:1:100:tails',
+      ]);
+      expect(flipCount()).toBe(0);
+    });
+
+    it('the winner pressing Rematch challenges the loser on the side the winner held', async () => {
+      const { interaction } = press('1');
+      await vi.waitFor(() => expect(interaction.announce).toHaveBeenCalledTimes(1));
+
+      const [reply] = interaction.announce.mock.calls[0] as unknown as [
+        { allowedMentions: unknown },
+      ];
+      expect(json(reply)).toContain('<@1> bets **100** on heads');
+      expect(reply.allowedMentions).toEqual({ users: ['3'] });
+      expect(buttonIds(reply)[0]).toMatch(/^cf:accept:1:3:100:heads:/);
+    });
+
+    it('a second press (either player) gets rematchTaken and sends nothing', async () => {
+      const first = press('3');
+      await vi.waitFor(() => expect(first.interaction.announce).toHaveBeenCalledTimes(1));
+
+      for (const userId of ['3', '1']) {
+        const { interaction } = press(userId);
+        await answered(interaction);
+        expect(json(interaction.reply.mock.calls[0])).toContain(rematchTaken);
+        expect(ephemeral(interaction)).toBeTruthy();
+        expect(interaction.update).not.toHaveBeenCalled();
+        expect(interaction.announce).not.toHaveBeenCalled();
+      }
+    });
+
+    it('both players pressing at once start exactly one rematch', async () => {
+      const presses = [press('3'), press('1'), press('3')];
+      for (const { interaction } of presses) await answered(interaction);
+      await wait(50);
+
+      const sends = presses.flatMap(({ interaction }) => interaction.announce.mock.calls);
+      expect(sends).toHaveLength(1);
+      const refused = presses.filter(({ interaction }) => interaction.reply.mock.calls.length);
+      expect(refused).toHaveLength(2);
+      for (const { interaction } of refused) {
+        expect(json(interaction.reply.mock.calls[0])).toContain(rematchTaken);
+        expect(ephemeral(interaction)).toBeTruthy();
+      }
+    });
+
+    it('the rematch challenge expires by editing the new message', async () => {
+      vi.useFakeTimers({ toFake: ['setTimeout', 'clearTimeout'] });
+      try {
+        const { interaction, sent } = press('3');
+        await vi.waitFor(() => expect(interaction.announce).toHaveBeenCalledTimes(1));
+        await vi.advanceTimersByTimeAsync(59_000);
+        expect(sent.edit).not.toHaveBeenCalled();
+        await vi.advanceTimersByTimeAsync(1_000);
+
+        expect(sent.edit).toHaveBeenCalledTimes(1);
+        expect(json(sent.edit.mock.calls[0])).toContain('Challenge expired.');
+        expect(buttonIds(sent.edit.mock.calls[0])).toEqual([]);
+        expect(interaction.message.edit).not.toHaveBeenCalled();
+      } finally {
+        vi.useRealTimers();
+      }
+    });
+
+    it('accepting the rematch settles as a normal challenge', async () => {
+      const { interaction } = press('3');
+      await vi.waitFor(() => expect(interaction.announce).toHaveBeenCalledTimes(1));
+      const accept = buttonIds(interaction.announce.mock.calls[0])[0] as string;
+
+      // Tails: the rematch challenger (3) wins.
+      mockRandomInt(1);
+      const accepted = await click(accept, '1', 'r2');
+
+      expect(json(accepted.update.mock.calls[0])).toContain('<@3> vs <@1> · 100 each');
+      const result = await flipResult(accepted);
+      expect(result).toContain('<@3> wins **194**');
+      expect(buttonIds(accepted.editReply.mock.calls.at(-1))).toEqual(['cf:rematch:3:1:100:tails']);
+      expect(balance('3')).toBe(startingBalance + 94);
+      expect(balance('1')).toBe(startingBalance - 100);
+      expect(potAmount()).toBe(pot.seed + 6);
+      expect(flipCount()).toBe(1);
+    });
+
+    it('logs a failed rematch reply at error and leaves the result card stripped', async () => {
+      const error = vi.spyOn(container.logger, 'error').mockImplementation(() => undefined);
+      const { interaction } = press('3');
+      interaction.announce.mockRejectedValueOnce(new Error('Missing Permissions'));
+      await vi.waitFor(() => expect(error).toHaveBeenCalledTimes(1));
+
+      expect(String(error.mock.calls[0]?.[0])).toContain('Missing Permissions');
+      expect(buttonIds(interaction.update.mock.calls[0])).toEqual([]);
+      expect(interaction.reply).not.toHaveBeenCalled();
+    });
+
+    it('a stake check happens at accept time, not when the rematch is sent', async () => {
+      drain('3', 50);
+      const { interaction } = press('3');
+      await vi.waitFor(() => expect(interaction.announce).toHaveBeenCalledTimes(1));
+      const accept = buttonIds(interaction.announce.mock.calls[0])[0] as string;
+
+      const accepted = await click(accept, '1', 'r2');
+      expect(json(accepted.update.mock.calls[0])).toContain("<@3> can't cover the bet anymore.");
+      expect(flipCount()).toBe(0);
     });
   });
 

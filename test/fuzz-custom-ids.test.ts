@@ -1,5 +1,11 @@
 import fc from 'fast-check';
 import { describe, expect, it } from 'vitest';
+import { flipSides } from '../src/db/schema.js';
+import {
+  decodeCoinflipId,
+  encodeRematchId,
+  type RematchId,
+} from '../src/features/coinflip/index.js';
 import { wager } from '../src/features/gamba/config.js';
 import { decodeSpinId, encodeSpinId, type SpinButtonId } from '../src/features/gamba/index.js';
 import {
@@ -165,6 +171,53 @@ describe('leaderboard id fuzz', () => {
       fc.property(spinId, (id) => {
         expect(decodeLeaderboardId(encodeSpinId(id))).toBeUndefined();
       }),
+    );
+  });
+});
+
+describe('coinflip rematch id fuzz', () => {
+  const longSnowflake = fc.stringMatching(/^[1-9][0-9]{19}$/);
+  const players = (ids: fc.Arbitrary<string>) =>
+    fc.tuple(ids, ids).filter(([challengerId, acceptorId]) => challengerId !== acceptorId);
+  const rematch = (ids: fc.Arbitrary<string>): fc.Arbitrary<Omit<RematchId, 'kind'>> =>
+    fc
+      .tuple(players(ids), validBet, fc.constantFrom(...flipSides))
+      .map(([[challengerId, acceptorId], bet, challengerSide]) => ({
+        challengerId,
+        acceptorId,
+        bet,
+        challengerSide,
+      }));
+
+  it('round trips every valid id, within 100 characters even with 20-digit snowflakes', () => {
+    fc.assert(
+      fc.property(fc.oneof(rematch(snowflake), rematch(longSnowflake)), (id) => {
+        const encoded = encodeRematchId(id);
+        expect(encoded.length).toBeLessThanOrEqual(100);
+        expect(decodeCoinflipId(encoded)).toEqual({ kind: 'rematch', ...id });
+      }),
+    );
+  });
+
+  it('decodes anything only to a valid id, and decoding is stable', () => {
+    const anyRematchIdString = fc.oneof(
+      fc.string({ unit: 'binary', maxLength: 100 }),
+      mutated(rematch(snowflake).map(encodeRematchId)),
+    );
+    fc.assert(
+      fc.property(anyRematchIdString, (customId) => {
+        const id = decodeCoinflipId(customId);
+        if (id?.kind !== 'rematch') return;
+        expect(id.challengerId).toMatch(/^[0-9]{1,20}$/);
+        expect(id.acceptorId).toMatch(/^[0-9]{1,20}$/);
+        expect(id.challengerId).not.toBe(id.acceptorId);
+        expect(id.bet).toBeGreaterThanOrEqual(wager.minBet);
+        expect(id.bet).toBeLessThanOrEqual(wager.maxBet);
+        expect(flipSides).toContain(id.challengerSide);
+        const { kind: _kind, ...rest } = id;
+        expect(decodeCoinflipId(encodeRematchId(rest))).toEqual(id);
+      }),
+      { numRuns: 2000 },
     );
   });
 });

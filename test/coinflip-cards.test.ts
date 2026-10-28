@@ -1,3 +1,4 @@
+import { ButtonStyle } from 'discord.js';
 import { describe, expect, it } from 'vitest';
 import {
   type BotFlip,
@@ -154,12 +155,23 @@ describe('challengeCard', () => {
 });
 
 describe('result and closed cards', () => {
-  it('shows the winner and the rake with no buttons', () => {
+  it('shows the winner and the rake with a rematch button', () => {
     const c = challengeResultCard(view(), settled);
     expect(accent(c)).toBe(accents.gold);
     expect(json(c)).toContain('<@2> wins **194**');
     expect(json(c)).toContain('rake 6 to the pot · pot 10,006');
-    expect(buttonIds(c)).toEqual([]);
+    expect(buttonIds(c)).toEqual(['cf:rematch:1:2:100:heads']);
+    expect(json(c)).toContain('"label":"Rematch"');
+    expect(json(c)).toContain(`"style":${ButtonStyle.Secondary}`);
+  });
+
+  it('names the acceptor in the rematch id whoever won', () => {
+    const c = challengeResultCard(view({ opponentId: undefined }), {
+      ...settled,
+      winnerId: '1',
+      loserId: '7',
+    });
+    expect(buttonIds(c)).toEqual(['cf:rematch:1:7:100:heads']);
   });
 
   it.each([

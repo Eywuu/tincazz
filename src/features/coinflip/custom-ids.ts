@@ -22,7 +22,16 @@ export interface ChallengeId {
   expiresAt: number;
 }
 
-export type CoinflipId = FlipAgainId | ChallengeId;
+/** The Rematch button on a challenge result: the players and terms of the finished flip. */
+export interface RematchId {
+  kind: 'rematch';
+  challengerId: string;
+  acceptorId: string;
+  bet: number;
+  challengerSide: FlipSide;
+}
+
+export type CoinflipId = FlipAgainId | ChallengeId | RematchId;
 
 const prefix = 'cf';
 const actions: readonly string[] = ['accept', 'decline', 'cancel'] satisfies ChallengeAction[];
@@ -31,10 +40,21 @@ export function encodeFlipAgainId({ userId, bet, side }: Omit<FlipAgainId, 'kind
   return `${prefix}:again:${userId}:${bet}:${side}`;
 }
 
+export function encodeRematchId({
+  challengerId,
+  acceptorId,
+  bet,
+  challengerSide,
+}: Omit<RematchId, 'kind'>): string {
+  return `${prefix}:rematch:${challengerId}:${acceptorId}:${bet}:${challengerSide}`;
+}
+
 export function encodeChallengeId(id: Omit<ChallengeId, 'kind'>): string {
   const seconds = Math.ceil(id.expiresAt / 1000).toString(36);
   return `${prefix}:${id.action}:${id.challengerId}:${id.opponentId ?? 0}:${id.bet}:${id.side}:${seconds}`;
 }
+
+const isSnowflake = (value: string) => /^\d{1,20}$/.test(value);
 
 const isSide = (value: string): value is FlipSide =>
   (flipSides as readonly string[]).includes(value);
@@ -55,6 +75,9 @@ export function decodeCoinflipId(customId: string): CoinflipId | undefined {
   if (parts[1] === 'again') {
     return decodeAgain(parts);
   }
+  if (parts[1] === 'rematch') {
+    return decodeRematch(parts);
+  }
   return decodeChallenge(parts);
 }
 
@@ -68,6 +91,21 @@ function decodeAgain(parts: string[]): FlipAgainId | undefined {
     return undefined;
   }
   return { kind: 'again', userId, bet, side };
+}
+
+function decodeRematch(parts: string[]): RematchId | undefined {
+  if (parts.length !== 6) {
+    return undefined;
+  }
+  const [, , challengerId = '', acceptorId = '', rawBet = '', challengerSide = ''] = parts;
+  if (!isSnowflake(challengerId) || !isSnowflake(acceptorId) || challengerId === acceptorId) {
+    return undefined;
+  }
+  const bet = parseBet(rawBet);
+  if (bet === undefined || !isSide(challengerSide)) {
+    return undefined;
+  }
+  return { kind: 'rematch', challengerId, acceptorId, bet, challengerSide };
 }
 
 function decodeChallenge(parts: string[]): ChallengeId | undefined {

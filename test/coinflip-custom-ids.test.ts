@@ -3,6 +3,7 @@ import {
   decodeCoinflipId,
   encodeChallengeId,
   encodeFlipAgainId,
+  encodeRematchId,
 } from '../src/features/coinflip/index.js';
 
 describe('coinflip custom ids', () => {
@@ -34,6 +35,32 @@ describe('coinflip custom ids', () => {
       expiresAt: 60_000,
     } as const;
     expect(decodeCoinflipId(encodeChallengeId(id))).toEqual({ kind: 'challenge', ...id });
+  });
+
+  it('round-trips a rematch id', () => {
+    const id = {
+      challengerId: '123456789012345678',
+      acceptorId: '876543210987654321',
+      bet: 250,
+      challengerSide: 'tails',
+    } as const;
+    expect(encodeRematchId(id)).toBe('cf:rematch:123456789012345678:876543210987654321:250:tails');
+    expect(decodeCoinflipId(encodeRematchId(id))).toEqual({ kind: 'rematch', ...id });
+  });
+
+  it.each([
+    'cf:rematch:1:2:100',
+    'cf:rematch:1:2:100:heads:extra',
+    'cf:rematch:1:1:100:heads',
+    'cf:rematch:1:2:9:heads',
+    'cf:rematch:1:2:10001:heads',
+    'cf:rematch:1:2:1e3:heads',
+    'cf:rematch:1:2:100:edge',
+    'cf:rematch:x:2:100:heads',
+    'cf:rematch:1::100:heads',
+    'cf:rematch:123456789012345678901:2:100:heads',
+  ])('rejects the rematch id %j', (customId) => {
+    expect(decodeCoinflipId(customId)).toBeUndefined();
   });
 
   it('rounds expiry up to the second', () => {
