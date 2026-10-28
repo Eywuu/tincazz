@@ -71,7 +71,7 @@ src/
                   generic ephemeral reply when a command or handler throws)
 drizzle/          generated SQL migrations, committed and shipped in the image
 test/             Vitest tests
-.github/          CI, image publishing and Dependabot configuration
+.github/          CI, image publishing, Dependabot, issue forms, PR template and CODEOWNERS
 ```
 
 Sapphire loads every file under `commands/`, `listeners/` and `interaction-handlers/` automatically
@@ -115,6 +115,8 @@ ID (see `features/gamba/custom-ids.ts`), so handlers must ignore IDs they cannot
 
 ## Conventions
 
+- `CONTRIBUTING.md` is the human-facing summary of these rules. When a convention here changes,
+  update it there too.
 - Use `.js` extensions in relative imports (NodeNext ESM), and `import type` for type-only imports.
 - Read configuration only through `parseEnv` in `src/config/env.ts`. Add new variables to the zod
   schema **and** to `.env.example` in the same commit. Do not read `process.env` elsewhere.

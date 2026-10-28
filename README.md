@@ -100,6 +100,13 @@ pnpm lint && pnpm typecheck && pnpm test && pnpm build
 
 See [AGENTS.md](AGENTS.md) for the full list of scripts, conventions and git rules.
 
+## Contributing
+
+Contributions are welcome. Read [CONTRIBUTING.md](CONTRIBUTING.md) before opening a pull request,
+and follow the [Code of Conduct](CODE_OF_CONDUCT.md). Report security issues privately through
+[GitHub's private vulnerability reporting](https://github.com/cazzwastaken/tincazz/security/advisories/new),
+not in public issues.
+
 ## Deploying to a VPS
 
 Every push to `main` that passes CI (lint, typecheck, tests, build) builds a Docker image and
