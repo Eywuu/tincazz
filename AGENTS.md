@@ -69,7 +69,8 @@ src/
     scheduler/    the hourly tick that runs periodic jobs (started from the ready listener)
     settings/     per-guild settings store: log channels, auto-roles, their cards and role
                   assignment
-    stats/        read-only profile and leaderboard queries, `lb:*` custom IDs and cards
+    stats/        read-only profile, recent plays and leaderboard queries, `lb:*` custom IDs and
+                  cards
     ui/           shared Components V2 card helpers
   interaction-handlers/  one file per component handler (gamba, coinflip and dice buttons,
                   leaderboard paging and category select)

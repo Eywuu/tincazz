@@ -1,7 +1,7 @@
 import { Command } from '@sapphire/framework';
 import { type ChatInputCommandInteraction, InteractionContextType } from 'discord.js';
 import { botsHaveNoWallets, getOrCreateWallet } from '../../features/economy/index.js';
-import { playerProfile, profileCard } from '../../features/stats/index.js';
+import { playerProfile, profileCard, recentPlays } from '../../features/stats/index.js';
 import { cardReply, errorReply } from '../../features/ui/index.js';
 
 export class StatsCommand extends Command {
@@ -34,6 +34,9 @@ export class StatsCommand extends Command {
       getOrCreateWallet(db, guildId, target.id, now);
     }
     const profile = playerProfile(db, guildId, target.id, now);
-    return interaction.reply(cardReply(profileCard(target.id, target.displayAvatarURL(), profile)));
+    const recent = profile ? recentPlays(db, guildId, target.id) : [];
+    return interaction.reply(
+      cardReply(profileCard(target.id, target.displayAvatarURL(), profile, recent)),
+    );
   }
 }

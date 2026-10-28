@@ -1,6 +1,7 @@
 import { beforeEach, describe, expect, it } from 'vitest';
 import { type Db, openDatabase } from '../src/db/index.js';
 import { settleBotFlip } from '../src/features/coinflip/index.js';
+import { settleRoll } from '../src/features/dice/index.js';
 import {
   claimDaily,
   coinsRank,
@@ -46,6 +47,10 @@ describe('playerProfile', () => {
       flipWins: 0,
       flipWagered: 0,
       flipWon: 0,
+      rolls: 0,
+      rollWins: 0,
+      rollWagered: 0,
+      rollWon: 0,
     });
   });
 
@@ -71,6 +76,16 @@ describe('playerProfile', () => {
       flipWins: 1,
       flipWagered: 100,
       flipWon: 194,
+    });
+  });
+
+  it('reflects dice rolls', () => {
+    settleRoll(db, { guildId: '2', userId: '1', bet: '100', call: { kind: 'high' } }, 5, () => 5);
+    expect(playerProfile(db, '2', '1', 10)).toMatchObject({
+      rolls: 1,
+      rollWins: 1,
+      rollWagered: 100,
+      rollWon: 237,
     });
   });
 

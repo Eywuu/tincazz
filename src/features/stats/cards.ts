@@ -9,11 +9,14 @@ import {
   ThumbnailBuilder,
 } from 'discord.js';
 import type { DbOrTx } from '../../db/index.js';
-import { accents, card, coins } from '../ui/index.js';
+import type { FlipSide } from '../../db/schema.js';
+import { type DiceCall, dieFace } from '../dice/index.js';
+import { accents, card, coins, discordTime } from '../ui/index.js';
 import { categoryLabels, type LeaderboardCategory, leaderboardCategories } from './config.js';
 import { encodeCategoryId, encodePageId } from './custom-ids.js';
 import { type LeaderboardPage, leaderboardPage, leaderboardRank } from './leaderboard.js';
 import type { PlayerProfile } from './profile.js';
+import type { RecentPlay } from './recent.js';
 
 export const notYourLeaderboard =
   "This isn't your leaderboard. Use `/leaderboard` to get your own.";
@@ -28,10 +31,27 @@ function signed(amount: number): string {
   return coins(amount);
 }
 
+const sideLabel = (side: FlipSide) => (side === 'heads' ? 'Heads' : 'Tails');
+
+function recentCall(call: DiceCall): string {
+  return call.kind === 'exact' ? `=${call.target}` : call.kind;
+}
+
+function recentLine(play: RecentPlay): string {
+  const tail = `${signed(play.net)} · ${discordTime(play.at)}`;
+  if (play.kind === 'flip') {
+    const versus = play.opponentId ? ` vs <@${play.opponentId}>` : '';
+    return `🪙 ${sideLabel(play.result)}${versus} · ${tail}`;
+  }
+  const faces = `${dieFace(play.die1)}${dieFace(play.die2)}`;
+  return `🎲 ${faces} ${play.die1 + play.die2} ${recentCall(play.call)} · ${tail}`;
+}
+
 export function profileCard(
   userId: string,
   avatarUrl: string,
   profile: PlayerProfile | undefined,
+  recent: RecentPlay[] = [],
 ): ContainerBuilder {
   if (!profile) {
     return card(accents.brand, '## Stats', `<@${userId}> hasn't played yet.`);
@@ -54,6 +74,8 @@ export function profileCard(
     `Biggest win **${coins(profile.biggestWin)}** · best odds **${bestOdds}**`,
     `Net profit **${signed(profile.won - profile.wagered)}** · wagered ${coins(profile.wagered)} · won ${coins(profile.won)}`,
     `Coinflips **${coins(profile.flips)}** · won **${coins(profile.flipWins)}** · net **${signed(profile.flipWon - profile.flipWagered)}**`,
+    `Dice **${coins(profile.rolls)}** · won **${coins(profile.rollWins)}** · net **${signed(profile.rollWon - profile.rollWagered)}**`,
+    ...(recent.length > 0 ? [['### Recent', ...recent.map(recentLine)].join('\n')] : []),
     `-# Daily streak: ${profile.dailyStreak} ${days}`,
   ).spliceComponents(0, 0, header);
 }
@@ -72,7 +94,9 @@ export function leaderboardCard({
   caller,
 }: LeaderboardView): ContainerBuilder {
   const format = (value: number) =>
-    category === 'profit' || category === 'coinflip' ? signed(value) : coins(value);
+    category === 'profit' || category === 'coinflip' || category === 'dice'
+      ? signed(value)
+      : coins(value);
   const lines = board.rows.map((row) => {
     const place = medals[row.rank - 1] ?? `**${row.rank}.**`;
     return `${place} <@${row.userId}> · **${format(row.value)}**`;

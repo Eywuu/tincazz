@@ -3,3 +3,4 @@ export * from './config.js';
 export * from './custom-ids.js';
 export * from './leaderboard.js';
 export * from './profile.js';
+export * from './recent.js';
