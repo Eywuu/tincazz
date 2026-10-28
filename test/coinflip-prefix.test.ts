@@ -47,7 +47,9 @@ const members: Record<string, { id: string; user: { id: string; bot: boolean } }
   [botUser]: { id: botUser, user: { id: botUser, bot: true } },
 };
 
-type ReplyOptions = string | { allowedMentions?: { users?: string[] }; components?: unknown };
+type ReplyOptions =
+  | string
+  | { allowedMentions?: { users?: string[] }; components?: unknown; failIfNotExists?: boolean };
 
 function makeMessage(client: ReturnType<typeof createClient>, content: string) {
   const sent = { id: 'sent-1', edit: vi.fn(async (_options: unknown) => ({})) };
@@ -149,6 +151,14 @@ describe('?coinflip', () => {
       expect(findWallet(container.db, '2', author)?.balance).toBe(startingBalance + 94);
       expect(flipRows()).toMatchObject([{ mode: 'bot', bet: 100, challengerSide: 'tails' }]);
       expectNoPings(firstReply(message));
+    });
+
+    it('replies without failing when the command message was deleted', async () => {
+      mockRandomInt(1);
+      const message = await run('?cf 100 tails');
+
+      const options = firstReply(message);
+      expect(typeof options === 'string' ? undefined : options.failIfNotExists).toBe(false);
     });
 
     it('?flip with no args flips 10 on heads', async () => {

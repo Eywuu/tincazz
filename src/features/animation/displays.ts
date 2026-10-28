@@ -18,12 +18,15 @@ export function updateDisplay(interaction: ButtonInteraction): Display {
   };
 }
 
-/** A reply to a prefix-command message, then edits of the reply. */
+/**
+ * A reply to a prefix-command message, then edits of the reply. The command message may be deleted
+ * before the result is ready, so the reply must not fail when it is gone (it posts normally).
+ */
 export function messageDisplay(message: Message): Display & { sent(): Message | undefined } {
   let sent: Message | undefined;
   return {
     first: async (reply: CardReply) => {
-      sent = await message.reply(reply);
+      sent = await message.reply({ ...reply, failIfNotExists: false });
       return sent;
     },
     next: async (reply: CardReply) => {
