@@ -6,6 +6,12 @@ import {
   encodeRematchId,
   type RematchId,
 } from '../src/features/coinflip/index.js';
+import {
+  type DiceCall,
+  decodeDiceId,
+  encodeRollAgainId,
+  type RollAgainId,
+} from '../src/features/dice/index.js';
 import { wager } from '../src/features/gamba/config.js';
 import { decodeSpinId, encodeSpinId, type SpinButtonId } from '../src/features/gamba/index.js';
 import {
@@ -218,6 +224,70 @@ describe('coinflip rematch id fuzz', () => {
         expect(decodeCoinflipId(encodeRematchId(rest))).toEqual(id);
       }),
       { numRuns: 2000 },
+    );
+  });
+});
+
+describe('dice roll again id fuzz', () => {
+  const longSnowflake = fc.stringMatching(/^[1-9][0-9]{19}$/);
+  const call: fc.Arbitrary<DiceCall> = fc.oneof(
+    fc.constantFrom<DiceCall>(
+      { kind: 'high' },
+      { kind: 'low' },
+      { kind: 'seven' },
+      { kind: 'doubles' },
+    ),
+    fc
+      .constantFrom(2, 3, 4, 5, 6, 8, 9, 10, 11, 12)
+      .map((target): DiceCall => ({ kind: 'exact', target })),
+  );
+  const rollAgain = (ids: fc.Arbitrary<string>): fc.Arbitrary<Omit<RollAgainId, 'kind'>> =>
+    fc.record({ userId: ids, bet: validBet, call });
+
+  it('round trips every valid id, within 100 characters even with 20-digit snowflakes', () => {
+    fc.assert(
+      fc.property(fc.oneof(rollAgain(snowflake), rollAgain(longSnowflake)), (id) => {
+        const encoded = encodeRollAgainId(id);
+        expect(encoded.length).toBeLessThanOrEqual(100);
+        expect(decodeDiceId(encoded)).toEqual({ kind: 'again', ...id });
+      }),
+    );
+  });
+
+  it('stays within 100 characters for the longest user ID, bet and call code', () => {
+    const encoded = encodeRollAgainId({
+      userId: '9'.repeat(20),
+      bet: wager.maxBet,
+      call: { kind: 'exact', target: 12 },
+    });
+    expect(encoded.length).toBeLessThanOrEqual(100);
+  });
+
+  it('decodes anything only to a valid id, and decoding is stable', () => {
+    const anyRollAgainIdString = fc.oneof(
+      fc.string({ unit: 'binary', maxLength: 100 }),
+      mutated(rollAgain(snowflake).map(encodeRollAgainId)),
+    );
+    fc.assert(
+      fc.property(anyRollAgainIdString, (customId) => {
+        const id = decodeDiceId(customId);
+        if (id === undefined) return;
+        expect(id.userId).toMatch(/^[0-9]{1,20}$/);
+        expect(Number.isSafeInteger(id.bet)).toBe(true);
+        expect(id.bet).toBeGreaterThanOrEqual(wager.minBet);
+        expect(id.bet).toBeLessThanOrEqual(wager.maxBet);
+        const { kind: _kind, ...rest } = id;
+        expect(decodeDiceId(encodeRollAgainId(rest))).toEqual(id);
+      }),
+      { numRuns: 2000 },
+    );
+  });
+
+  it('never claims a coinflip or spin id', () => {
+    fc.assert(
+      fc.property(spinId, (id) => {
+        expect(decodeDiceId(encodeSpinId(id))).toBeUndefined();
+      }),
     );
   });
 });

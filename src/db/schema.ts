@@ -14,6 +14,8 @@ export const ledgerReasons = [
   'pot_win',
   'flip_bet',
   'flip_win',
+  'dice_bet',
+  'dice_win',
   'admin_grant',
   'admin_take',
   'pruned',
@@ -24,6 +26,7 @@ export const flipModes = ['bot', 'challenge', 'open'] as const;
 export const autoRoleTargets = ['member', 'bot'] as const;
 export const flipSides = ['heads', 'tails'] as const;
 export const spinResults = ['none', 'pair', 'triple', 'jackpot'] as const;
+export const diceCallKinds = ['high', 'low', 'seven', 'doubles', 'exact'] as const;
 
 export type LedgerReason = (typeof ledgerReasons)[number];
 export type SpinMode = (typeof spinModes)[number];
@@ -31,6 +34,7 @@ export type FlipMode = (typeof flipModes)[number];
 export type FlipSide = (typeof flipSides)[number];
 export type AutoRoleTarget = (typeof autoRoleTargets)[number];
 export type SpinResult = (typeof spinResults)[number];
+export type DiceCallKind = (typeof diceCallKinds)[number];
 
 export const wallets = sqliteTable(
   'wallets',
@@ -104,7 +108,32 @@ export const flips = sqliteTable(
     messageId: text('message_id').unique(),
     createdAt: integer('created_at').notNull(),
   },
-  (table) => [index('flips_guild_created_idx').on(table.guildId, table.createdAt)],
+  (table) => [
+    index('flips_guild_created_idx').on(table.guildId, table.createdAt),
+    index('flips_challenger_idx').on(table.guildId, table.challengerId),
+    index('flips_opponent_idx').on(table.guildId, table.opponentId),
+  ],
+);
+
+export const rolls = sqliteTable(
+  'rolls',
+  {
+    id: integer('id').primaryKey({ autoIncrement: true }),
+    guildId: text('guild_id').notNull(),
+    userId: text('user_id').notNull(),
+    bet: integer('bet').notNull(),
+    call: text('call', { enum: diceCallKinds }).notNull(),
+    /** The called total for an exact call, null otherwise. */
+    target: integer('target'),
+    die1: integer('die1').notNull(),
+    die2: integer('die2').notNull(),
+    /** 1 for a win, 0 for a loss. */
+    won: integer('won').notNull(),
+    payout: integer('payout').notNull(),
+    edge: integer('edge').notNull(),
+    createdAt: integer('created_at').notNull(),
+  },
+  (table) => [index('rolls_user_idx').on(table.guildId, table.userId, table.createdAt)],
 );
 
 export const playerStats = sqliteTable(
@@ -123,6 +152,10 @@ export const playerStats = sqliteTable(
     flipWins: integer('flip_wins').notNull().default(0),
     flipWagered: integer('flip_wagered').notNull().default(0),
     flipWon: integer('flip_won').notNull().default(0),
+    rolls: integer('rolls').notNull().default(0),
+    rollWins: integer('roll_wins').notNull().default(0),
+    rollWagered: integer('roll_wagered').notNull().default(0),
+    rollWon: integer('roll_won').notNull().default(0),
   },
   (table) => [
     primaryKey({ columns: [table.guildId, table.userId] }),

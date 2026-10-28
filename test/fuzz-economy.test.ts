@@ -1,8 +1,9 @@
 import fc from 'fast-check';
 import { describe, expect, it } from 'vitest';
 import { type Db, openDatabase } from '../src/db/index.js';
-import { flipSides, flips, ledger, pots, spins, wallets } from '../src/db/schema.js';
+import { flipSides, flips, ledger, pots, rolls, spins, wallets } from '../src/db/schema.js';
 import { settleBotFlip, settleChallenge } from '../src/features/coinflip/index.js';
+import { type DiceCall, settleRoll } from '../src/features/dice/index.js';
 import {
   adminAdjust,
   bailout,
@@ -70,8 +71,25 @@ const adminAmount = fc.oneof(
   fc.constantFrom(0, 1.5, Number.NaN, Number.POSITIVE_INFINITY, Number.MAX_SAFE_INTEGER + 2),
 );
 
+/** Every dice call: the four named ones and the ten exact totals (7 is `seven`). */
+const diceCalls: DiceCall[] = [
+  { kind: 'high' },
+  { kind: 'low' },
+  { kind: 'seven' },
+  { kind: 'doubles' },
+  ...[2, 3, 4, 5, 6, 8, 9, 10, 11, 12].map((target) => ({ kind: 'exact' as const, target })),
+];
+
 const op = fc.oneof(
   fc.record({ kind: fc.constant('wager' as const), who, reels, bet: betText }),
+  fc.record({
+    kind: fc.constant('diceRoll' as const),
+    who,
+    bet: betText,
+    call: fc.constantFrom(...diceCalls),
+    // One draw per die from [0, 6): draw d rolls a d + 1.
+    draws: fc.tuple(fc.nat(5), fc.nat(5)),
+  }),
   fc.record({
     kind: fc.constant('flipBot' as const),
     who,
@@ -155,6 +173,19 @@ async function apply(db: Db, step: Op, now: number): Promise<number> {
         randomInt: draws(step.reels),
       });
       return 0;
+    case 'diceRoll': {
+      const potBefore = potAmount(db, guildId);
+      const roll = settleRoll(
+        db,
+        { guildId, userId, bet: step.bet, call: step.call },
+        now,
+        draws(step.draws),
+      );
+      // Conservation counts the edge into the pot: the pot grows by exactly the roll's edge.
+      expect(roll.pot, 'a roll adds its edge to the pot').toBe((potBefore ?? pot.seed) + roll.edge);
+      expect(potAmount(db, guildId)).toBe(roll.pot);
+      return 0;
+    }
     case 'flipBot':
       settleBotFlip(
         db,
@@ -199,6 +230,14 @@ async function apply(db: Db, step: Op, now: number): Promise<number> {
   }
 }
 
+function potAmount(db: Db, guildId: string): number | undefined {
+  return db
+    .select()
+    .from(pots)
+    .all()
+    .find((row) => row.guildId === guildId)?.amount;
+}
+
 function snapshot(db: Db) {
   return {
     wallets: db.select().from(wallets).all(),
@@ -210,6 +249,7 @@ function snapshot(db: Db) {
       .filter((row) => row.reason !== 'start'),
     spins: db.select().from(spins).all(),
     flips: db.select().from(flips).all(),
+    rolls: db.select().from(rolls).all(),
     pots: db.select().from(pots).all(),
   };
 }
@@ -270,6 +310,25 @@ function expectInvariants(db: Db, removed: number): void {
     } else {
       expect(net, 'a player flip loses exactly the rake').toBe(-row.rake);
     }
+  }
+  for (const row of db.select().from(rolls).all()) {
+    expect(row.edge).toBeGreaterThanOrEqual(1);
+    expect(row.edge).toBeLessThanOrEqual(row.bet);
+    const mine = ledgerRows
+      .filter(
+        (entry) =>
+          (entry.reason === 'dice_bet' || entry.reason === 'dice_win') && entry.ref === row.id,
+      )
+      .map(({ reason, delta }) => ({ reason, delta }));
+    expect(mine, 'a roll has one stake row and, iff won, one win row').toEqual(
+      row.won === 1
+        ? [
+            { reason: 'dice_bet', delta: -row.bet },
+            { reason: 'dice_win', delta: row.payout },
+          ]
+        : [{ reason: 'dice_bet', delta: -row.bet }],
+    );
+    if (row.won === 0) expect(row.payout).toBe(0);
   }
   for (const row of db.select().from(pots).all()) {
     expect(row.amount).toBeGreaterThanOrEqual(pot.seed);
@@ -354,9 +413,12 @@ describe('economy fuzz', () => {
             } catch (error) {
               if (!isExpectedFailure(step, error)) throw error;
               const after = snapshot(db);
-              if ((step.kind === 'wager' || step.kind === 'flipBot') && !existed) {
-                // settleSpin and settleBotFlip open the wallet before reading the bet; that is all
-                // they may leave. settleChallenge is fully atomic.
+              if (
+                (step.kind === 'wager' || step.kind === 'flipBot' || step.kind === 'diceRoll') &&
+                !existed
+              ) {
+                // settleSpin, settleBotFlip and settleRoll open the wallet before reading the bet;
+                // that is all they may leave. settleChallenge is fully atomic.
                 const created = findWallet(db, step.who.guildId, step.who.userId);
                 expect(created?.balance).toBe(startingBalance);
                 after.wallets = after.wallets.filter(

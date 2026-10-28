@@ -12,6 +12,7 @@ import {
   modLogCard,
 } from '../src/features/logs/index.js';
 import { setLogChannel } from '../src/features/settings/store.js';
+import { accents } from '../src/features/ui/index.js';
 import { testEnv } from './support/env.js';
 
 // Sapphire keeps global state; share one client across the tests in this file.
@@ -55,6 +56,18 @@ it('renders a card for every event type', () => {
     [
       { type: 'big_spin', userId: '1', bet: 6000, result: 'triple', payout: 12000 },
       ['<@1>', '12,000'],
+    ],
+    [
+      {
+        type: 'big_roll',
+        userId: '1',
+        bet: 150,
+        call: 'Exact 12',
+        total: 12,
+        won: true,
+        payout: 5346,
+      },
+      ['<@1>', '5,346'],
     ],
     [
       {
@@ -117,6 +130,34 @@ it('renders a card for every event type', () => {
   );
   expect(big).toContain('25');
   expect(big).not.toContain('<@');
+});
+
+it('renders a big dice roll with the call, the total and the payout', () => {
+  const won = economyLogCard(
+    {
+      type: 'big_roll',
+      userId: '1',
+      bet: 150,
+      call: 'Exact 12',
+      total: 12,
+      won: true,
+      payout: 5_346,
+    },
+    1000,
+  );
+  const out = json(won);
+  expect(out).toContain('### Big dice roll');
+  expect(out).toContain('<@1> bet 150 on Exact 12, rolled 12');
+  expect(out).toContain('Payout: 5,346');
+  expect(won.toJSON().accent_color).toBe(accents.win);
+
+  const lost = economyLogCard(
+    { type: 'big_roll', userId: '1', bet: 6_000, call: 'High', total: 4, won: false, payout: 0 },
+    1000,
+  );
+  expect(json(lost)).toContain('<@1> bet 6,000 on High, rolled 4');
+  expect(json(lost)).toContain('Payout: 0');
+  expect(lost.toJSON().accent_color).toBe(accents.brand);
 });
 
 const event: EconomyEvent = { type: 'member_restored', userId: '1', balance: 3 };

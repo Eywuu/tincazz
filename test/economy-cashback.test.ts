@@ -36,6 +36,13 @@ describe('cashbackFor', () => {
     expect(cashbackFor(db, g, u, 100 * DAY + 5)).toBe(50);
   });
 
+  it("dice losses count toward yesterday's net", () => {
+    move('dice_bet', -1_000, 99 * DAY + 10);
+    move('dice_win', 237, 99 * DAY + 10);
+    move('dice_bet', -100, 99 * DAY + 20);
+    expect(cashbackFor(db, g, u, 100 * DAY + 5)).toBe(86);
+  });
+
   it('pays nothing after a winning or even day', () => {
     move('bet', -100, 99 * DAY);
     move('payout', 200, 99 * DAY);

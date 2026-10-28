@@ -1,7 +1,14 @@
 import { describe, expect, it } from 'vitest';
 import type { BotFlip } from '../src/features/coinflip/play.js';
+import type { DiceCall, Roll } from '../src/features/dice/index.js';
+import { payoutFor } from '../src/features/dice/index.js';
 import type { WagerSpin } from '../src/features/gamba/play.js';
-import { botFlipLogEvent, challengeLogEvent, spinLogEvent } from '../src/features/logs/index.js';
+import {
+  botFlipLogEvent,
+  challengeLogEvent,
+  rollLogEvent,
+  spinLogEvent,
+} from '../src/features/logs/index.js';
 
 const spinOf = (result: string, bet: number, payout: number): WagerSpin =>
   ({ bet, payout, potWon: 777, evaluation: { result } }) as unknown as WagerSpin;
@@ -78,6 +85,53 @@ describe('challengeLogEvent', () => {
       bet: 5_000,
       winnerId: '3',
       rake: 9,
+    });
+  });
+});
+
+describe('rollLogEvent', () => {
+  const rollOf = (bet: number, call: DiceCall, die1: number, die2: number, won: boolean): Roll => ({
+    bet,
+    call,
+    die1,
+    die2,
+    total: die1 + die2,
+    won,
+    payout: won ? payoutFor(call, bet) : 0,
+    edge: 1,
+    balance: 0,
+    pot: 0,
+    rollId: 1,
+  });
+  const twelve: DiceCall = { kind: 'exact', target: 12 };
+
+  it('ignores a 4,999 bet and a 4,999 payout', () => {
+    expect(rollLogEvent('1', rollOf(4_999, { kind: 'high' }, 1, 2, false))).toBeUndefined();
+    expect(rollLogEvent('1', { ...rollOf(10, twelve, 6, 6, true), payout: 4_999 })).toBeUndefined();
+  });
+
+  it('logs a 5,000 bet with the call label and the total', () => {
+    expect(rollLogEvent('1', rollOf(5_000, { kind: 'high' }, 1, 2, false))).toEqual({
+      type: 'big_roll',
+      userId: '1',
+      bet: 5_000,
+      call: 'High',
+      total: 3,
+      won: false,
+      payout: 0,
+    });
+  });
+
+  it('logs a small bet whose exact 12 pays 5,000 or more', () => {
+    expect(payoutFor(twelve, 150)).toBe(5_346);
+    expect(rollLogEvent('1', rollOf(150, twelve, 6, 6, true))).toEqual({
+      type: 'big_roll',
+      userId: '1',
+      bet: 150,
+      call: 'Exact 12',
+      total: 12,
+      won: true,
+      payout: 5_346,
     });
   });
 });

@@ -11,6 +11,8 @@ export const gamblingReasons = [
   'pot_win',
   'flip_bet',
   'flip_win',
+  'dice_bet',
+  'dice_win',
 ] as const satisfies readonly LedgerReason[];
 
 /** Net coins won (positive) or lost (negative) gambling during the UTC day before `now`. */
