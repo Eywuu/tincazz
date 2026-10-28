@@ -165,7 +165,7 @@ export class CoinflipButtonsHandler extends InteractionHandler {
     if (event) void logEconomy(request.guildId, event);
     return play(
       updateDisplay(interaction),
-      challengeFlipFrames(view, request.acceptorId),
+      challengeFlipFrames(view, request.acceptorId, settled.result),
       challengeResultCard(view, settled),
       { channelId: interaction.channelId },
     );

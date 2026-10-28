@@ -2,12 +2,15 @@ import { describe, expect, it } from 'vitest';
 import {
   type BotFlip,
   botFlipCard,
+  botFlipFrames,
   ChallengeTakenError,
   type ChallengeView,
   challengeCard,
   challengeClosedCard,
+  challengeFlipFrames,
   challengeResultCard,
   challengeTaken,
+  flipAnimation,
   flipErrorText,
   type SettledChallenge,
   ShortStakeError,
@@ -70,6 +73,60 @@ describe('botFlipCard', () => {
     expect(accent(c)).toBe(accents.loss);
     expect(json(c)).toContain('Tails');
     expect(json(c)).toContain('-100');
+  });
+});
+
+describe('flip frames', () => {
+  const frames = (result: 'heads' | 'tails' = 'tails') =>
+    botFlipFrames('1', { bet: 2_500, side: 'heads', result });
+
+  it('botFlipFrames returns 4 frames in stage order', () => {
+    expect(flipAnimation.stages).toEqual(['toss', 'spin', 'fall', 'edge']);
+    const all = frames();
+    expect(all).toHaveLength(flipAnimation.stages.length);
+    expect(json(all[0] as never)).toContain('# 🪙 ⤴');
+    expect(json(all[0] as never)).toContain('-# tossed');
+    expect(json(all[2] as never)).toContain('# 🪙 ⤵');
+    expect(json(all[2] as never)).toContain('-# falling');
+    expect(json(all[3] as never)).toContain('-# teetering on its edge');
+  });
+
+  it('the spin frame shows one of ◐ ◓ ◑ ◒', () => {
+    const spin = json(frames()[1] as never);
+    expect(spin).toMatch(/# [◐◓◑◒]/);
+    expect(spin).toContain('-# spinning');
+  });
+
+  it('the edge frame shows the losing side with the gold accent', () => {
+    const edge = frames('tails')[3] as never;
+    expect(json(edge)).toContain('# 🪙 Heads…?');
+    expect(accent(edge)).toBe(accents.gold);
+    expect(json(frames('heads')[3] as never)).toContain('# 🪙 Tails…?');
+  });
+
+  it('uses the brand accent and no buttons before the edge', () => {
+    for (const frame of frames().slice(0, 3)) {
+      expect(accent(frame)).toBe(accents.brand);
+      expect(buttonIds(frame)).toEqual([]);
+    }
+  });
+
+  it('no frame contains the result card net or "wins"', () => {
+    const challenge = challengeFlipFrames(view(), '3', 'tails');
+    for (const frame of [...frames(), ...challenge]) {
+      expect(json(frame)).not.toMatch(/wins|[+-]\d|balance|pot/);
+    }
+  });
+
+  it('frames carry the caption', () => {
+    for (const frame of frames()) {
+      expect(json(frame)).toContain('<@1> called **Heads** · 2,500');
+    }
+    const challenge = challengeFlipFrames(view({ bet: 100 }), '3', 'heads');
+    expect(challenge).toHaveLength(flipAnimation.stages.length);
+    for (const frame of challenge) {
+      expect(json(frame)).toContain('<@1> vs <@3> · 100 each');
+    }
   });
 });
 

@@ -91,10 +91,10 @@ describe('/coinflip', () => {
       mockRandomInt(0);
       const interaction = await run('bot', { bet: '100', side: 'heads' });
 
-      // The reply is the first flipping frame; the rest of the frames and the result are edits.
-      expect(json(interaction.reply.mock.calls[0])).toContain('flipping');
+      // The reply is the first toss frame; the rest of the frames and the result are edits.
+      expect(json(interaction.reply.mock.calls[0])).toContain('tossed');
       await vi.waitFor(() =>
-        expect(interaction.editReply).toHaveBeenCalledTimes(flipAnimation.frames),
+        expect(interaction.editReply).toHaveBeenCalledTimes(flipAnimation.stages.length),
       );
       const result = json(interaction.editReply.mock.calls.at(-1));
       expect(result).toContain('Heads');

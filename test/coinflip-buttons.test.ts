@@ -47,10 +47,10 @@ function mockRandomInt(...values: number[]) {
 const json = (value: unknown) => JSON.stringify(value);
 const wait = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms));
 
-/** The result card, shown by the last edit once the flipping frames have played. */
+/** The result card, shown by the last edit once the flip frames have played. */
 async function flipResult(interaction: { editReply: { mock: { calls: unknown[][] } } }) {
   await vi.waitFor(() =>
-    expect(interaction.editReply.mock.calls).toHaveLength(flipAnimation.frames),
+    expect(interaction.editReply.mock.calls).toHaveLength(flipAnimation.stages.length),
   );
   return json(interaction.editReply.mock.calls.at(-1));
 }
@@ -169,7 +169,7 @@ describe('coinflip buttons', () => {
       mockRandomInt(0);
       const interaction = await click(again, '1');
 
-      expect(json(interaction.update.mock.calls[0])).toContain('flipping');
+      expect(json(interaction.update.mock.calls[0])).toContain('tossed');
       expect(await flipResult(interaction)).toContain('+94');
       expect(flipCount()).toBe(1);
     });
@@ -380,7 +380,7 @@ describe('coinflip buttons', () => {
       mockRandomInt(0);
       const interaction = makeButton(client, { customId: challengeId('accept'), userId: '3' });
       interaction.editReply.mockImplementation(async (options: unknown) => {
-        if (!json(options).includes('flipping')) throw new Error('Unknown Webhook');
+        if (!json(options).includes('tossed')) throw new Error('Unknown Webhook');
       });
       const edit = vi.fn(async (_options: unknown) => ({}));
       interaction.message.edit = edit;
