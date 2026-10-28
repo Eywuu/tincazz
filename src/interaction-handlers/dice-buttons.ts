@@ -10,8 +10,6 @@ import {
   rollFrames,
   settleRoll,
 } from '../features/dice/index.js';
-import { rollLogEvent } from '../features/logs/economy.js';
-import { logEconomy } from '../features/logs/send.js';
 import { errorReply } from '../features/ui/index.js';
 
 export class DiceButtonsHandler extends InteractionHandler {
@@ -43,8 +41,6 @@ export class DiceButtonsHandler extends InteractionHandler {
         { guildId, userId, bet: String(id.bet), call: id.call },
         Date.now(),
       );
-      const event = rollLogEvent(userId, roll);
-      if (event) void logEconomy(guildId, event);
       return await play(
         updateDisplay(interaction),
         rollFrames(userId, roll),

@@ -4,6 +4,7 @@ import { createClient } from '../src/client.js';
 import { type Db, openDatabase } from '../src/db/index.js';
 import { pots, spins } from '../src/db/schema.js';
 import {
+  adminAdjust,
   debit,
   findWallet,
   getOrCreateWallet,
@@ -134,7 +135,25 @@ describe('spin economy log', () => {
     await vi.waitFor(() => expect(send).toHaveBeenCalledTimes(1));
   });
 
-  it('does not log a 10-coin spin', async () => {
+  it('keeps a max-bet spin with a big payout out of the log', async () => {
+    adminAdjust(container.db, {
+      guildId: '2',
+      userId: '1',
+      actorId: '9',
+      action: 'give',
+      amount: 10_000,
+      reason: 'setup',
+      now: 1,
+    });
+    await spin(container.db, { guildId: '2', userId: '1', bet: '10000' }, 1000, {
+      assignJackpotRole: async () => true,
+      randomInt: draws(18, 18, 18),
+    });
+    await new Promise((resolve) => setTimeout(resolve, 50));
+    expect(send).not.toHaveBeenCalled();
+  });
+
+  it('does not log a default spin', async () => {
     await spin(container.db, { guildId: '2', userId: '1' }, 1000, {
       assignJackpotRole: async () => true,
       randomInt: draws(0, 3, 6),
