@@ -38,14 +38,7 @@ export function playWager(
 
   return db.transaction((tx) => {
     getOrCreateWallet(tx, guildId, userId, now);
-    const { potWon, pot } = settlePot(
-      tx,
-      guildId,
-      bet,
-      evaluation.result === 'jackpot',
-      userId,
-      now,
-    );
+    const { potWon, pot } = settlePot(tx, guildId, bet, evaluation.tier, userId, now);
     const { id: spinId } = tx
       .insert(spins)
       .values({

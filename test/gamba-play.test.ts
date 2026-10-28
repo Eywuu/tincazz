@@ -84,6 +84,17 @@ describe('playWager', () => {
     expectLedgerConsistent(db);
   });
 
+  it('pays a python pair its share of the pot', () => {
+    db.insert(pots).values({ guildId: 'g', amount: 100_000 }).run();
+    const result = playWager(db, 'g', 'u', 500, 10, roll(18, 18, 0));
+    // 100,015 after the contribution: 0.25% of the 90,015 excess.
+    expect(result).toMatchObject({ payout: 2_000, potWon: 225, pot: 99_790, balance: 2_725 });
+    expect(reasons()).toEqual(['start', 'bet', 'payout', 'pot_win']);
+    expect(db.select().from(pots).get()).toMatchObject({ lastWinnerId: null });
+    expect(db.select().from(playerStats).get()).toMatchObject({ jackpots: 0, won: 2_225 });
+    expectLedgerConsistent(db);
+  });
+
   it('rolls everything back when the wallet cannot cover the bet', () => {
     getOrCreateWallet(db, 'g', 'u', 1);
     expect(() => playWager(db, 'g', 'u', 2_000, 10, roll(0, 3, 6))).toThrow(InsufficientFundsError);
