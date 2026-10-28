@@ -1,11 +1,11 @@
 import { describe, expect, it } from 'vitest';
+import { wager } from '../src/features/dice/config.js';
 import {
   type DiceCall,
   decodeDiceId,
   encodeCall,
   encodeRollAgainId,
 } from '../src/features/dice/index.js';
-import { wager } from '../src/features/gamba/config.js';
 
 const userId = '123456789012345678';
 const calls: DiceCall[] = [

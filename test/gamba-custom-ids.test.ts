@@ -14,6 +14,10 @@ describe('spin button ids', () => {
     expect(encodeSpinId({ action: 'double', userId: '7', bet: 200 })).toBe('gamba:double:7:200');
   });
 
+  it('decodes the smallest bet', () => {
+    expect(decodeSpinId('gamba:again:1:1')).toEqual({ action: 'again', userId: '1', bet: 1 });
+  });
+
   it('no longer decodes a free-spin id', () => {
     expect(decodeSpinId('gamba:again:1:0')).toBeUndefined();
   });
@@ -22,7 +26,7 @@ describe('spin button ids', () => {
     'gamba:again:1:999999',
     'gamba:again:abc:10',
     'gamba:double:1:0',
-    'gamba:again:1:5',
+    'gamba:again:1:-1',
     'gamba:again:1:10:x',
     'gamba:spin:1:10',
     'lb:page:1:coins:0',

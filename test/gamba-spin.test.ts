@@ -35,19 +35,19 @@ describe('spin', () => {
     db = openDatabase(':memory:');
   });
 
-  it('plays a 10-coin wager when no bet is given', async () => {
+  it('plays a 1-coin wager when no bet is given', async () => {
     const { played } = await settleSpin(db, request, 1000, {
       assignJackpotRole: async () => true,
       randomInt: draws(0, 3, 6),
     });
 
-    expect(played.bet).toBe(10);
-    expect(findWallet(db, '2', '1')?.balance).toBe(startingBalance - 10);
+    expect(played.bet).toBe(1);
+    expect(findWallet(db, '2', '1')?.balance).toBe(startingBalance - 1);
   });
 
-  it('rejects a no-bet spin under 10 coins with a funds error', async () => {
+  it('rejects a no-bet spin with no coins with a funds error', async () => {
     getOrCreateWallet(db, '2', '1', 1000);
-    debit(db, { guildId: '2', userId: '1', amount: startingBalance - 9, reason: 'bet', now: 1000 });
+    debit(db, { guildId: '2', userId: '1', amount: startingBalance, reason: 'bet', now: 1000 });
 
     await expect(
       settleSpin(db, request, 1000, { assignJackpotRole: async () => true }),

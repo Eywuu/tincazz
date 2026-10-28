@@ -1,6 +1,9 @@
 import { describe, expect, it } from 'vitest';
+import { wager as flipWager } from '../src/features/coinflip/config.js';
+import { wager as diceWager } from '../src/features/dice/config.js';
 import { InsufficientFundsError } from '../src/features/economy/errors.js';
 import { InvalidBetError, parseBet } from '../src/features/gamba/bet.js';
+import { wager as gambaWager } from '../src/features/gamba/config.js';
 
 const limits = { minBet: 10, maxBet: 10_000, defaultBet: 10 };
 
@@ -56,5 +59,16 @@ describe('parseBet', () => {
       expect(error).toMatchObject({ balance: 5, needed: 10 });
     }
     expect(() => parseBet('10', 0, limits)).toThrow(InsufficientFundsError);
+  });
+
+  it('lets gamba take 1-coin bets while coinflip and dice keep a 10-coin minimum', () => {
+    expect(parseBet('1', 1, gambaWager)).toBe(1);
+    expect(parseBet('all', 1, gambaWager)).toBe(1);
+    expect(() => parseBet('half', 1, gambaWager)).toThrow(InvalidBetError);
+    expect(() => parseBet('0', 100, gambaWager)).toThrow(InvalidBetError);
+    for (const limits of [flipWager, diceWager]) {
+      expect(() => parseBet('9', 100, limits)).toThrow(InvalidBetError);
+      expect(() => parseBet('10', 9, limits)).toThrow(InsufficientFundsError);
+    }
   });
 });
