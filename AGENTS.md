@@ -48,8 +48,8 @@ src/
     animation/    shared frame playback: per-channel frame budget, per-user busy lock, display
                   adapters for slash, button and prefix
     coinflip/     `/coinflip` rules: rake, flips, `cf:*` custom IDs, the one transactional settle
-                  module, the in-memory challenge registry (exactly-once and expiry), cards and
-                  flip frames
+                  module, the in-memory challenge registry (exactly-once and expiry), cards
+                  (challenge results carry a single-use Rematch button) and flip frames
     economy/      wallets and ledger; the only code that changes balances. Faucets: daily (with
                   cashback on yesterday's gambling losses), hourly collect, bailout, chat
     gamba/        spin logic, odds and payouts (tuned to a ~1% house edge), the pot, bet parsing,

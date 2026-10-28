@@ -16,6 +16,7 @@ export {
   memberNotFound,
   notYourChallenge,
   notYourFlip,
+  rematchTaken,
 } from './cards.js';
 export { clearChallenges, reopen, scheduleExpiry, tryClose } from './challenges.js';
 export { coinflip, type FlipStage, flipAnimation } from './config.js';
@@ -26,7 +27,9 @@ export {
   decodeCoinflipId,
   encodeChallengeId,
   encodeFlipAgainId,
+  encodeRematchId,
   type FlipAgainId,
+  type RematchId,
 } from './custom-ids.js';
 export { ChallengeTakenError, CoinflipError, ShortStakeError } from './errors.js';
 export { flipCoin, otherSide } from './flip.js';

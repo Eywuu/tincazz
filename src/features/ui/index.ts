@@ -1,4 +1,10 @@
-import { ContainerBuilder, MessageFlags, TextDisplayBuilder } from 'discord.js';
+import {
+  type APIContainerComponent,
+  ComponentType,
+  ContainerBuilder,
+  MessageFlags,
+  TextDisplayBuilder,
+} from 'discord.js';
 
 export const accents = {
   loss: 0x95a5a6,
@@ -13,6 +19,16 @@ export function card(accent: number, ...texts: string[]): ContainerBuilder {
   return new ContainerBuilder()
     .setAccentColor(accent)
     .addTextDisplayComponents(...texts.map((text) => new TextDisplayBuilder().setContent(text)));
+}
+
+/** A copy of a sent card without its buttons and selects, e.g. to retire a single-use button. */
+export function withoutActionRows(container: APIContainerComponent): ContainerBuilder {
+  return new ContainerBuilder({
+    ...container,
+    components: container.components.filter(
+      (component) => component.type !== ComponentType.ActionRow,
+    ),
+  });
 }
 
 export function cardReply(container: ContainerBuilder, options: { ephemeral?: boolean } = {}) {

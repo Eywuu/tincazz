@@ -8,6 +8,7 @@ import {
   type ChallengeId,
   encodeChallengeId,
   encodeFlipAgainId,
+  encodeRematchId,
 } from './custom-ids.js';
 import { ChallengeTakenError, ShortStakeError } from './errors.js';
 import { otherSide } from './flip.js';
@@ -21,6 +22,7 @@ export const challengeTaken = 'Someone already took this challenge.';
 export const cannotChallengeSelf = "You can't challenge yourself.";
 export const cannotChallengeBot = "Bots don't flip coins. Use `/coinflip bot`.";
 export const memberNotFound = "I can't find that member here.";
+export const rematchTaken = 'A rematch is already on.';
 
 const sideLabel = (side: FlipSide) => (side === 'heads' ? 'Heads' : 'Tails');
 
@@ -112,14 +114,26 @@ export function challengeCard(view: ChallengeView): ContainerBuilder {
 }
 
 export function challengeResultCard(
-  _view: ChallengeView,
+  view: ChallengeView,
   settled: SettledChallenge,
 ): ContainerBuilder {
+  // An open challenge has no opponent in the view, so the acceptor comes from the settled flip.
+  const acceptorId = settled.winnerId === view.challengerId ? settled.loserId : settled.winnerId;
+  const rematch = encodeRematchId({
+    challengerId: view.challengerId,
+    acceptorId,
+    bet: view.bet,
+    challengerSide: view.side,
+  });
   return card(
     accents.gold,
     `# 🪙 ${sideLabel(settled.result)}`,
     `<@${settled.winnerId}> wins **${coins(settled.credited)}**`,
     `-# rake ${coins(settled.rake)} to the pot · pot ${coins(settled.pot)}`,
+  ).addActionRowComponents(
+    new ActionRowBuilder<ButtonBuilder>().addComponents(
+      button('Rematch', rematch, ButtonStyle.Secondary),
+    ),
   );
 }
 

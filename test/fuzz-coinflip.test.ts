@@ -6,6 +6,7 @@ import {
   decodeCoinflipId,
   encodeChallengeId,
   encodeFlipAgainId,
+  encodeRematchId,
   type FlipAgainId,
   flipRake,
 } from '../src/features/coinflip/index.js';
@@ -35,7 +36,15 @@ const challenge: fc.Arbitrary<Omit<ChallengeId, 'kind'>> = fc
   })
   .filter((id) => id.action !== 'decline' || id.opponentId !== undefined);
 
-const valid = fc.oneof(flipAgain.map(encodeFlipAgainId), challenge.map(encodeChallengeId));
+const rematch = fc
+  .record({ challengerId: snowflake, acceptorId: snowflake, bet, challengerSide: side })
+  .filter((id) => id.challengerId !== id.acceptorId);
+
+const valid = fc.oneof(
+  flipAgain.map(encodeFlipAgainId),
+  challenge.map(encodeChallengeId),
+  rematch.map(encodeRematchId),
+);
 
 const mutated = valid.chain((id) =>
   fc

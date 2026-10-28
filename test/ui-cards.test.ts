@@ -1,4 +1,10 @@
-import { MessageFlags } from 'discord.js';
+import {
+  ActionRowBuilder,
+  ButtonBuilder,
+  ButtonStyle,
+  ComponentType,
+  MessageFlags,
+} from 'discord.js';
 import { describe, expect, it } from 'vitest';
 import { balanceCard } from '../src/features/economy/cards.js';
 import {
@@ -8,6 +14,7 @@ import {
   coins,
   discordTime,
   errorReply,
+  withoutActionRows,
 } from '../src/features/ui/index.js';
 
 const texts = (container: ReturnType<typeof card>) =>
@@ -41,6 +48,24 @@ describe('cardReply', () => {
     expect((reply.components[0] as ReturnType<typeof card>).toJSON().accent_color).toBe(
       accents.error,
     );
+  });
+});
+
+describe('withoutActionRows', () => {
+  it('keeps the text displays and the accent, and drops the action rows', () => {
+    const container = card(accents.gold, 'a', 'b').addActionRowComponents(
+      new ActionRowBuilder<ButtonBuilder>().addComponents(
+        new ButtonBuilder().setLabel('Go').setCustomId('go').setStyle(ButtonStyle.Secondary),
+      ),
+    );
+    const stripped = withoutActionRows(container.toJSON());
+
+    expect(stripped.toJSON().accent_color).toBe(accents.gold);
+    expect(stripped.toJSON().components.map((component) => component.type)).toEqual([
+      ComponentType.TextDisplay,
+      ComponentType.TextDisplay,
+    ]);
+    expect(texts(stripped)).toEqual(['a', 'b']);
   });
 });
 
