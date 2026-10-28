@@ -6,6 +6,7 @@ import { afterEach, beforeAll, beforeEach, describe, expect, it, vi } from 'vite
 import { createClient } from '../src/client.js';
 import { openDatabase } from '../src/db/index.js';
 import { flips, pots } from '../src/db/schema.js';
+import { clearBudgets, setFrameDelay } from '../src/features/animation/index.js';
 import {
   clearChallenges,
   encodeChallengeId,
@@ -14,7 +15,6 @@ import {
   notYourChallenge,
   notYourFlip,
   scheduleExpiry,
-  setFrameDelay,
 } from '../src/features/coinflip/index.js';
 import {
   adminAdjust,
@@ -60,6 +60,7 @@ describe('coinflip buttons', () => {
     container.db = openDatabase(':memory:');
     clearChallenges();
     setFrameDelay(0);
+    clearBudgets();
   });
 
   afterEach(() => {

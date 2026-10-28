@@ -1,7 +1,7 @@
 import { InteractionHandler, InteractionHandlerTypes } from '@sapphire/framework';
 import type { ButtonInteraction, ContainerBuilder } from 'discord.js';
+import { play, updateDisplay } from '../features/animation/index.js';
 import {
-  animate,
   botFlipCard,
   botFlipFrames,
   type ChallengeId,
@@ -77,28 +77,12 @@ export class CoinflipButtonsHandler extends InteractionHandler {
    * rejects the update or an edit the result is put on the message by a plain edit instead of
    * being lost behind "interaction failed".
    */
-  private async flipOnCard(
+  private flipOnCard(
     interaction: ButtonInteraction,
     frames: readonly ContainerBuilder[],
     result: ContainerBuilder,
   ) {
-    try {
-      return await animate(
-        {
-          first: (reply) => interaction.update(reply),
-          next: (reply) => interaction.editReply(reply),
-        },
-        frames,
-        result,
-      );
-    } catch (error) {
-      this.container.logger.error(
-        `coinflip: could not update ${interaction.message.id}, editing instead: ${
-          error instanceof Error ? error.message : String(error)
-        }`,
-      );
-      return interaction.message.edit(cardReply(result));
-    }
+    return play(updateDisplay(interaction), frames, result, { channelId: interaction.channelId });
   }
 
   private async answer(interaction: ButtonInteraction, id: ChallengeId) {

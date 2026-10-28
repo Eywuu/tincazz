@@ -6,12 +6,12 @@ import { afterEach, beforeAll, beforeEach, describe, expect, it, vi } from 'vite
 import { createClient } from '../src/client.js';
 import { openDatabase } from '../src/db/index.js';
 import { flips, ledger } from '../src/db/schema.js';
+import { clearBudgets, setFrameDelay } from '../src/features/animation/index.js';
 import {
   cannotChallengeBot,
   cannotChallengeSelf,
   clearChallenges,
   flipAnimation,
-  setFrameDelay,
 } from '../src/features/coinflip/index.js';
 import { adminAdjust, findWallet, startingBalance } from '../src/features/economy/index.js';
 import { setLogChannel } from '../src/features/settings/store.js';
@@ -41,6 +41,7 @@ describe('/coinflip', () => {
     container.db = openDatabase(':memory:');
     clearChallenges();
     setFrameDelay(0);
+    clearBudgets();
     // The runIn precondition fetches the channel over REST, which needs a token.
     vi.spyOn(client.channels, 'fetch').mockResolvedValue({
       type: 0,

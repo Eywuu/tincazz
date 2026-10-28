@@ -5,8 +5,8 @@ import {
   type SlashCommandSubcommandBuilder,
 } from 'discord.js';
 import { type FlipSide, flipSides } from '../../db/schema.js';
+import { play, replyDisplay } from '../../features/animation/index.js';
 import {
-  animate,
   botFlipCard,
   botFlipFrames,
   type ChallengeView,
@@ -101,11 +101,9 @@ export class CoinflipCommand extends Command {
     );
     const event = botFlipLogEvent(userId, flip);
     if (event) void logEconomy(interaction.guildId as string, event);
-    return animate(
-      { first: (reply) => interaction.reply(reply), next: (reply) => interaction.editReply(reply) },
-      botFlipFrames(userId, flip),
-      botFlipCard(userId, flip),
-    );
+    return play(replyDisplay(interaction), botFlipFrames(userId, flip), botFlipCard(userId, flip), {
+      channelId: interaction.channelId,
+    });
   }
 
   private async challenge(
