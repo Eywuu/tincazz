@@ -1,0 +1,57 @@
+name: Bug report
+description: Something the bot does wrong, or a crash
+labels: [bug]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Thanks for the report. Please search existing issues first.
+        Security problems (for example a way to get coins you should not have) go through
+        [private vulnerability reporting](https://github.com/cazzwastaken/tincazz/security/advisories/new), not here.
+        Never paste a bot token, `.env` contents or private IDs.
+  - type: textarea
+    id: what-happened
+    attributes:
+      label: What happened
+      description: What did you do, and what did the bot do?
+      placeholder: I ran `/gamba bet:all` with 0 coins and the bot...
+    validations:
+      required: true
+  - type: textarea
+    id: expected
+    attributes:
+      label: What you expected
+    validations:
+      required: true
+  - type: textarea
+    id: steps
+    attributes:
+      label: Steps to reproduce
+      placeholder: |
+        1. Run `/daily`
+        2. Click ...
+  - type: input
+    id: command
+    attributes:
+      label: Command or feature
+      placeholder: /coinflip challenge
+  - type: dropdown
+    id: where
+    attributes:
+      label: Where did you see it?
+      options:
+        - On the cazzwastaken server
+        - On my own instance (self-hosted or `pnpm dev`)
+    validations:
+      required: true
+  - type: input
+    id: version
+    attributes:
+      label: Commit or image tag
+      description: Only for your own instance, e.g. `sha-1234567` or the commit you built from.
+  - type: textarea
+    id: logs
+    attributes:
+      label: Logs or screenshots
+      description: Relevant log lines (with secrets removed) or screenshots of the reply.
+      render: text

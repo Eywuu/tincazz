@@ -71,7 +71,7 @@ src/
                   generic ephemeral reply when a command or handler throws)
 drizzle/          generated SQL migrations, committed and shipped in the image
 test/             Vitest tests
-.github/          CI, image publishing and Dependabot configuration
+.github/          CI, image publishing, Dependabot, issue forms, PR template and CODEOWNERS
 ```
 
 Sapphire loads every file under `commands/`, `listeners/` and `interaction-handlers/` automatically
